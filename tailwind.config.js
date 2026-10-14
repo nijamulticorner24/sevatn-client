@@ -1,0 +1,92 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      },
+      colors: {
+        bg: {
+          main: '#F7F9FC',
+          subtle: '#F0F3F8',
+        },
+        surface: {
+          DEFAULT: '#FFFFFF',
+          muted: '#F8FAFC',
+        },
+        ink: {
+          primary: '#172033',
+          secondary: '#475467',
+          muted: '#667085',
+          light: '#98A2B3',
+        },
+        brand: {
+          DEFAULT: '#C98219',
+          dark: '#7A4A12',
+          light: '#FDF7ED',
+          hover: '#B57414',
+          subtle: '#FAF3E7',
+          border: '#E8D5B7',
+        },
+        border: {
+          DEFAULT: '#E6EAF0',
+          subtle: '#EEF2F6',
+          strong: '#D0D5DD',
+        },
+        stn: {
+          primary: '#1D4ED8',
+          'primary-hover': '#1E40AF',
+          'primary-soft': '#EFF6FF',
+          text: '#0F172A',
+          'text-muted': '#64748B',
+          border: '#E2E8F0',
+          surface: '#FFFFFF',
+          page: '#F8FAFC',
+          success: '#15803D',
+          'success-soft': '#F0FDF4',
+          warning: '#B45309',
+          'warning-soft': '#FFFBEB',
+          danger: '#B91C1C',
+          'danger-soft': '#FEF2F2',
+          info: '#0369A1',
+          'info-soft': '#F0F9FF',
+        },
+        status: {
+          success: '#198754',
+          'success-bg': '#EAF7EE',
+          'success-border': '#C3E6CB',
+          warning: '#B7791F',
+          'warning-bg': '#FEF7E6',
+          'warning-border': '#FCE0A6',
+          error: '#C2413B',
+          'error-bg': '#FDECEC',
+          'error-border': '#F5C6CB',
+          info: '#3568A8',
+          'info-bg': '#EDF4FC',
+          'info-border': '#BEE5EB',
+          queued: '#5C6B84',
+          'queued-bg': '#F1F4F9',
+        },
+      },
+      borderRadius: {
+        ctrl: '6px',
+        btn: '7px',
+        input: '7px',
+        card: '10px',
+        panel: '12px',
+      },
+      boxShadow: {
+        subtle: '0 1px 2px rgba(16, 24, 40, 0.04)',
+        card: '0 1px 3px rgba(16, 24, 40, 0.05), 0 1px 2px rgba(16, 24, 40, 0.03)',
+        elevated: '0 8px 24px rgba(16, 24, 40, 0.06), 0 2px 6px rgba(16, 24, 40, 0.04)',
+        modal: '0 20px 48px rgba(16, 24, 40, 0.12), 0 4px 12px rgba(16, 24, 40, 0.06)',
+      },
+    },
+  },
+  plugins: [],
+};
