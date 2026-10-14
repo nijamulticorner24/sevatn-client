@@ -12,15 +12,11 @@ export const PublicFooter: React.FC = () => {
           {/* Brand Info */}
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-[#C98219] text-white font-bold shadow-subtle">
-                <ShieldCheck className="h-4.5 w-4.5" />
-              </div>
-              <span className="text-[17px] font-extrabold text-[#171717] tracking-tight">
-                Seva<span className="text-[#C98219]">TN</span>
-              </span>
-              <span className="rounded-full bg-[#FEF7E6] px-2.5 py-0.5 text-[10.5px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
-                Powered by NIJA
-              </span>
+              <img
+                src="/logo.png"
+                alt="ServiceTN — Powered by NIJA"
+                className="h-9 w-auto max-h-[38px] object-contain"
+              />
             </div>
 
             <p className="text-[13.5px] text-[#525252] leading-relaxed max-w-md">

@@ -65,52 +65,33 @@ export const Navbar = () => {
         <div className="flex items-center gap-3">
           {isTicketAssistContext ? (
             <Link href="/dashboard/bookings/new" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[7px] bg-[#C98219] text-white shadow-subtle">
-                <ShieldCheck className="h-5 w-5 font-bold" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[16px] font-bold tracking-tight text-[#172033]">
-                    Seva<span className="text-[#C98219]">TN</span>
-                  </span>
-                  <span className="rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
-                    TicketAssist
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#667085]">Virtual-Q Booking • Powered by NIJA</p>
-              </div>
+              <img
+                src="/logo.png"
+                alt="ServiceTN"
+                className="h-9 w-auto max-h-[36px] object-contain"
+              />
+              <span className="rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
+                TicketAssist
+              </span>
             </Link>
           ) : isInstantServiceContext ? (
             <Link href="/dashboard/instant-service" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[7px] bg-[#C98219] text-white shadow-subtle">
-                <Bolt className="h-5 w-5" />
-              </div>
-              <div>
-                <span className="text-[16px] font-bold tracking-tight text-[#172033] flex items-center gap-1.5">
-                  Instant<span className="text-[#C98219]">Service</span>
-                  <span className="rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
-                    Instant Verification API
-                  </span>
-                </span>
-                <p className="text-[11px] text-[#667085]">e-District Status • SevaTN Platform</p>
-              </div>
+              <img
+                src="/logo.png"
+                alt="ServiceTN"
+                className="h-9 w-auto max-h-[36px] object-contain"
+              />
+              <span className="rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
+                Instant Verification
+              </span>
             </Link>
           ) : (
             <Link href="/dashboard" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[7px] bg-[#C98219] text-white shadow-subtle">
-                <ShieldCheck className="h-5 w-5 font-bold" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[16px] font-bold tracking-tight text-[#172033]">
-                    Seva<span className="text-[#C98219]">TN</span>
-                  </span>
-                  <span className="rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
-                    Powered by NIJA
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#667085]">eSevai & Assisted Services Platform</p>
-              </div>
+              <img
+                src="/logo.png"
+                alt="ServiceTN — Powered by NIJA"
+                className="h-9 w-auto max-h-[38px] object-contain"
+              />
             </Link>
           )}
         </div>

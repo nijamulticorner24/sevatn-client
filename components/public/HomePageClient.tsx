@@ -49,17 +49,11 @@ export function HomePageClient() {
             href="/"
             className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-[#C98219] rounded-[8px] p-1"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#C98219] text-white font-bold shadow-subtle transition-transform group-hover:scale-105">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div className="flex items-center">
-              <span className="text-[18px] font-extrabold text-[#171717] tracking-tight">
-                Seva<span className="text-[#C98219]">TN</span>
-              </span>
-              <span className="ml-2.5 rounded-full bg-[#FEF7E6] px-2.5 py-0.5 text-[10.5px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
-                Powered by NIJA
-              </span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="ServiceTN — Powered by NIJA"
+              className="h-10 w-auto max-h-[42px] object-contain transition-transform group-hover:scale-[1.02]"
+            />
           </Link>
 
           {/* Desktop Navigation Links */}

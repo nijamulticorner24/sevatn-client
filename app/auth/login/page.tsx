@@ -58,17 +58,13 @@ export default function LoginPage() {
       <div className="md:w-[48%] lg:w-[46%] bg-[#172033] text-white p-8 sm:p-12 lg:p-14 flex flex-col justify-between border-r border-[#263550] relative">
         <div className="relative z-10">
           <div className="flex items-center justify-between">
-            <Link href="/" className="inline-flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#C98219] text-white font-bold shadow-sm">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <span className="text-[19px] font-bold text-white tracking-tight">
-                Seva<span className="text-[#C98219]">TN</span>
-              </span>
+            <Link href="/" className="inline-flex items-center gap-2.5 bg-white/95 px-3 py-1.5 rounded-[9px] shadow-sm hover:bg-white transition-colors">
+              <img
+                src="/logo.png"
+                alt="ServiceTN — Powered by NIJA"
+                className="h-8 w-auto object-contain"
+              />
             </Link>
-            <span className="rounded-md border border-[#C98219]/40 bg-[#C98219]/15 px-2.5 py-1 text-[11px] font-bold text-[#E5A93C] tracking-wide">
-              Powered by NIJA
-            </span>
           </div>
 
           <div className="mt-10">

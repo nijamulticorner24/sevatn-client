@@ -4,17 +4,30 @@ import { AppShell } from '@/components/AppShell';
 
 export const metadata: Metadata = {
   title: {
-    default: 'SevaTN — Your Services, One Simple Platform',
-    template: '%s | SevaTN',
+    default: 'ServiceTN — Your Services, One Simple Platform',
+    template: '%s | ServiceTN',
   },
   description:
-    'Explore digital services with SevaTN. Access booking assistance and convenient digital service experiences through one simple platform.',
+    'Explore digital services with ServiceTN. Access booking assistance and convenient digital service experiences through one simple platform.',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
   openGraph: {
-    title: 'SevaTN — Your Services, One Simple Platform',
+    title: 'ServiceTN — Your Services, One Simple Platform',
     description:
-      'Explore digital services with SevaTN. Access booking assistance and convenient digital service experiences through one simple platform.',
+      'Explore digital services with ServiceTN. Access booking assistance and convenient digital service experiences through one simple platform.',
     type: 'website',
-    siteName: 'SevaTN — Powered by NIJA',
+    siteName: 'ServiceTN — Powered by NIJA',
+    images: [
+      {
+        url: '/logo.png',
+        width: 866,
+        height: 288,
+        alt: 'ServiceTN — Powered by NIJA',
+      },
+    ],
   },
 };
 
@@ -26,6 +39,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="antialiased">
       <head>
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

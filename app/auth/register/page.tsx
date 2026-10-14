@@ -21,12 +21,11 @@ export default function RegisterRedirectPage() {
       <div className="w-full max-w-[520px] text-center">
         {/* Brand */}
         <div className="inline-flex items-center gap-2.5 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[#C98219] text-white font-bold shadow-subtle">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <span className="text-[20px] font-bold text-[#172033] tracking-tight">
-            Ticket<span className="text-[#C98219]">Assist</span>
-          </span>
+          <img
+            src="/logo.png"
+            alt="ServiceTN"
+            className="h-10 w-auto object-contain"
+          />
         </div>
 
         {/* Card */}

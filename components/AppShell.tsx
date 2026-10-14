@@ -195,21 +195,18 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           </button>
 
           <Link href={homeLink} className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#C98219] text-white font-bold shadow-subtle">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[15px] font-bold text-[#172033] tracking-tight">
-                Seva<span className="text-[#C98219]">TN</span>
-              </span>
+            <img
+              src="/logo.png"
+              alt="ServiceTN"
+              className="h-8.5 w-auto max-h-[34px] object-contain"
+            />
+            {(isSuperAdmin || isPartner) && (
               <span className="rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[9.5px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
                 {isSuperAdmin
                   ? 'SUPER ADMIN'
-                  : isPartner
-                  ? 'AUTHORIZED PARTNER'
-                  : 'Powered by NIJA'}
+                  : 'AUTHORIZED PARTNER'}
               </span>
-            </div>
+            )}
           </Link>
         </div>
 
