@@ -448,6 +448,24 @@ class ApiClient {
     });
   }
 
+  async startWorker(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/start`, {
+      method: 'POST',
+    });
+  }
+
+  async stopWorker(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/stop`, {
+      method: 'POST',
+    });
+  }
+
+  async resumeWorker(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/resume`, {
+      method: 'POST',
+    });
+  }
+
   // Centres Management APIs
   async getCentres(page = 1, district?: string, status?: string, search?: string) {
     let q = `?page=${page}`;
