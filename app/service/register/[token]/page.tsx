@@ -120,13 +120,26 @@ export default function PartnerInvitationRegisterPage() {
           setLatitude(pos.coords.latitude);
           setLongitude(pos.coords.longitude);
           setAccuracy(pos.coords.accuracy);
+          if (pos.coords.accuracy > 2500) {
+            setLocationError(
+              `Location accuracy too low (~${Math.round(pos.coords.accuracy)}m). Must be under 2,500m for SevaTN geofence compliance. Please connect to Wi-Fi or enable precise location.`
+            );
+          }
           setLocating(false);
         },
         (err) => {
-          setLocationError(`GPS Location Error: ${err.message}. Please allow location access in your browser.`);
+          let msg = `GPS Location Error: ${err.message}. Please allow location access in your browser.`;
+          if (err.code === err.PERMISSION_DENIED) {
+            msg = 'Location permission denied. Please allow location access in your browser to complete registration.';
+          } else if (err.code === err.POSITION_UNAVAILABLE) {
+            msg = 'Location unavailable. Please ensure your device has location/GPS enabled or connect to Wi-Fi.';
+          } else if (err.code === err.TIMEOUT) {
+            msg = 'Location request timed out. Please try again.';
+          }
+          setLocationError(msg);
           setLocating(false);
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
       );
     } else {
       setLocationError('Geolocation is not supported by your browser');

@@ -72,6 +72,8 @@ export default function AdminCentresPage() {
     centreCode: '',
     validityDays: 365,
     status: 'ACTIVE',
+    latitude: '',
+    longitude: '',
   });
 
   // Edit Form State
@@ -87,6 +89,8 @@ export default function AdminCentresPage() {
     pincode: '',
     centreCode: '',
     status: 'ACTIVE',
+    latitude: '',
+    longitude: '',
   });
 
   const loadData = () => {
@@ -113,7 +117,15 @@ export default function AdminCentresPage() {
     setActionError(null);
 
     try {
-      const res = await api.createCentre(createForm);
+      const payload: any = { ...createForm };
+      if (createForm.latitude.trim() !== '') {
+        payload.latitude = parseFloat(createForm.latitude);
+      }
+      if (createForm.longitude.trim() !== '') {
+        payload.longitude = parseFloat(createForm.longitude);
+      }
+
+      const res = await api.createCentre(payload);
       setIsCreateModalOpen(false);
       setCredentialsData({
         centreName: res.centre.centreName,
@@ -136,6 +148,8 @@ export default function AdminCentresPage() {
         centreCode: '',
         validityDays: 365,
         status: 'ACTIVE',
+        latitude: '',
+        longitude: '',
       });
       loadData();
     } catch (err: any) {
@@ -147,6 +161,7 @@ export default function AdminCentresPage() {
 
   const openEditModal = (centre: any) => {
     setSelectedCentre(centre);
+    const loc = centre.user?.registeredLocation;
     setEditForm({
       id: centre.id,
       centreName: centre.centreName,
@@ -159,6 +174,8 @@ export default function AdminCentresPage() {
       pincode: centre.pincode || '',
       centreCode: centre.centreCode || '',
       status: centre.status || 'ACTIVE',
+      latitude: loc?.latitude !== undefined && loc?.latitude !== null ? loc.latitude.toString() : '',
+      longitude: loc?.longitude !== undefined && loc?.longitude !== null ? loc.longitude.toString() : '',
     });
     setIsEditModalOpen(true);
   };
@@ -169,7 +186,15 @@ export default function AdminCentresPage() {
     setActionError(null);
 
     try {
-      await api.updateCentre(editForm.id, editForm);
+      const payload: any = { ...editForm };
+      if (editForm.latitude.trim() !== '') {
+        payload.latitude = parseFloat(editForm.latitude);
+      }
+      if (editForm.longitude.trim() !== '') {
+        payload.longitude = parseFloat(editForm.longitude);
+      }
+
+      await api.updateCentre(editForm.id, payload);
       setIsEditModalOpen(false);
       loadData();
     } catch (err: any) {
@@ -378,6 +403,17 @@ export default function AdminCentresPage() {
                       <td className="py-3 px-4">
                         <p className="font-semibold text-text-primary">{c.centreName}</p>
                         <p className="text-[10.5px] text-secondary-500 truncate max-w-xs">{c.address || `${c.taluk}, ${c.district}`}</p>
+                        {c.user?.registeredLocation ? (
+                          <p className="text-[10px] text-emerald-700 font-mono flex items-center gap-1 mt-0.5">
+                            <MapPin className="h-3 w-3 inline text-emerald-600 shrink-0" />
+                            GPS: {c.user.registeredLocation.latitude.toFixed(4)}, {c.user.registeredLocation.longitude.toFixed(4)}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1 mt-0.5">
+                            <MapPin className="h-3 w-3 inline text-amber-500 shrink-0" />
+                            GPS: Not Configured
+                          </p>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-medium text-text-primary">{c.user?.name}</p>
@@ -570,6 +606,37 @@ export default function AdminCentresPage() {
                         placeholder="625001"
                         className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219] transition-all"
                       />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#F2F4F7]">
+                    <div className="flex items-center gap-1 text-[11px] font-semibold text-[#344054] mb-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-[#C98219]" />
+                      <span>Optional Initial GPS Coordinates (5 KM Geofence)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-[#667085] mb-1">Latitude</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={createForm.latitude}
+                          onChange={(e) => setCreateForm({ ...createForm, latitude: e.target.value })}
+                          placeholder="e.g. 13.0067"
+                          className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs font-mono text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-[#667085] mb-1">Longitude</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={createForm.longitude}
+                          onChange={(e) => setCreateForm({ ...createForm, longitude: e.target.value })}
+                          placeholder="e.g. 80.2024"
+                          className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs font-mono text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -919,6 +986,46 @@ export default function AdminCentresPage() {
                     onChange={(e) => setEditForm({ ...editForm, centreCode: e.target.value })}
                     className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs font-mono text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
                   />
+                </div>
+
+                {/* GPS Coordinates Section */}
+                <div className="md:col-span-2 rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-[#172033] text-xs">
+                      <MapPin className="h-4 w-4 text-[#C98219]" />
+                      <span>Registered Centre GPS Coordinates (5 KM Geofence)</span>
+                    </div>
+                    <span className="text-[10.5px] px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-semibold border border-amber-200">
+                      Super Admin Only
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#667085] leading-relaxed">
+                    Operators cannot modify their centre coordinates once registered. Only Super Administrators can update or reassign latitude & longitude coordinates.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-[#344054] mb-1">Latitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="e.g. 13.0067"
+                        value={editForm.latitude}
+                        onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })}
+                        className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs font-mono text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-[#344054] mb-1">Longitude</label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="e.g. 80.2024"
+                        value={editForm.longitude}
+                        onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })}
+                        className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs font-mono text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

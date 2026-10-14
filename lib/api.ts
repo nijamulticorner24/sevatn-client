@@ -31,9 +31,19 @@ class ApiClient {
 
   setLocationCoordinates(lat: number, lon: number, accuracy?: number) {
     if (typeof window !== 'undefined') {
+      if (accuracy !== undefined && accuracy !== null && accuracy > 2500) {
+        sessionStorage.removeItem('stn_current_lat');
+        sessionStorage.removeItem('stn_current_lon');
+        sessionStorage.removeItem('stn_current_acc');
+        return;
+      }
       sessionStorage.setItem('stn_current_lat', String(lat));
       sessionStorage.setItem('stn_current_lon', String(lon));
-      if (accuracy) sessionStorage.setItem('stn_current_acc', String(accuracy));
+      if (accuracy !== undefined && accuracy !== null) {
+        sessionStorage.setItem('stn_current_acc', String(accuracy));
+      } else {
+        sessionStorage.removeItem('stn_current_acc');
+      }
     }
   }
 
@@ -133,11 +143,12 @@ class ApiClient {
   }
 
   async updateLocation(coords: { latitude: number; longitude: number; accuracy?: number; address?: string; district?: string }) {
-    this.setLocationCoordinates(coords.latitude, coords.longitude, coords.accuracy);
-    return this.request('/auth/location', {
+    const res = await this.request('/auth/location', {
       method: 'POST',
       body: JSON.stringify(coords),
     });
+    this.setLocationCoordinates(coords.latitude, coords.longitude, coords.accuracy);
+    return res;
   }
 
   async changePassword(newPassword: string, currentPassword?: string) {

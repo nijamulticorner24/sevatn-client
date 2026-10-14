@@ -23,7 +23,8 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
-  const [locMsg, setLocMsg] = useState<string | null>(null);
+  const [locSuccess, setLocSuccess] = useState<string | null>(null);
+  const [locError, setLocError] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -41,34 +42,69 @@ export default function ProfilePage() {
   };
 
   const handleUpdateGPS = () => {
-    if (typeof window !== 'undefined' && navigator.geolocation) {
-      setLocating(true);
-      setLocMsg(null);
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            await api.updateLocation({
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-              district: profile?.centre?.district,
-              address: profile?.centre?.address,
-            });
-            setLocMsg('GPS Location successfully updated and synced with 5 KM geofence!');
-            loadProfile();
-          } catch (err: any) {
-            setLocMsg(`Update error: ${err.message}`);
-          } finally {
-            setLocating(false);
-          }
-        },
-        (err) => {
-          setLocMsg(`GPS Error: ${err.message}`);
-          setLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-      );
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocError('Geolocation is not supported by your browser. Please use a modern browser with GPS/location support.');
+      setLocSuccess(null);
+      return;
     }
+
+    if (profile?.registeredLocation) {
+      setLocError('Registered service location is locked for security purposes. Only a Super Administrator can change centre coordinates.');
+      return;
+    }
+
+    setLocating(true);
+    setLocSuccess(null);
+    setLocError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+
+        // Enforce 2,500m accuracy validation client-side before submission
+        if (accuracy > 2500) {
+          setLocError(
+            `Location accuracy is too low (~${Math.round(accuracy)}m). SevaTN 5 KM geofence requires accuracy under 2,500m. Please enable precise device location, connect to Wi-Fi, or use a GPS-enabled device.`
+          );
+          setLocating(false);
+          return;
+        }
+
+        try {
+          await api.updateLocation({
+            latitude,
+            longitude,
+            accuracy,
+            district: profile?.centre?.district,
+            address: profile?.centre?.address,
+          });
+          setLocSuccess(`GPS Location successfully updated and synced with 5 KM geofence (Accuracy: ~${Math.round(accuracy)}m)!`);
+          loadProfile();
+        } catch (err: any) {
+          setLocError(`Failed to update service location: ${err.message}`);
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        setLocating(false);
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            setLocError('Location permission denied. Please allow location access in your browser settings to sync your centre GPS.');
+            break;
+          case err.POSITION_UNAVAILABLE:
+            setLocError('Location position unavailable. Please ensure your device has location/GPS services enabled or connect to Wi-Fi.');
+            break;
+          case err.TIMEOUT:
+            setLocError('Location request timed out. Please try again.');
+            break;
+          default:
+            setLocError(`GPS Error: ${err.message}`);
+            break;
+        }
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    );
   };
 
   if (loading) {
@@ -134,10 +170,17 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {locMsg && (
+      {locSuccess && (
         <div className="rounded-[8px] border border-[#C3E6CB] bg-[#EAF7EE] p-3 text-xs text-[#198754] flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-[#198754]" />
-          <span>{locMsg}</span>
+          <span>{locSuccess}</span>
+        </div>
+      )}
+
+      {locError && (
+        <div className="rounded-[8px] border border-[#F5C2C7] bg-[#F8D7DA] p-3 text-xs text-[#842029] flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-[#842029]" />
+          <span>{locError}</span>
         </div>
       )}
 
@@ -152,39 +195,68 @@ export default function ProfilePage() {
                 5 KM Service Location
               </h3>
             </div>
-            <button
-              onClick={handleUpdateGPS}
-              disabled={locating}
-              className="rounded-[6px] bg-[#FEF7E6] border border-[#F9DE9B] px-2.5 py-1 text-[11px] font-bold text-[#8F5A0D] hover:bg-[#FAF3E7] transition-colors"
-            >
-              {locating ? 'Updating...' : 'Sync GPS'}
-            </button>
+            {location ? (
+              <span className="inline-flex items-center gap-1.5 rounded-[6px] bg-[#F8F9FA] border border-[#E6EAF0] px-2.5 py-1 text-[11px] font-semibold text-[#667085]">
+                <Lock className="h-3 w-3 text-[#667085]" />
+                Location Locked
+              </span>
+            ) : (
+              <button
+                onClick={handleUpdateGPS}
+                disabled={locating}
+                className="rounded-[6px] bg-[#FEF7E6] border border-[#F9DE9B] px-2.5 py-1 text-[11px] font-bold text-[#8F5A0D] hover:bg-[#FAF3E7] transition-colors disabled:opacity-50"
+              >
+                {locating ? 'Registering...' : 'Register GPS (Once)'}
+              </button>
+            )}
           </div>
 
           <div className="space-y-3 text-xs">
             <div className="flex justify-between py-1 border-b border-[#F0F3F7]">
               <span className="text-[#667085]">Geofence Status:</span>
-              <span className="font-bold text-[#198754] flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#198754] inline-block" />
-                Active (5 KM Max Radius)
-              </span>
+              {location ? (
+                <span className="font-bold text-[#198754] flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[#198754] inline-block" />
+                  Active & Locked (5 KM Radius)
+                </span>
+              ) : (
+                <span className="font-bold text-[#B07210] flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[#D97706] inline-block" />
+                  Not Configured (Click 'Register GPS')
+                </span>
+              )}
             </div>
             <div className="flex justify-between py-1 border-b border-[#F0F3F7]">
               <span className="text-[#667085]">Registered Latitude:</span>
-              <span className="font-mono font-bold text-[#172033]">{location?.latitude?.toFixed(4) || '13.0067'}</span>
+              <span className="font-mono font-bold text-[#172033]">
+                {location?.latitude !== undefined && location?.latitude !== null ? location.latitude.toFixed(4) : 'Not configured'}
+              </span>
             </div>
             <div className="flex justify-between py-1 border-b border-[#F0F3F7]">
               <span className="text-[#667085]">Registered Longitude:</span>
-              <span className="font-mono font-bold text-[#172033]">{location?.longitude?.toFixed(4) || '80.2024'}</span>
+              <span className="font-mono font-bold text-[#172033]">
+                {location?.longitude !== undefined && location?.longitude !== null ? location.longitude.toFixed(4) : 'Not configured'}
+              </span>
             </div>
             <div className="flex justify-between py-1 border-b border-[#F0F3F7]">
               <span className="text-[#667085]">GPS Accuracy:</span>
-              <span className="font-mono text-[#475467]">~{location?.accuracy ? Math.round(location.accuracy) : 15} meters</span>
+              <span className="font-mono text-[#475467]">
+                {location?.accuracy !== undefined && location?.accuracy !== null ? `~${Math.round(location.accuracy)} meters` : '—'}
+              </span>
             </div>
             <div className="py-1">
               <span className="text-[#667085] block mb-1">Physical Address:</span>
-              <span className="text-[#172033] font-medium">{centre?.address || '—'}</span>
+              <span className="text-[#172033] font-medium">{centre?.address || location?.address || '—'}</span>
             </div>
+
+            {location && (
+              <div className="rounded-[6px] bg-[#F8F9FA] border border-[#E9ECEF] p-2.5 text-[11px] text-[#667085] flex items-start gap-2 mt-2">
+                <Lock className="h-3.5 w-3.5 shrink-0 text-[#6C757D] mt-0.5" />
+                <span>
+                  For security and compliance, once registered, this centre's default GPS coordinates are permanently locked. Only a Super Administrator can modify coordinates.
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
