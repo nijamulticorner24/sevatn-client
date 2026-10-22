@@ -26,6 +26,9 @@ import {
   Clock,
   Ban,
   ShieldAlert,
+  ExternalLink,
+  Share2,
+  Globe,
 } from 'lucide-react';
 import { MetricBlock } from '../../../components/MetricBlock';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -56,6 +59,8 @@ export default function AdminCentresPage() {
   const [selectedCentre, setSelectedCentre] = useState<any>(null);
   const [credentialsData, setCredentialsData] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedPortalUrl, setCopiedPortalUrl] = useState(false);
+  const [copiedUrlCode, setCopiedUrlCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -127,13 +132,16 @@ export default function AdminCentresPage() {
 
       const res = await api.createCentre(payload);
       setIsCreateModalOpen(false);
+      const code = res.centre.centreCode;
+      const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/c/${code}` : `/c/${code}`;
       setCredentialsData({
         centreName: res.centre.centreName,
-        centreCode: res.centre.centreCode,
+        centreCode: code,
         ownerName: res.user.name,
         email: res.user.email,
         mobile: res.user.mobile,
         temporaryPassword: res.temporaryPassword,
+        portalUrl,
       });
       setIsCredsModalOpen(true);
       setCreateForm({
@@ -230,13 +238,16 @@ export default function AdminCentresPage() {
 
     try {
       const res = await api.reissueCentreActivation(centre.id);
+      const code = res.centreCode || centre.centreCode;
+      const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/c/${code}` : `/c/${code}`;
       setCredentialsData({
         centreName: centre.centreName,
-        centreCode: res.centreCode || centre.centreCode,
+        centreCode: code,
         ownerName: centre.user?.name,
         email: res.operatorEmail || centre.user?.email,
         mobile: centre.user?.mobile,
         temporaryPassword: res.temporaryPassword,
+        portalUrl,
       });
       setIsCredsModalOpen(true);
       loadData();
@@ -247,10 +258,45 @@ export default function AdminCentresPage() {
 
   const copyCredentials = () => {
     if (!credentialsData) return;
-    const text = `TicketAssist Centre Onboarding Credentials\n------------------------------------\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nOperator: ${credentialsData.ownerName}\nLogin Email: ${credentialsData.email}\nMobile: ${credentialsData.mobile}\nTemporary Password: ${credentialsData.temporaryPassword}\nLogin Portal: ${window.location.origin}/auth/login\n\nNote: You will be prompted to set your permanent private password upon first sign-in.`;
+    const portalUrl = credentialsData.portalUrl || `${window.location.origin}/c/${credentialsData.centreCode}`;
+    const text = `SevaTN Centre Onboarding Credentials\n------------------------------------\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nOperator: ${credentialsData.ownerName}\nLogin Email: ${credentialsData.email}\nMobile: ${credentialsData.mobile}\nTemporary Password: ${credentialsData.temporaryPassword}\n\nUnique Centre Login URL: ${portalUrl}\n\nNote: Open the unique portal link above to log into your centre. You will be prompted to set your permanent private password upon first sign-in.`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyPortalUrlOnly = () => {
+    if (!credentialsData) return;
+    const portalUrl = credentialsData.portalUrl || `${window.location.origin}/c/${credentialsData.centreCode}`;
+    navigator.clipboard.writeText(portalUrl);
+    setCopiedPortalUrl(true);
+    setTimeout(() => setCopiedPortalUrl(false), 2000);
+  };
+
+  const copyCentrePortalUrl = (centreCode: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const portalUrl = `${window.location.origin}/c/${centreCode}`;
+    navigator.clipboard.writeText(portalUrl);
+    setCopiedUrlCode(centreCode);
+    setTimeout(() => setCopiedUrlCode(null), 2000);
+  };
+
+  const shareViaWhatsApp = () => {
+    if (!credentialsData) return;
+    const portalUrl = credentialsData.portalUrl || `${window.location.origin}/c/${credentialsData.centreCode}`;
+    const msg =
+      `*SevaTN Centre Onboarding Credentials*\n` +
+      `------------------------------------\n` +
+      `*Centre Name:* ${credentialsData.centreName}\n` +
+      `*Centre Code:* ${credentialsData.centreCode}\n` +
+      `*Operator Name:* ${credentialsData.ownerName}\n` +
+      `*Login ID:* ${credentialsData.email}\n` +
+      `*Temporary Password:* ${credentialsData.temporaryPassword}\n\n` +
+      `*Unique Centre Portal Login URL:*\n${portalUrl}\n\n` +
+      `_Note: Open the link above to sign in. You will be required to create your permanent password on first login._`;
+    const mobileDigits = (credentialsData.mobile || '').replace(/\D/g, '');
+    const phoneParam = mobileDigits.length === 10 ? `91${mobileDigits}` : mobileDigits;
+    window.open(`https://api.whatsapp.com/send?phone=${phoneParam}&text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   return (
@@ -397,8 +443,35 @@ export default function AdminCentresPage() {
 
                   return (
                     <tr key={c.id} className="hover:bg-neutral-50/70 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-brand-900">
-                        {c.centreCode || 'SEVA-TN'}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-brand-900">{c.centreCode || 'SEVA-TN'}</span>
+                          {c.centreCode && (
+                            <button
+                              type="button"
+                              onClick={(e) => copyCentrePortalUrl(c.centreCode, e)}
+                              className="p-1 rounded hover:bg-neutral-200/60 text-secondary-500 hover:text-brand-700 transition-colors cursor-pointer"
+                              title="Copy Unique Login Portal URL (/c/[code])"
+                            >
+                              {copiedUrlCode === c.centreCode ? (
+                                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                        {c.centreCode && (
+                          <a
+                            href={`/c/${c.centreCode}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10.5px] text-brand-700 hover:text-brand-900 font-semibold hover:underline mt-0.5"
+                          >
+                            <span>Open Portal</span>
+                            <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-semibold text-text-primary">{c.centreName}</p>
@@ -839,6 +912,49 @@ export default function AdminCentresPage() {
                 </div>
               </div>
 
+              {/* UNIQUE CENTRE LOGIN PORTAL URL CARD */}
+              <div className="rounded-[10px] border-2 border-emerald-500/30 bg-emerald-50/60 p-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-950 text-xs">
+                    <Globe className="h-4 w-4 text-emerald-600" />
+                    <span>Unique Centre Login Portal URL</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    Station Direct URL
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  Provide this direct link to the operator. Visiting this URL recognizes their centre and opens their dedicated login portal:
+                </p>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <input
+                    type="text"
+                    readOnly
+                    value={credentialsData.portalUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/c/${credentialsData.centreCode}`}
+                    className="flex-1 rounded-[7px] border border-emerald-300 bg-white px-3 py-2 text-xs font-mono text-emerald-950 select-all font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={copyPortalUrlOnly}
+                    className="flex items-center gap-1 px-3 py-2 rounded-[7px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-sm"
+                    title="Copy Portal URL"
+                  >
+                    {copiedPortalUrl ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedPortalUrl ? 'Copied!' : 'Copy URL'}</span>
+                  </button>
+                  <a
+                    href={credentialsData.portalUrl || `/c/${credentialsData.centreCode}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-3 py-2 rounded-[7px] border border-emerald-300 bg-white hover:bg-emerald-100/60 text-emerald-800 text-xs font-semibold transition-colors shrink-0"
+                    title="Open Centre Portal in New Tab"
+                  >
+                    <span>Open</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
+
               <div className="rounded-[8px] bg-[#EAF7EE] border border-[#BFE4C9] p-3 text-[11.5px] text-[#198754] leading-relaxed flex items-start gap-2">
                 <span className="text-sm">🔒</span>
                 <span>
@@ -846,20 +962,32 @@ export default function AdminCentresPage() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="button"
-                  onClick={copyCredentials}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-[7px] bg-[#172033] text-white hover:bg-[#263550] text-xs font-bold transition-colors shadow-subtle"
-                >
-                  {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                  <span>{copied ? 'Credentials Copied!' : 'Copy All Credentials'}</span>
-                </button>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 border-t border-[#E6EAF0]">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={copyCredentials}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-[7px] bg-[#172033] text-white hover:bg-[#263550] text-xs font-bold transition-colors shadow-subtle cursor-pointer"
+                  >
+                    {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                    <span>{copied ? 'Copied!' : 'Copy All Details'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={shareViaWhatsApp}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-[7px] bg-[#25D366] hover:bg-[#20BA5A] text-white text-xs font-bold transition-colors shadow-subtle cursor-pointer"
+                    title="Send Credentials via WhatsApp"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    <span>WhatsApp</span>
+                  </button>
+                </div>
 
                 <button
                   type="button"
                   onClick={() => setIsCredsModalOpen(false)}
-                  className="px-5 py-2.5 rounded-[7px] bg-[#C98219] text-white hover:bg-[#B57414] text-xs font-bold shadow-subtle transition-colors"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-[7px] bg-[#C98219] text-white hover:bg-[#B57414] text-xs font-bold shadow-subtle transition-colors cursor-pointer"
                 >
                   Done
                 </button>

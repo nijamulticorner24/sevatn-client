@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
 
 class ApiClient {
   private getToken(): string | null {
@@ -100,6 +100,21 @@ class ApiClient {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401 && typeof window !== 'undefined' && !path.startsWith('/auth/login')) {
+          const errMsg = String(data.message || data.error || '');
+          if (
+            errMsg.includes('User not found') ||
+            errMsg.includes('token invalid') ||
+            errMsg.includes('jwt expired') ||
+            errMsg.includes('jwt malformed')
+          ) {
+            localStorage.removeItem('ta_auth_token');
+            localStorage.removeItem('ta_user');
+            if (window.location.pathname !== '/auth/login') {
+              window.location.href = '/auth/login?expired=1';
+            }
+          }
+        }
         throw new Error(data.message || data.error || 'API request failed');
       }
       return data;
@@ -110,10 +125,49 @@ class ApiClient {
   }
 
   // Auth APIs
-  async login(identifier: string, password: string) {
+  async login(identifier: string, password: string, centreCode?: string) {
     return this.request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, centreCode }),
+    });
+  }
+
+  async getPublicCentreInfo(code: string) {
+    return this.request(`/auth/centre/${encodeURIComponent(code)}`);
+  }
+
+  async forgotPassword(identifier: string) {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ identifier }),
+    });
+  }
+
+  async verifyOtp(identifier: string, otp: string) {
+    return this.request('/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, otp }),
+    });
+  }
+
+  async resetPassword(identifier: string, otp: string, newPassword: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, otp, newPassword }),
+    });
+  }
+
+  async requestEmailChange(newEmail: string) {
+    return this.request('/auth/request-email-change', {
+      method: 'POST',
+      body: JSON.stringify({ newEmail }),
+    });
+  }
+
+  async verifyEmailChange(newEmail: string, otp: string) {
+    return this.request('/auth/verify-email-change', {
+      method: 'POST',
+      body: JSON.stringify({ newEmail, otp }),
     });
   }
 
@@ -448,35 +502,6 @@ class ApiClient {
     });
   }
 
-  async getWorkers() {
-    return this.request('/workers');
-  }
-
-  async pairWorker(pairingCode: string) {
-    return this.request('/workers/pair', {
-      method: 'POST',
-      body: JSON.stringify({ pairingCode }),
-    });
-  }
-
-  async startWorker(id: string) {
-    return this.request(`/workers/${encodeURIComponent(id)}/start`, {
-      method: 'POST',
-    });
-  }
-
-  async stopWorker(id: string) {
-    return this.request(`/workers/${encodeURIComponent(id)}/stop`, {
-      method: 'POST',
-    });
-  }
-
-  async resumeWorker(id: string) {
-    return this.request(`/workers/${encodeURIComponent(id)}/resume`, {
-      method: 'POST',
-    });
-  }
-
   // Centres Management APIs
   async getCentres(page = 1, district?: string, status?: string, search?: string) {
     let q = `?page=${page}`;
@@ -635,6 +660,215 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  // Worker Fleet Management & Lifecycle APIs
+  async getWorkers() {
+    return this.request('/workers');
+  }
+
+  async getFleetSummary() {
+    return this.request('/workers/summary');
+  }
+
+  async getWorkerById(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}`);
+  }
+
+  async pairWorker(
+    pairingCodeOrPayload:
+      | string
+      | {
+          pairingCode: string;
+          machineCode?: string;
+          machineName?: string;
+          location?: string;
+          description?: string;
+        },
+    machineCode?: string,
+  ) {
+    const payload =
+      typeof pairingCodeOrPayload === 'string'
+        ? { pairingCode: pairingCodeOrPayload, machineCode }
+        : pairingCodeOrPayload;
+
+    return this.request('/workers/pair', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async adminCreateWorker(data: { machineCode: string; machineName: string; version?: string }) {
+    return this.request('/workers/admin/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async startWorker(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/start`, {
+      method: 'POST',
+    });
+  }
+
+  async stopWorker(id: string, reason?: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/stop`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async enableWorker(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/enable`, {
+      method: 'POST',
+    });
+  }
+
+  async disableWorker(id: string, reason?: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/disable`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async pauseWorker(id: string, reason?: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/pause`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async resumeWorker(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/resume`, {
+      method: 'POST',
+    });
+  }
+
+  async setMonitorOnly(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/monitor-only`, {
+      method: 'POST',
+    });
+  }
+
+  async drainWorker(id: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/drain`, {
+      method: 'POST',
+    });
+  }
+
+  async revokeWorker(id: string, reason: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/revoke`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async retireWorker(id: string, reason: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}/retire`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async deleteWorker(id: string, reason?: string) {
+    return this.request(`/workers/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async getWorkerActivityLogs(workerId: string, params?: {
+    page?: number;
+    limit?: number;
+    severity?: string;
+    eventType?: string;
+    search?: string;
+    jobId?: string;
+    from?: string;
+    to?: string;
+  }) {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', params.page.toString());
+    if (params?.limit) q.set('limit', params.limit.toString());
+    if (params?.severity && params.severity !== 'ALL') q.set('severity', params.severity);
+    if (params?.eventType && params.eventType !== 'ALL') q.set('eventType', params.eventType);
+    if (params?.search) q.set('search', params.search);
+    if (params?.jobId) q.set('jobId', params.jobId);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    const qs = q.toString();
+    return this.request(`/workers/${encodeURIComponent(workerId)}/logs${qs ? `?${qs}` : ''}`);
+  }
+
+  async getFleetActivityLogs(params?: {
+    page?: number;
+    limit?: number;
+    severity?: string;
+    eventType?: string;
+    search?: string;
+    jobId?: string;
+    from?: string;
+    to?: string;
+  }) {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', params.page.toString());
+    if (params?.limit) q.set('limit', params.limit.toString());
+    if (params?.severity && params.severity !== 'ALL') q.set('severity', params.severity);
+    if (params?.eventType && params.eventType !== 'ALL') q.set('eventType', params.eventType);
+    if (params?.search) q.set('search', params.search);
+    if (params?.jobId) q.set('jobId', params.jobId);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    const qs = q.toString();
+    return this.request(`/workers/logs/all${qs ? `?${qs}` : ''}`);
+  }
+
+  async getJobAllocations(params?: {
+    workerId?: string;
+    jobId?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const q = new URLSearchParams();
+    if (params?.workerId) q.set('workerId', params.workerId);
+    if (params?.jobId) q.set('jobId', params.jobId);
+    if (params?.status && params.status !== 'ALL') q.set('status', params.status);
+    if (params?.limit) q.set('limit', params.limit.toString());
+    if (params?.offset !== undefined) q.set('offset', params.offset.toString());
+    const qs = q.toString();
+    return this.request(`/workers/allocations${qs ? `?${qs}` : ''}`);
+  }
+
+  async updateWorkerCapacity(
+    workerId: string,
+    data: {
+      maxConcurrentJobs?: number;
+      deploymentType?: string;
+      capabilities?: string[];
+      adminStatus?: string;
+    },
+  ) {
+    return this.request(`/workers/${encodeURIComponent(workerId)}/capacity`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async triggerAllocationSweep() {
+    return this.request('/workers/allocations/sweep', {
+      method: 'POST',
+    });
+  }
+
+  async triggerStaleLeaseRecovery() {
+    return this.request('/workers/allocations/recover-stale', {
+      method: 'POST',
+    });
+  }
+
+  async getQueueAndWorkerDiagnostics() {
+    return this.request('/workers/diagnostics/queue-health');
   }
 }
 

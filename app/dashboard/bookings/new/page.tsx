@@ -277,16 +277,19 @@ export default function NewBookingPage() {
   });
 
   const activeAccount = savedAccounts.find((a) => a.id === selectedAccountId);
+  const currentUser = api.getUser();
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+
   const selectedRouteObj = OFFICIAL_ROUTES.find((r) => r.id === route) || OFFICIAL_ROUTES[0];
   const availableBalance = wallet ? Number(wallet.availableBalance ?? wallet.balance ?? 0) : null;
-  const isInsufficientBalance = availableBalance !== null && availableBalance < serviceFee;
+  const isInsufficientBalance = !isSuperAdmin && availableBalance !== null && availableBalance < serviceFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // 0. Validate minimum wallet balance requirement
-    if (availableBalance !== null && availableBalance < serviceFee) {
+    // 0. Validate minimum wallet balance requirement (exempt for Super Admin)
+    if (!isSuperAdmin && availableBalance !== null && availableBalance < serviceFee) {
       setError(`Insufficient wallet balance. You need at least ₹${serviceFee} (service fee) to request this service. Please recharge your wallet.`);
       return;
     }
@@ -363,7 +366,7 @@ export default function NewBookingPage() {
       // 5. Show "Booking request submitted" only when backend confirms request was successfully queued
       setSuccessMsg('Booking request submitted');
       setTimeout(() => {
-        router.push('/dashboard/bookings');
+        router.push(isSuperAdmin ? '/admin/bookings' : '/dashboard/bookings');
       }, 700);
     } catch (err: any) {
       setError(err.message || 'Failed to create booking. Please verify your balance and account details.');
@@ -454,15 +457,23 @@ export default function NewBookingPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E6EAF0]">
         <div>
           <Link
-            href="/dashboard/bookings"
+            href={isSuperAdmin ? "/admin/bookings" : "/dashboard/bookings"}
             className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#667085] hover:text-[#C98219] transition-colors mb-1"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            <span>Back to Bookings</span>
+            <span>{isSuperAdmin ? "Back to Central Queue" : "Back to Bookings"}</span>
           </Link>
-          <h1 className="text-[20px] sm:text-[22px] font-extrabold text-[#172033] tracking-tight">
-            Create Booking Request
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-[20px] sm:text-[22px] font-extrabold text-[#172033] tracking-tight">
+              Create Booking Request
+            </h1>
+            {isSuperAdmin && (
+              <span className="rounded bg-[#FEF7E6] px-2.5 py-0.5 text-[11px] font-bold text-[#8F5A0D] border border-[#F9DE9B] flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-[#C98219]" />
+                Super Admin Mode
+              </span>
+            )}
+          </div>
           <p className="text-[12.5px] text-[#667085] mt-0.5">
             Configure booking parameters and assign an official devotee account for automated monitoring.
           </p>
@@ -470,7 +481,7 @@ export default function NewBookingPage() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard/bookings"
+            href={isSuperAdmin ? "/admin/bookings" : "/dashboard/bookings"}
             className="rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-1.5 text-[12px] font-semibold text-[#344054] hover:bg-[#F9FAFB] transition-colors"
           >
             Cancel

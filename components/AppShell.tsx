@@ -50,6 +50,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const isPublicRoute =
     pathname === '/' ||
     pathname.startsWith('/auth') ||
+    pathname.startsWith('/c/') ||
+    pathname.startsWith('/centre/') ||
     pathname.startsWith('/partner/onboard') ||
     pathname.startsWith('/service/register') ||
     pathname === '/forgot-password' ||
@@ -81,6 +83,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       group: 'PLATFORM OPERATIONS',
       items: [
         { name: 'Operations Overview', href: '/admin', icon: LayoutDashboard },
+        { name: 'Create Booking', href: '/dashboard/bookings/new', icon: CirclePlus, badge: 'New' },
         { name: 'Partners Network', href: '/admin/partners', icon: Users },
         { name: 'Centres Directory', href: '/admin/centres', icon: Building2 },
         { name: 'Worker PC Fleet', href: '/admin/fleet', icon: MonitorDot, badge: 'Live' },
@@ -99,6 +102,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       items: [
         { name: 'AI Diagnostics', href: '/admin/diagnostics', icon: BrainCircuit },
         { name: 'Platform Settings', href: '/admin/config', icon: SlidersHorizontal },
+        { name: 'Admin Profile', href: '/admin/profile', icon: UserCheck },
       ],
     },
   ];
@@ -241,23 +245,29 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
           {/* User Profile Summary */}
           <div className="flex items-center gap-2.5 border-l border-[#E6EAF0] pl-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FDF7ED] border border-[#E8D5B7] text-[12px] font-bold text-[#7A4A12]">
-              {user?.name ? user.name[0].toUpperCase() : 'U'}
-            </div>
-            <div className="hidden lg:block text-left">
-              <p className="text-[12.5px] font-bold text-[#172033] leading-tight truncate max-w-[140px]">
-                {user?.name || (isSuperAdmin ? 'Super Admin' : isPartner ? 'Partner Manager' : 'Operator')}
-              </p>
-              <p className="text-[11px] text-[#667085] leading-tight">
-                {user?.role === 'CENTRE'
-                  ? user?.centre?.centreName || 'Seva Centre'
-                  : user?.role === 'PARTNER'
-                  ? 'Franchise Partner'
-                  : user?.role === 'SUPER_ADMIN'
-                  ? 'Platform Creator'
-                  : 'Platform User'}
-              </p>
-            </div>
+            <Link
+              href={isSuperAdmin ? '/admin/profile' : isPartner ? '/partner/profile' : '/dashboard/profile'}
+              className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+              title="View Account Profile & Settings"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FDF7ED] border border-[#E8D5B7] text-[12px] font-bold text-[#7A4A12]">
+                {user?.name ? user.name[0].toUpperCase() : 'U'}
+              </div>
+              <div className="hidden lg:block text-left">
+                <p className="text-[12.5px] font-bold text-[#172033] leading-tight truncate max-w-[140px]">
+                  {user?.name || (isSuperAdmin ? 'Super Admin' : isPartner ? 'Partner Manager' : 'Operator')}
+                </p>
+                <p className="text-[11px] text-[#667085] leading-tight">
+                  {user?.role === 'CENTRE'
+                    ? user?.centre?.centreName || 'Seva Centre'
+                    : user?.role === 'PARTNER'
+                    ? 'Franchise Partner'
+                    : user?.role === 'SUPER_ADMIN'
+                    ? 'Platform Creator'
+                    : 'Platform User'}
+                </p>
+              </div>
+            </Link>
 
             <button
               onClick={() => api.logout()}

@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ShieldCheck,
   DollarSign,
+  UserCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -85,6 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
     { name: 'Financial Ledger & Collections', href: '/admin/ledger', icon: Receipt },
     { name: 'AI Diagnostics', href: '/admin/diagnostics', icon: BrainCircuit },
     { name: 'System Config', href: '/admin/config', icon: SlidersHorizontal },
+    { name: 'Admin Profile', href: '/admin/profile', icon: UserCheck },
   ];
 
   return (

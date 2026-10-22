@@ -18,6 +18,7 @@ import {
   AlertOctagon,
   XCircle,
   Loader2,
+  Plus,
 } from 'lucide-react';
 import { EmptyState } from '../../../components/EmptyState';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -157,6 +158,15 @@ export default function AdminBookingsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Create Booking Action for Admin & Super Admin */}
+          <Link
+            href="/dashboard/bookings/new"
+            className="flex items-center gap-1.5 rounded-btn bg-[#C98219] hover:bg-[#B57414] text-white px-3.5 py-2 text-xs font-bold transition-colors shadow-subtle cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create Booking</span>
+          </Link>
+
           {/* Clear All Queues Action */}
           <button
             onClick={handleClearAllQueues}
