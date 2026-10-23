@@ -268,6 +268,12 @@ class ApiClient {
     });
   }
 
+  async deletePartner(id: string) {
+    return this.request(`/admin/partners/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
   async generatePartnerInvitation(partnerId: string, expiresInDays = 180) {
     return this.request(`/admin/partners/${partnerId}/invitations`, {
       method: 'POST',

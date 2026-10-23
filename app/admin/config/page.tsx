@@ -178,6 +178,19 @@ export default function SystemConfigPage() {
               </div>
             </div>
 
+            {/* Warning Banner if both methods are disabled */}
+            {!config.onlinePaymentEnabled && !config.offlinePaymentEnabled && (
+              <div className="rounded-[8px] border border-[#FDA29B] bg-[#FEF3F2] p-4 flex items-center gap-3 text-xs text-[#B42318]">
+                <AlertCircle className="h-5 w-5 text-[#D92D20] shrink-0" />
+                <div>
+                  <strong className="font-bold">Caution: All payment channels are currently disabled!</strong>
+                  <p className="text-[11.5px] text-[#D92D20] mt-0.5">
+                    Wallet top-ups, centre registrations, and partner onboarding payments are completely blocked and hidden from customer portals until at least one payment method is enabled below and saved.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Sub-Section A: OFFLINE PAYMENT / MANUAL UPI & QR CODE */}
             <div className="rounded-[9px] border border-[#F9DE9B] bg-[#FEF7E6]/40 p-5 space-y-5">
               <div className="flex items-center justify-between border-b border-[#F9DE9B] pb-3">
@@ -195,15 +208,29 @@ export default function SystemConfigPage() {
                   </div>
                 </div>
 
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={config.offlinePaymentEnabled}
-                    onChange={(e) => setConfig({ ...config, offlinePaymentEnabled: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-[#D0D5DD] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#C98219]"></div>
-                </label>
+                <div className="flex items-center gap-3">
+                  {config.offlinePaymentEnabled ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#ECFDF3] text-[#027A48] border border-[#A6F4C5]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#12B76A] animate-pulse"></span>
+                      Active on Customer Portals
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEF3F2] text-[#B42318] border border-[#FDA29B]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#F04438]"></span>
+                      Disabled & Hidden from Customers
+                    </span>
+                  )}
+
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.offlinePaymentEnabled}
+                      onChange={(e) => setConfig({ ...config, offlinePaymentEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-[#D0D5DD] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#C98219]"></div>
+                  </label>
+                </div>
               </div>
 
               {config.offlinePaymentEnabled && (
@@ -364,15 +391,29 @@ export default function SystemConfigPage() {
                   </div>
                 </div>
 
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={config.onlinePaymentEnabled}
-                    onChange={(e) => setConfig({ ...config, onlinePaymentEnabled: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-[#D0D5DD] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#175CD3]"></div>
-                </label>
+                <div className="flex items-center gap-3">
+                  {config.onlinePaymentEnabled ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#ECFDF3] text-[#027A48] border border-[#A6F4C5]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#12B76A] animate-pulse"></span>
+                      Active on Customer Portals
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEF3F2] text-[#B42318] border border-[#FDA29B]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#F04438]"></span>
+                      Disabled & Hidden from Customers
+                    </span>
+                  )}
+
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.onlinePaymentEnabled}
+                      onChange={(e) => setConfig({ ...config, onlinePaymentEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-[#D0D5DD] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#175CD3]"></div>
+                  </label>
+                </div>
               </div>
 
               {config.onlinePaymentEnabled && (

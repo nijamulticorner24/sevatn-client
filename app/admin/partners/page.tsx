@@ -28,6 +28,7 @@ import {
   Coins,
   Percent,
   Save,
+  Trash2,
 } from 'lucide-react';
 
 const COMMISSION_SLABS = [
@@ -80,6 +81,11 @@ export default function AdminPartnersPage() {
   // Success Created Partner Modal State
   const [createdPartnerData, setCreatedPartnerData] = useState<any | null>(null);
 
+  // Delete Partner State
+  const [partnerToDelete, setPartnerToDelete] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -114,6 +120,22 @@ export default function AdminPartnersPage() {
   const showToast = (msg: string) => {
     setSuccessToast(msg);
     setTimeout(() => setSuccessToast(null), 3500);
+  };
+
+  const handleDeletePartner = async () => {
+    if (!partnerToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deletePartner(partnerToDelete.id);
+      setPartners((prev) => prev.filter((p) => p.id !== partnerToDelete.id));
+      showToast(`Partner ${partnerToDelete.partnerCode} (${partnerToDelete.name}) deleted successfully!`);
+      setPartnerToDelete(null);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete partner franchise.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSlabChange = (selectedSlab: string, isEdit = false) => {
@@ -654,15 +676,27 @@ export default function AdminPartnersPage() {
                     </div>
                   )}
 
-                  {/* Edit Partner Details & Slab Button */}
+                  {/* Edit & Delete Partner Action Buttons */}
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(p)}
-                      className="w-full rounded-[7px] border border-[#D0D5DD] bg-white py-2 px-3 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC] hover:border-[#98A2B3] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="flex-1 rounded-[7px] border border-[#D0D5DD] bg-white py-2 px-3 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC] hover:border-[#98A2B3] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       <Edit3 className="h-3.5 w-3.5 text-[#C98219]" />
-                      <span>Edit Details & Commission Slab</span>
+                      <span>Edit Details & Slab</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteError(null);
+                        setPartnerToDelete(p);
+                      }}
+                      className="rounded-[7px] border border-[#FDA29B] bg-white py-2 px-3 text-xs font-bold text-[#D92D20] hover:bg-[#FEF3F2] hover:border-[#D92D20] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
+                      title="Delete Partner Franchise"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-[#D92D20]" />
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>
@@ -1301,6 +1335,82 @@ export default function AdminPartnersPage() {
                 className="rounded-[7px] bg-[#172033] px-5 py-2 text-xs font-bold text-white hover:bg-[#222E46] transition-colors cursor-pointer"
               >
                 Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Partner Confirmation Modal */}
+      {partnerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-[12px] border border-[#FDA29B] bg-white p-6 shadow-modal space-y-4 animate-in zoom-in-95">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FEF3F2] text-[#D92D20] border border-[#FDA29B]">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-[#172033]">
+                  Delete Partner Franchise?
+                </h3>
+                <p className="text-xs text-[#667085]">
+                  Are you sure you want to delete <strong className="text-[#172033]">{partnerToDelete.name}</strong> (<span className="font-mono text-[#8F5A0D] font-bold">{partnerToDelete.partnerCode}</span>)?
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-[8px] bg-[#FEF3F2] border border-[#FDA29B] p-3 text-xs text-[#B42318] space-y-1.5">
+              <p className="font-semibold flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                This action cannot be undone.
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-[11px] text-[#912018]">
+                <li>Partner account & franchise profile will be permanently removed.</li>
+                <li>All active onboarding invitation links for this partner will be revoked.</li>
+                {partnerToDelete.totalRegisteredUsers > 0 && (
+                  <li>
+                    <strong>{partnerToDelete.totalRegisteredUsers} registered centre(s)</strong> will be safely preserved but unlinked from this partner.
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            {deleteError && (
+              <div className="rounded-[7px] border border-[#FDA29B] bg-[#FEF3F2] p-2.5 text-xs text-[#D92D20] font-medium flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#E6EAF0]">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => {
+                  setPartnerToDelete(null);
+                  setDeleteError(null);
+                }}
+                className="rounded-[7px] border border-[#D0D5DD] bg-white px-4 py-2 text-xs font-bold text-[#344054] hover:bg-[#F8FAFC] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeletePartner}
+                className="rounded-[7px] bg-[#D92D20] px-4 py-2 text-xs font-bold text-white hover:bg-[#B42318] shadow-subtle flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Deleting Partner...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete Partner</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

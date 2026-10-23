@@ -65,9 +65,11 @@ export default function WalletPage() {
         if (cfg?.serviceFee) setServiceFee(Number(cfg.serviceFee));
         if (pCfg) {
           setPaymentConfig(pCfg);
-          if (!pCfg.offlinePaymentEnabled && pCfg.onlinePaymentEnabled) {
+          const onlineOn = pCfg.onlinePaymentEnabled !== false;
+          const offlineOn = pCfg.offlinePaymentEnabled !== false;
+          if (!offlineOn && onlineOn) {
             setTopupMethod('ONLINE');
-          } else {
+          } else if (offlineOn) {
             setTopupMethod('OFFLINE_QR');
           }
         }
@@ -76,12 +78,18 @@ export default function WalletPage() {
       .catch(console.error);
   };
 
+  const onlineEnabled = paymentConfig ? paymentConfig.onlinePaymentEnabled !== false : true;
+  const offlineEnabled = paymentConfig ? paymentConfig.offlinePaymentEnabled !== false : true;
+  const anyPaymentEnabled = onlineEnabled || offlineEnabled;
+
   useEffect(() => {
     setMounted(true);
     loadData();
   }, []);
 
   const handleMethodChange = (method: 'ONLINE' | 'OFFLINE_QR') => {
+    if (method === 'ONLINE' && !onlineEnabled) return;
+    if (method === 'OFFLINE_QR' && !offlineEnabled) return;
     setTopupMethod(method);
     setReceiptError(null);
     setFormError(null);
@@ -143,6 +151,21 @@ export default function WalletPage() {
   const handleTopup = async () => {
     setFormError(null);
     setReceiptError(null);
+
+    if (!anyPaymentEnabled) {
+      setFormError('All payment methods are currently disabled by the platform administrator.');
+      return;
+    }
+
+    if (topupMethod === 'ONLINE' && !onlineEnabled) {
+      setFormError('Online payment gateway is currently disabled by the administrator.');
+      return;
+    }
+
+    if (topupMethod === 'OFFLINE_QR' && !offlineEnabled) {
+      setFormError('Offline QR / UPI payment is currently disabled by the administrator.');
+      return;
+    }
 
     if (!topupAmount || topupAmount < 100) {
       setFormError('Topup amount must be at least ₹100.');
@@ -300,17 +323,30 @@ export default function WalletPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setFormError(null);
-            setReceiptError(null);
-            setIsTopupModalOpen(true);
-          }}
-          className="flex items-center gap-2 rounded-[7px] bg-[#C98219] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#B57414] transition-colors shadow-subtle"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Money to Wallet</span>
-        </button>
+        <div className="flex items-center gap-3">
+          {!anyPaymentEnabled && (
+            <span className="text-[11.5px] font-semibold text-[#D92D20] bg-[#FEF3F2] border border-[#FDA29B] px-3 py-1.5 rounded-[6px] flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5 text-[#D92D20]" />
+              <span>Payments Disabled by Admin</span>
+            </span>
+          )}
+          <button
+            disabled={!anyPaymentEnabled}
+            onClick={() => {
+              setFormError(null);
+              setReceiptError(null);
+              setIsTopupModalOpen(true);
+            }}
+            className={`flex items-center gap-2 rounded-[7px] px-4 py-2 text-[13px] font-bold text-white transition-colors shadow-subtle ${
+              anyPaymentEnabled
+                ? 'bg-[#C98219] hover:bg-[#B57414] cursor-pointer'
+                : 'bg-[#98A2B3] cursor-not-allowed opacity-60'
+            }`}
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Money to Wallet</span>
+          </button>
+        </div>
       </div>
 
       {successMsg && (
@@ -498,8 +534,21 @@ export default function WalletPage() {
                 </div>
               )}
 
-              {/* Payment Method Selector */}
-              {paymentConfig?.onlinePaymentEnabled && paymentConfig?.offlinePaymentEnabled && (
+              {/* Notice when all payment methods are disabled by Admin */}
+              {!anyPaymentEnabled && (
+                <div className="flex items-start gap-3 rounded-[9px] border border-[#FDA29B] bg-[#FEF3F2] p-4 text-[13px] text-[#B42318]">
+                  <AlertCircle className="h-5 w-5 text-[#D92D20] shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <strong className="block text-sm font-bold text-[#912018]">Payments Disabled by Administrator</strong>
+                    <p className="text-xs text-[#B42318] leading-relaxed">
+                      Both Online Payment Gateway and Offline UPI QR Code methods are currently disabled by the system administrator. Wallet top-up is fully locked until an administrator re-enables a payment method in Platform Settings.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Method Selector (Strictly shown only when BOTH methods are enabled) */}
+              {onlineEnabled && offlineEnabled && (
                 <div>
                   <label className="block text-[12px] font-semibold text-[#344054] mb-1.5">
                     Select Payment Method
@@ -542,53 +591,55 @@ export default function WalletPage() {
                 </div>
               )}
 
-              {/* Amount Selection Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="block text-[12px] font-semibold text-[#344054] mb-1.5">
-                    Select Pre-Set Amount
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[500, 1000, 2000, 5000].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => {
-                          setTopupAmount(amt);
-                          setFormError(null);
-                        }}
-                        className={`rounded-[7px] border py-1.5 sm:py-2 text-[12.5px] font-bold tabular-nums transition-colors ${
-                          topupAmount === amt
-                            ? 'border-[#C98219] bg-[#FDF7ED] text-[#7A4A12] ring-1 ring-[#C98219]'
-                            : 'border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F8FAFC]'
-                        }`}
-                      >
-                        ₹{amt}
-                      </button>
-                    ))}
+              {/* Amount Selection Section (Only if at least one payment method is enabled) */}
+              {anyPaymentEnabled && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#344054] mb-1.5">
+                      Select Pre-Set Amount
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[500, 1000, 2000, 5000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => {
+                            setTopupAmount(amt);
+                            setFormError(null);
+                          }}
+                          className={`rounded-[7px] border py-1.5 sm:py-2 text-[12.5px] font-bold tabular-nums transition-colors ${
+                            topupAmount === amt
+                              ? 'border-[#C98219] bg-[#FDF7ED] text-[#7A4A12] ring-1 ring-[#C98219]'
+                              : 'border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F8FAFC]'
+                          }`}
+                        >
+                          ₹{amt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[12px] font-semibold text-[#344054] mb-1.5">
+                      Custom Top-up Amount (INR)
+                    </label>
+                    <input
+                      type="number"
+                      min={100}
+                      step={100}
+                      value={topupAmount}
+                      onChange={(e) => {
+                        setTopupAmount(Number(e.target.value));
+                        setFormError(null);
+                      }}
+                      className="w-full px-3.5 py-1.5 sm:py-2 text-[13px] font-bold tabular-nums rounded-[7px] border border-[#D0D5DD] focus:border-[#C98219] focus:outline-none"
+                    />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-[12px] font-semibold text-[#344054] mb-1.5">
-                    Custom Top-up Amount (INR)
-                  </label>
-                  <input
-                    type="number"
-                    min={100}
-                    step={100}
-                    value={topupAmount}
-                    onChange={(e) => {
-                      setTopupAmount(Number(e.target.value));
-                      setFormError(null);
-                    }}
-                    className="w-full px-3.5 py-1.5 sm:py-2 text-[13px] font-bold tabular-nums rounded-[7px] border border-[#D0D5DD] focus:border-[#C98219] focus:outline-none"
-                  />
-                </div>
-              </div>
+              )}
 
               {/* OFFLINE QR CODE & RECEIPT UPLOAD SECTION: 2-COLUMN BALANCED GRID */}
-              {topupMethod === 'OFFLINE_QR' ? (
+              {offlineEnabled && topupMethod === 'OFFLINE_QR' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                   {/* Left Column: QR Code & Balance Projection */}
                   <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FEF7E6]/70 p-3.5 flex flex-col justify-between space-y-3">
@@ -795,7 +846,7 @@ export default function WalletPage() {
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : onlineEnabled && topupMethod === 'ONLINE' ? (
                 /* Online Mode: Balance Projection + Notice */
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3 text-[12px] space-y-1.5">
@@ -816,25 +867,27 @@ export default function WalletPage() {
                     <span>Automated Gateway: Payment is processed securely via Instant PG and credited to your wallet balance instantly.</span>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Submit Button & Disclaimer */}
               <div className="pt-1 space-y-1.5">
                 <button
                   type="button"
-                  disabled={topupLoading || topupAmount < 100}
+                  disabled={topupLoading || topupAmount < 100 || !anyPaymentEnabled}
                   onClick={handleTopup}
-                  className="w-full rounded-[8px] bg-[#C98219] py-2.5 text-xs sm:text-[13.5px] font-bold text-white hover:bg-[#B57414] transition-colors shadow-subtle disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full rounded-[8px] bg-[#C98219] py-2.5 text-xs sm:text-[13.5px] font-bold text-white hover:bg-[#B57414] transition-colors shadow-subtle disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {topupLoading ? (
                     'Processing...'
+                  ) : !anyPaymentEnabled ? (
+                    'Top-up Disabled by Administrator'
                   ) : topupMethod === 'OFFLINE_QR' ? (
                     `Submit & Add ${formatINR(topupAmount)}`
                   ) : (
                     `Pay ${formatINR(topupAmount)} via Gateway`
                   )}
                 </button>
-                {topupMethod === 'OFFLINE_QR' && (
+                {anyPaymentEnabled && topupMethod === 'OFFLINE_QR' && (
                   <p className="text-[11px] text-[#8F5A0D] text-center italic">
                     * Top-up will be credited to available balance once the uploaded payment receipt is verified.
                   </p>

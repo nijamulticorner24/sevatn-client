@@ -68,7 +68,16 @@ export default function PartnerOnboardPage() {
     ])
       .then(([res, pCfg]) => {
         setPartnerInfo(res.partner);
-        if (pCfg) setPaymentConfig(pCfg);
+        if (pCfg) {
+          setPaymentConfig(pCfg);
+          const onlineOn = pCfg.onlinePaymentEnabled !== false;
+          const offlineOn = pCfg.offlinePaymentEnabled !== false;
+          if (!onlineOn && offlineOn) {
+            setSelectedMethod('OFFLINE');
+          } else if (onlineOn) {
+            setSelectedMethod('ONLINE');
+          }
+        }
         if (res.partner?.paymentReference) {
           setPaymentReference(res.partner.paymentReference);
         }
@@ -86,6 +95,10 @@ export default function PartnerOnboardPage() {
         setLoading(false);
       });
   };
+
+  const onlineEnabled = paymentConfig ? paymentConfig.onlinePaymentEnabled !== false : true;
+  const offlineEnabled = paymentConfig ? paymentConfig.offlinePaymentEnabled !== false : true;
+  const anyPaymentEnabled = onlineEnabled || offlineEnabled;
 
   const getUpiId = () => {
     return paymentConfig?.offlineUpiId || 'pay.ticketassist@okaxis';
@@ -170,6 +183,10 @@ export default function PartnerOnboardPage() {
 
   const handleOnlinePayment = async () => {
     setErrorMsg(null);
+    if (!onlineEnabled) {
+      setErrorMsg('Online payment gateway method is currently disabled by administrator.');
+      return;
+    }
     if (!password || password.trim().length < 6) {
       setErrorMsg('Please create a secure password (minimum 6 characters) for your Partner Dashboard.');
       return;
@@ -203,6 +220,11 @@ export default function PartnerOnboardPage() {
   const handleOfflinePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (!offlineEnabled) {
+      setErrorMsg('Offline UPI QR payment method is currently disabled by administrator.');
+      return;
+    }
 
     if (!password || password.trim().length < 6) {
       setErrorMsg('Please create a secure password (minimum 6 characters) for your Partner Dashboard.');
@@ -414,67 +436,111 @@ export default function PartnerOnboardPage() {
 
         {/* State 3: Dual Payment Options (Online Auto-Verify & Offline Admin Review) */}
         {!isAlreadyActive && partnerInfo.status !== 'PENDING_APPROVAL' && !submitSuccess && (
-          <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-6 shadow-subtle space-y-6">
-            <div>
-              <h3 className="text-base font-bold text-[#172033] flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-[#C98219]" />
-                Select Payment Method — Franchise Fee ₹{getFranchiseFee().toFixed(2)}
-              </h3>
-              <p className="text-xs text-[#667085] mt-1">
-                Choose <strong>Online Payment</strong> for instant auto-activation, or <strong>Offline UPI QR</strong> to submit UTR & screenshot proof for admin verification.
-              </p>
-            </div>
-
-            {/* Error Message */}
-            {errorMsg && (
-              <div className="rounded-[7px] border border-[#F5C6CB] bg-[#FDECEC] p-3 text-xs text-[#C2413B] flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-[#C2413B]" />
-                <span>{errorMsg}</span>
+          !anyPaymentEnabled ? (
+            <div className="rounded-[10px] border border-[#FDA29B] bg-[#FEF3F2] p-8 shadow-subtle text-center space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FEE4E2] text-[#D92D20] mx-auto border border-[#FDA29B]">
+                <AlertCircle className="h-7 w-7" />
               </div>
-            )}
-
-            {/* Payment Method Tabs */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedMethod('ONLINE')}
-                className={`p-3.5 rounded-[8px] border text-left transition-all ${
-                  selectedMethod === 'ONLINE'
-                    ? 'border-[#027A48] bg-[#ECFDF3] shadow-xs ring-2 ring-[#027A48]/20'
-                    : 'border-[#E6EAF0] bg-[#F8FAFC] hover:border-[#D0D5DD]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#172033]">Online Gateway</span>
-                  <span className="text-[10px] font-extrabold bg-[#027A48] text-white px-2 py-0.5 rounded">
-                    Instant Auto-Active
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#027A48] mt-1 font-medium">
-                  UPI, Cards, NetBanking. Verified automatically without waiting.
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#172033]">
+                  Franchise Payment Disabled by Administrator
+                </h3>
+                <p className="text-xs sm:text-sm text-[#B42318] max-w-md mx-auto mt-1 leading-relaxed">
+                  All payment methods (Online Gateway & Offline UPI QR Code) are currently turned off in platform configuration. Partner franchise payment is fully disabled until an administrator enables a payment method in Platform Settings.
                 </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedMethod('OFFLINE')}
-                className={`p-3.5 rounded-[8px] border text-left transition-all ${
-                  selectedMethod === 'OFFLINE'
-                    ? 'border-[#C98219] bg-[#FEF7E6] shadow-xs ring-2 ring-[#C98219]/20'
-                    : 'border-[#E6EAF0] bg-[#F8FAFC] hover:border-[#D0D5DD]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#172033]">Offline UPI QR</span>
-                  <span className="text-[10px] font-extrabold bg-[#C98219] text-white px-2 py-0.5 rounded">
-                    Admin Approval
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#8F5A0D] mt-1 font-medium">
-                  Scan Admin QR code, pay via UPI app & upload proof.
-                </p>
-              </button>
+              </div>
+              <div className="pt-2 text-xs text-[#667085]">
+                Please contact platform support or platform administrator.
+              </div>
             </div>
+          ) : (
+            <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-6 shadow-subtle space-y-6">
+              <div>
+                <h3 className="text-base font-bold text-[#172033] flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-[#C98219]" />
+                  Select Payment Method — Franchise Fee ₹{getFranchiseFee().toFixed(2)}
+                </h3>
+                <p className="text-xs text-[#667085] mt-1">
+                  {onlineEnabled && offlineEnabled
+                    ? 'Choose Online Payment for instant auto-activation, or Offline UPI QR to submit UTR & screenshot proof for admin verification.'
+                    : onlineEnabled
+                    ? 'Pay securely online for instant auto-activation of your franchise.'
+                    : 'Scan the official UPI QR code and submit UTR & receipt for admin verification.'}
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {errorMsg && (
+                <div className="rounded-[7px] border border-[#F5C6CB] bg-[#FDECEC] p-3 text-xs text-[#C2413B] flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-[#C2413B]" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {/* Payment Method Tabs (Only shown if BOTH are enabled) */}
+              {onlineEnabled && offlineEnabled ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod('ONLINE')}
+                    className={`p-3.5 rounded-[8px] border text-left transition-all ${
+                      selectedMethod === 'ONLINE'
+                        ? 'border-[#027A48] bg-[#ECFDF3] shadow-xs ring-2 ring-[#027A48]/20'
+                        : 'border-[#E6EAF0] bg-[#F8FAFC] hover:border-[#D0D5DD]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#172033]">Online Gateway</span>
+                      <span className="text-[10px] font-extrabold bg-[#027A48] text-white px-2 py-0.5 rounded">
+                        Instant Auto-Active
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#027A48] mt-1 font-medium">
+                      UPI, Cards, NetBanking. Verified automatically without waiting.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMethod('OFFLINE')}
+                    className={`p-3.5 rounded-[8px] border text-left transition-all ${
+                      selectedMethod === 'OFFLINE'
+                        ? 'border-[#C98219] bg-[#FEF7E6] shadow-xs ring-2 ring-[#C98219]/20'
+                        : 'border-[#E6EAF0] bg-[#F8FAFC] hover:border-[#D0D5DD]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#172033]">Offline UPI QR</span>
+                      <span className="text-[10px] font-extrabold bg-[#C98219] text-white px-2 py-0.5 rounded">
+                        Admin Approval
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#8F5A0D] mt-1 font-medium">
+                      Scan Admin QR code, pay via UPI app & upload proof.
+                    </p>
+                  </button>
+                </div>
+              ) : (
+                /* Single enabled method header */
+                <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3 flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#172033] flex items-center gap-2">
+                    {onlineEnabled ? (
+                      <>
+                        <CreditCard className="h-4 w-4 text-[#027A48]" />
+                        <span>Online Payment Gateway (Active)</span>
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="h-4 w-4 text-[#C98219]" />
+                        <span>Offline UPI QR Code Payment (Active)</span>
+                      </>
+                    )}
+                  </span>
+                  <span className="text-[10.5px] font-bold text-[#027A48] bg-[#ECFDF3] border border-[#A6F4C5] px-2 py-0.5 rounded">
+                    Enabled Channel
+                  </span>
+                </div>
+              )}
 
             {/* Set Password Field (Mandatory) */}
             <div className="rounded-[8px] bg-[#F8FAFC] border border-[#E6EAF0] p-4 space-y-3">
@@ -517,7 +583,7 @@ export default function PartnerOnboardPage() {
             </div>
 
             {/* Method A: Online Payment */}
-            {selectedMethod === 'ONLINE' && (
+            {onlineEnabled && selectedMethod === 'ONLINE' && (
               <div className="space-y-4 pt-1 animate-in fade-in">
                 <div className="rounded-[8px] border border-[#A6F4C5] bg-[#ECFDF3] p-4 text-xs space-y-2 text-[#027A48]">
                   <div className="flex justify-between font-bold text-sm">
@@ -551,7 +617,7 @@ export default function PartnerOnboardPage() {
             )}
 
             {/* Method B: Offline Payment (Admin Updated QR & Proof Upload) */}
-            {selectedMethod === 'OFFLINE' && (
+            {offlineEnabled && selectedMethod === 'OFFLINE' && (
               <div className="space-y-5 pt-1 animate-in fade-in">
                 {/* Admin Uploaded QR Code Box */}
                 <div className="rounded-[9px] border border-[#F9DE9B] bg-[#FEF7E6] p-5 flex flex-col sm:flex-row items-center gap-6">
@@ -700,6 +766,7 @@ export default function PartnerOnboardPage() {
               </div>
             )}
           </div>
+          )
         )}
       </div>
     </div>

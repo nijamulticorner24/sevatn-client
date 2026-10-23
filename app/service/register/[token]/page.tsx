@@ -85,7 +85,16 @@ export default function PartnerInvitationRegisterPage() {
     ])
       .then(([res, pCfg]) => {
         setInvitation(res);
-        if (pCfg) setPaymentConfig(pCfg);
+        if (pCfg) {
+          setPaymentConfig(pCfg);
+          const onlineOn = pCfg.onlinePaymentEnabled !== false;
+          const offlineOn = pCfg.offlinePaymentEnabled !== false;
+          if (!onlineOn && offlineOn) {
+            setSelectedMethod('OFFLINE');
+          } else if (onlineOn) {
+            setSelectedMethod('ONLINE');
+          }
+        }
         const meta = res.metadata || {};
         if (meta.shopName) setCentreName(meta.shopName);
         if (meta.mobile) setMobile(meta.mobile);
@@ -153,6 +162,10 @@ export default function PartnerInvitationRegisterPage() {
   const getRegistrationFee = () => {
     return Number(paymentConfig?.registrationFee || 249);
   };
+
+  const onlineEnabled = paymentConfig ? paymentConfig.onlinePaymentEnabled !== false : true;
+  const offlineEnabled = paymentConfig ? paymentConfig.offlinePaymentEnabled !== false : true;
+  const anyPaymentEnabled = onlineEnabled || offlineEnabled;
 
   const copyUpiId = () => {
     navigator.clipboard.writeText(getUpiId());
@@ -287,8 +300,14 @@ export default function PartnerInvitationRegisterPage() {
   // Online Gateway Instant Auto-Activation
   const handleOnlinePayment = async () => {
     if (!registeredUserId) return;
-    setOnlineProcessing(true);
     setErrorMsg(null);
+
+    if (!onlineEnabled) {
+      setErrorMsg('Online payment gateway is currently disabled by administrator.');
+      return;
+    }
+
+    setOnlineProcessing(true);
 
     try {
       const mockGatewayId = `pay_razor_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -317,6 +336,11 @@ export default function PartnerInvitationRegisterPage() {
   const handleOfflinePaymentSubmit = async () => {
     if (!registeredUserId) return;
     setErrorMsg(null);
+
+    if (!offlineEnabled) {
+      setErrorMsg('Offline UPI QR payment is currently disabled by administrator.');
+      return;
+    }
 
     if (!screenshotUrl && !paymentReference.trim()) {
       setErrorMsg('Please upload the payment receipt screenshot or enter the 12-digit UPI UTR reference number.');
@@ -663,45 +687,87 @@ export default function PartnerInvitationRegisterPage() {
               </div>
             </div>
 
-            {/* Dual Payment Method Tabs */}
-            <div className="rounded-[10px] border border-[#E6EAF0] bg-white shadow-subtle overflow-hidden">
-              <div className="flex border-b border-[#E6EAF0] bg-[#F8FAFC]">
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod('ONLINE')}
-                  className={`flex-1 py-3.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
-                    selectedMethod === 'ONLINE'
-                      ? 'border-[#C98219] text-[#C98219] bg-white'
-                      : 'border-transparent text-[#667085] hover:text-[#172033]'
-                  }`}
-                >
-                  <CreditCard className="h-4 w-4" />
-                  <span>Online Gateway (Instant)</span>
-                  <span className="ml-1 rounded bg-[#EAF7EE] px-1.5 py-0.5 text-[10px] font-bold text-[#198754] border border-[#C3E6CB]">
-                    Auto-Verified
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedMethod('OFFLINE')}
-                  className={`flex-1 py-3.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
-                    selectedMethod === 'OFFLINE'
-                      ? 'border-[#C98219] text-[#C98219] bg-white'
-                      : 'border-transparent text-[#667085] hover:text-[#172033]'
-                  }`}
-                >
-                  <QrCode className="h-4 w-4" />
-                  <span>Scan QR & UPI Transfer</span>
-                  <span className="ml-1 rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
-                    UPI / QR
-                  </span>
-                </button>
+            {/* Notice when all payment methods are disabled by Admin */}
+            {!anyPaymentEnabled ? (
+              <div className="rounded-[10px] border border-[#FDA29B] bg-[#FEF3F2] p-8 shadow-subtle text-center space-y-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FEE4E2] text-[#D92D20] mx-auto border border-[#FDA29B]">
+                  <AlertCircle className="h-7 w-7" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-[#172033]">
+                    Registration Payment Disabled by Administrator
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#B42318] max-w-md mx-auto mt-1 leading-relaxed">
+                    All payment methods (Online Gateway & Offline UPI QR Code) are currently turned off in platform configuration. Centre registration fee payment is fully disabled until an administrator enables a payment method in Platform Settings.
+                  </p>
+                </div>
+                <div className="pt-2 text-xs text-[#667085]">
+                  Please contact platform support or your authorized partner.
+                </div>
               </div>
+            ) : (
+              /* Payment Method Container */
+              <div className="rounded-[10px] border border-[#E6EAF0] bg-white shadow-subtle overflow-hidden">
+                {/* Method Tabs (Only shown if BOTH are enabled) */}
+                {onlineEnabled && offlineEnabled ? (
+                  <div className="flex border-b border-[#E6EAF0] bg-[#F8FAFC]">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMethod('ONLINE')}
+                      className={`flex-1 py-3.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
+                        selectedMethod === 'ONLINE'
+                          ? 'border-[#C98219] text-[#C98219] bg-white'
+                          : 'border-transparent text-[#667085] hover:text-[#172033]'
+                      }`}
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      <span>Online Gateway (Instant)</span>
+                      <span className="ml-1 rounded bg-[#EAF7EE] px-1.5 py-0.5 text-[10px] font-bold text-[#198754] border border-[#C3E6CB]">
+                        Auto-Verified
+                      </span>
+                    </button>
 
-              {/* METHOD 1: ONLINE PAYMENT */}
-              {selectedMethod === 'ONLINE' && (
-                <div className="p-6 sm:p-8 space-y-6">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMethod('OFFLINE')}
+                      className={`flex-1 py-3.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
+                        selectedMethod === 'OFFLINE'
+                          ? 'border-[#C98219] text-[#C98219] bg-white'
+                          : 'border-transparent text-[#667085] hover:text-[#172033]'
+                      }`}
+                    >
+                      <QrCode className="h-4 w-4" />
+                      <span>Scan QR & UPI Transfer</span>
+                      <span className="ml-1 rounded bg-[#FEF7E6] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
+                        UPI / QR
+                      </span>
+                    </button>
+                  </div>
+                ) : (
+                  /* Single enabled method header */
+                  <div className="border-b border-[#E6EAF0] bg-[#F8FAFC] px-6 py-3.5 flex items-center justify-between">
+                    <span className="text-xs sm:text-sm font-bold text-[#172033] flex items-center gap-2">
+                      {onlineEnabled ? (
+                        <>
+                          <CreditCard className="h-4 w-4 text-[#198754]" />
+                          <span>Online Payment Gateway (Active)</span>
+                        </>
+                      ) : (
+                        <>
+                          <QrCode className="h-4 w-4 text-[#C98219]" />
+                          <span>Scan QR & UPI Transfer (Active)</span>
+                        </>
+                      )}
+                    </span>
+                    <span className="text-[10.5px] font-bold text-[#667085] bg-white border border-[#E6EAF0] px-2.5 py-0.5 rounded">
+                      Official Payment Channel
+                    </span>
+                  </div>
+                )}
+
+                {/* METHOD 1: ONLINE PAYMENT (Rendered ONLY if online is enabled) */}
+                {onlineEnabled && selectedMethod === 'ONLINE' && (
+                  <div className="p-6 sm:p-8 space-y-6">
                   <div className="rounded-[8px] border border-[#C3E6CB] bg-[#EAF7EE] p-4 text-xs text-[#106A3B] flex items-start gap-3">
                     <CheckCircle2 className="h-5 w-5 text-[#198754] shrink-0 mt-0.5" />
                     <div>
@@ -751,8 +817,8 @@ export default function PartnerInvitationRegisterPage() {
                 </div>
               )}
 
-              {/* METHOD 2: OFFLINE QR / UPI PAYMENT */}
-              {selectedMethod === 'OFFLINE' && (
+              {/* METHOD 2: OFFLINE QR / UPI PAYMENT (Rendered ONLY if offline is enabled) */}
+              {offlineEnabled && selectedMethod === 'OFFLINE' && (
                 <div className="p-6 sm:p-8 space-y-6">
                   {/* Official Admin QR Code & Beneficiary Details */}
                   <div className="rounded-[9px] border border-[#F9DE9B] bg-[#FEF7E6] p-5">
@@ -925,8 +991,9 @@ export default function PartnerInvitationRegisterPage() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
         {/* STEP 3: Success or Admin Verification Pending */}
         {step === 'SUCCESS' && (
