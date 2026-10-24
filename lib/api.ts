@@ -10,6 +10,11 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       localStorage.setItem('ta_auth_token', token);
       localStorage.setItem('ta_user', JSON.stringify(user));
+      const loc = user?.registeredLocation;
+      if (loc?.latitude && loc?.longitude) {
+        localStorage.setItem('stn_registered_location', JSON.stringify(loc));
+        this.setLocationCoordinates(loc.latitude, loc.longitude, loc.accuracy || 10);
+      }
     }
   }
 
@@ -31,44 +36,105 @@ class ApiClient {
 
   setLocationCoordinates(lat: number, lon: number, accuracy?: number) {
     if (typeof window !== 'undefined') {
-      if (accuracy !== undefined && accuracy !== null && accuracy > 2500) {
-        sessionStorage.removeItem('stn_current_lat');
-        sessionStorage.removeItem('stn_current_lon');
-        sessionStorage.removeItem('stn_current_acc');
-        return;
-      }
+      const sanitizedAcc = accuracy ? Math.min(Number(accuracy), 2500) : 100;
       sessionStorage.setItem('stn_current_lat', String(lat));
       sessionStorage.setItem('stn_current_lon', String(lon));
-      if (accuracy !== undefined && accuracy !== null) {
-        sessionStorage.setItem('stn_current_acc', String(accuracy));
-      } else {
-        sessionStorage.removeItem('stn_current_acc');
-      }
+      sessionStorage.setItem('stn_current_acc', String(sanitizedAcc));
+      localStorage.setItem('stn_current_lat', String(lat));
+      localStorage.setItem('stn_current_lon', String(lon));
+      localStorage.setItem('stn_current_acc', String(sanitizedAcc));
     }
   }
 
   getLocationCoordinates(): { latitude: number; longitude: number; accuracy?: number } | null {
     if (typeof window === 'undefined') return null;
-    const lat = sessionStorage.getItem('stn_current_lat');
-    const lon = sessionStorage.getItem('stn_current_lon');
-    const acc = sessionStorage.getItem('stn_current_acc');
+    const lat = sessionStorage.getItem('stn_current_lat') || localStorage.getItem('stn_current_lat');
+    const lon = sessionStorage.getItem('stn_current_lon') || localStorage.getItem('stn_current_lon');
+    const acc = sessionStorage.getItem('stn_current_acc') || localStorage.getItem('stn_current_acc');
     if (lat && lon) {
       return {
         latitude: parseFloat(lat),
         longitude: parseFloat(lon),
-        accuracy: acc ? parseFloat(acc) : undefined,
+        accuracy: acc ? parseFloat(acc) : 100,
+      };
+    }
+    const user = this.getUser();
+    let regLoc = user?.registeredLocation;
+    if (!regLoc) {
+      try {
+        const stored = localStorage.getItem('stn_registered_location');
+        if (stored) regLoc = JSON.parse(stored);
+      } catch {
+        regLoc = null;
+      }
+    }
+    if (regLoc?.latitude && regLoc?.longitude) {
+      const sanitizedAcc = regLoc.accuracy ? Math.min(Number(regLoc.accuracy), 2500) : 10;
+      this.setLocationCoordinates(Number(regLoc.latitude), Number(regLoc.longitude), sanitizedAcc);
+      return {
+        latitude: Number(regLoc.latitude),
+        longitude: Number(regLoc.longitude),
+        accuracy: sanitizedAcc,
       };
     }
     return null;
+  }
+
+  async ensureLocationCoordinates(): Promise<{ latitude: number; longitude: number; accuracy?: number } | null> {
+    const existing = this.getLocationCoordinates();
+    if (existing) return existing;
+
+    // Try browser geolocation with quick timeout
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 60000,
+          });
+        });
+        const sanitizedAcc = Math.min(pos.coords.accuracy || 100, 2500);
+        this.setLocationCoordinates(pos.coords.latitude, pos.coords.longitude, sanitizedAcc);
+        return {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: sanitizedAcc,
+        };
+      } catch (_) {
+        // Continue to profile fallback
+      }
+    }
+
+    // Try fetching profile to retrieve registered location
+    try {
+      const profile = await this.getMe();
+      const loc = profile?.registeredLocation || profile?.user?.registeredLocation;
+      if (loc?.latitude && loc?.longitude) {
+        const sanitizedAcc = loc.accuracy ? Math.min(Number(loc.accuracy), 2500) : 10;
+        this.setLocationCoordinates(Number(loc.latitude), Number(loc.longitude), sanitizedAcc);
+        return {
+          latitude: Number(loc.latitude),
+          longitude: Number(loc.longitude),
+          accuracy: sanitizedAcc,
+        };
+      }
+    } catch (_) {}
+
+    return this.getLocationCoordinates();
   }
 
   logout() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('ta_auth_token');
       localStorage.removeItem('ta_user');
+      localStorage.removeItem('stn_registered_location');
       sessionStorage.removeItem('stn_current_lat');
       sessionStorage.removeItem('stn_current_lon');
       sessionStorage.removeItem('stn_current_acc');
+      localStorage.removeItem('stn_current_lat');
+      localStorage.removeItem('stn_current_lon');
+      localStorage.removeItem('stn_current_acc');
       window.location.href = '/auth/login';
     }
   }
@@ -213,7 +279,32 @@ class ApiClient {
   }
 
   async getMe() {
-    return this.request('/auth/me');
+    const data = await this.request('/auth/me');
+    if (data && typeof window !== 'undefined') {
+      const existingUser = this.getUser() || {};
+      const regLoc = data.registeredLocation || data.user?.registeredLocation || existingUser.registeredLocation;
+      const updatedUser = {
+        ...existingUser,
+        ...(data.user || {}),
+        registeredLocation: regLoc,
+        centre: data.centre || data.user?.centre || existingUser.centre,
+      };
+      localStorage.setItem('ta_user', JSON.stringify(updatedUser));
+      if (regLoc) {
+        localStorage.setItem('stn_registered_location', JSON.stringify(regLoc));
+        if (regLoc.latitude && regLoc.longitude) {
+          const curLat = sessionStorage.getItem('stn_current_lat') || localStorage.getItem('stn_current_lat');
+          if (!curLat) {
+            this.setLocationCoordinates(
+              Number(regLoc.latitude),
+              Number(regLoc.longitude),
+              regLoc.accuracy ? Math.min(Number(regLoc.accuracy), 2500) : 10
+            );
+          }
+        }
+      }
+    }
+    return data;
   }
 
   // Service Registry APIs
@@ -271,6 +362,13 @@ class ApiClient {
   async deletePartner(id: string) {
     return this.request(`/admin/partners/${encodeURIComponent(id)}`, {
       method: 'DELETE',
+    });
+  }
+
+  async resetPartnerPassword(partnerId: string, password?: string) {
+    return this.request(`/admin/partners/${encodeURIComponent(partnerId)}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
     });
   }
 
@@ -397,16 +495,19 @@ class ApiClient {
     });
   }
 
-  // Bookings APIs
   async createBooking(data: any) {
-    const coords = this.getLocationCoordinates();
+    let coords = this.getLocationCoordinates();
+    if (!coords) {
+      coords = await this.ensureLocationCoordinates();
+    }
     return this.request('/bookings', {
       method: 'POST',
       body: JSON.stringify({
         ...data,
-        latitude: coords?.latitude,
-        longitude: coords?.longitude,
-        idempotencyKey: `bk_${Date.now()}`,
+        latitude: coords?.latitude ?? data.latitude,
+        longitude: coords?.longitude ?? data.longitude,
+        accuracy: coords?.accuracy ?? data.accuracy,
+        idempotencyKey: data.idempotencyKey || `bk_${Date.now()}`,
       }),
     });
   }

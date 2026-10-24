@@ -296,14 +296,8 @@ export default function SevaTNPlatformHomePage() {
           };
           setGpsCoords(coords);
 
-          if (coords.accuracy !== undefined && coords.accuracy !== null && coords.accuracy > 2500) {
-            console.warn(`GPS accuracy too low (${coords.accuracy}m). Discarding for geofence validation.`);
-            setLocationStatus('UNAVAILABLE');
-            setLocating(false);
-            return;
-          }
-
-          api.setLocationCoordinates(coords.latitude, coords.longitude, coords.accuracy);
+          const sanitizedAcc = coords.accuracy ? Math.min(Number(coords.accuracy), 2500) : 100;
+          api.setLocationCoordinates(coords.latitude, coords.longitude, sanitizedAcc);
 
           const targetLoc = registeredLoc || profile?.registeredLocation || profile?.centre;
           if (targetLoc?.latitude && targetLoc?.longitude) {

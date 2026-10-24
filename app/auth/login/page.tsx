@@ -60,7 +60,12 @@ export default function LoginPage() {
 
     try {
       const res = await api.login(identifier, password);
-      api.setAuth(res.token, res.user);
+      const userToStore = {
+        ...res.user,
+        registeredLocation: res.registeredLocation || res.user?.registeredLocation,
+        centre: res.centre || res.user?.centre,
+      };
+      api.setAuth(res.token, userToStore);
 
       if (res.mustChangePassword || res.user?.mustChangePassword) {
         router.push('/auth/change-password');

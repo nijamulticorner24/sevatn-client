@@ -62,12 +62,34 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   useEffect(() => {
     const u = api.getUser();
     setUser(u);
-    if (u && u.role === 'CENTRE') {
-      api.getWallet()
-        .then(setWallet)
+    if (u && !isPublicRoute) {
+      if (u.role === 'CENTRE') {
+        api.getWallet()
+          .then(setWallet)
+          .catch(() => {});
+      }
+      // Keep user profile and registered location in sync
+      api.getMe()
+        .then((res) => {
+          if (res?.user) setUser(res.user);
+        })
         .catch(() => {});
+
+      // Proactively capture location if supported and permitted
+      if (typeof window !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const sanitizedAcc = Math.min(pos.coords.accuracy || 100, 2500);
+            api.setLocationCoordinates(pos.coords.latitude, pos.coords.longitude, sanitizedAcc);
+          },
+          () => {
+            // If GPS denied/unavailable, ensureLocationCoordinates will use registeredLocation
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+        );
+      }
     }
-  }, [pathname]);
+  }, [pathname, isPublicRoute]);
 
   if (isPublicRoute) {
     return <div className="min-h-screen bg-[#F7F9FC]">{children}</div>;

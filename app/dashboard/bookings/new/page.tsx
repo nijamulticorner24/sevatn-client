@@ -54,6 +54,7 @@ export default function NewBookingPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsError, setTermsError] = useState(false);
+  const [locationCoords, setLocationCoords] = useState<{ latitude: number; longitude: number; accuracy?: number } | null>(null);
   const termsRef = useRef<HTMLDivElement>(null);
 
   // Section 1: Official Devotee Account State
@@ -104,7 +105,8 @@ export default function NewBookingPage() {
       api.getBookingConfig().catch(() => null),
       api.getAccounts().catch(() => []),
       api.getWallet().catch(() => null),
-    ]).then(([cfg, aData, wData]) => {
+      api.ensureLocationCoordinates().catch(() => null),
+    ]).then(([cfg, aData, wData, loc]) => {
       if (cfg && cfg.serviceFee !== undefined) {
         setServiceFee(Number(cfg.serviceFee));
       }
@@ -120,6 +122,9 @@ export default function NewBookingPage() {
       }
       if (wData) setWallet(wData);
       setWalletLoading(false);
+      if (loc) {
+        setLocationCoords(loc);
+      }
     });
   }, []);
 
@@ -342,13 +347,25 @@ export default function NewBookingPage() {
         // Fallback to currently loaded service fee
       }
 
-      // 4. Submit the booking request using existing booking flow
+      // 4. Resolve coordinates for mandatory 5 KM Geofence validation
+      let coords = api.getLocationCoordinates();
+      if (!coords) {
+        coords = await api.ensureLocationCoordinates();
+      }
+
+      // 5. Submit the booking request using existing booking flow
       const payload: any = {
         requestedDate,
         route,
         termsAccepted: true,
         idempotencyKey: `bk_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       };
+
+      if (coords) {
+        payload.latitude = coords.latitude;
+        payload.longitude = coords.longitude;
+        payload.accuracy = coords.accuracy;
+      }
 
       if (accountMode === 'saved') {
         payload.accountId = selectedAccountId;
@@ -463,7 +480,7 @@ export default function NewBookingPage() {
             <ChevronLeft className="h-3.5 w-3.5" />
             <span>{isSuperAdmin ? "Back to Central Queue" : "Back to Bookings"}</span>
           </Link>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-[20px] sm:text-[22px] font-extrabold text-[#172033] tracking-tight">
               Create Booking Request
             </h1>
@@ -471,6 +488,12 @@ export default function NewBookingPage() {
               <span className="rounded bg-[#FEF7E6] px-2.5 py-0.5 text-[11px] font-bold text-[#8F5A0D] border border-[#F9DE9B] flex items-center gap-1">
                 <ShieldCheck className="h-3.5 w-3.5 text-[#C98219]" />
                 Super Admin Mode
+              </span>
+            )}
+            {locationCoords && (
+              <span className="rounded bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-bold text-[#155724] border border-[#C3E6CB] flex items-center gap-1.5" title={`GPS: ${locationCoords.latitude.toFixed(4)}, ${locationCoords.longitude.toFixed(4)}`}>
+                <span className="h-2 w-2 rounded-full bg-[#198754] inline-block animate-pulse" />
+                5 KM Geofence Ready
               </span>
             )}
           </div>

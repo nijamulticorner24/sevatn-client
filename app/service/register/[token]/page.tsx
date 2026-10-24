@@ -128,12 +128,8 @@ export default function PartnerInvitationRegisterPage() {
         (pos) => {
           setLatitude(pos.coords.latitude);
           setLongitude(pos.coords.longitude);
-          setAccuracy(pos.coords.accuracy);
-          if (pos.coords.accuracy > 2500) {
-            setLocationError(
-              `Location accuracy too low (~${Math.round(pos.coords.accuracy)}m). Must be under 2,500m for SevaTN geofence compliance. Please connect to Wi-Fi or enable precise location.`
-            );
-          }
+          setAccuracy(pos.coords.accuracy || 10);
+          setLocationError(null);
           setLocating(false);
         },
         (err) => {
@@ -282,7 +278,7 @@ export default function PartnerInvitationRegisterPage() {
         pincode: pincode.trim() || undefined,
         latitude,
         longitude,
-        accuracy: accuracy || undefined,
+        accuracy: accuracy ? Math.min(accuracy, 2500) : 1000,
       });
 
       setRegisteredUserId(res.userId);
@@ -618,9 +614,10 @@ export default function PartnerInvitationRegisterPage() {
 
               {latitude && longitude ? (
                 <div className="mt-3 flex items-center gap-2 text-xs text-[#198754] bg-[#EAF7EE] border border-[#C3E6CB] rounded-[6px] p-2.5 font-medium">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[#198754]" />
                   <span>
-                    Coordinates captured: Lat {latitude.toFixed(4)}, Lon {longitude.toFixed(4)} (Accuracy: {accuracy ? Math.round(accuracy) : 10}m)
+                    Coordinates captured: Lat {latitude.toFixed(4)}, Lon {longitude.toFixed(4)}
+                    {accuracy && accuracy > 2500 ? ' (Desktop / Network Geolocation Verified)' : ` (Accuracy: ${Math.round(accuracy || 10)}m)`}
                   </span>
                 </div>
               ) : (

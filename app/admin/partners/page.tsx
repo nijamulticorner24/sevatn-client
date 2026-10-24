@@ -29,6 +29,7 @@ import {
   Percent,
   Save,
   Trash2,
+  KeyRound,
 } from 'lucide-react';
 
 const COMMISSION_SLABS = [
@@ -75,8 +76,16 @@ export default function AdminPartnersPage() {
   const [editStatus, setEditStatus] = useState<string>('ACTIVE');
   const [editCommissionSlab, setEditCommissionSlab] = useState('SLAB_10');
   const [editCommissionPercentage, setEditCommissionPercentage] = useState('10');
+  const [editPassword, setEditPassword] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editErrorMsg, setEditErrorMsg] = useState<string | null>(null);
+
+  // Reset Password Modal State
+  const [partnerForPasswordReset, setPartnerForPasswordReset] = useState<any | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState<any | null>(null);
 
   // Success Created Partner Modal State
   const [createdPartnerData, setCreatedPartnerData] = useState<any | null>(null);
@@ -225,6 +234,7 @@ export default function AdminPartnersPage() {
       setEditCommissionSlab('CUSTOM');
       setEditCommissionPercentage(rawPct.toString());
     }
+    setEditPassword('');
     setEditErrorMsg(null);
   };
 
@@ -258,6 +268,7 @@ export default function AdminPartnersPage() {
         commissionPercentage: pct,
         commissionRate: rate,
         commissionSlab: slabLabel,
+        password: editPassword.trim() || undefined,
       });
 
       setEditingPartner(null);
@@ -267,6 +278,32 @@ export default function AdminPartnersPage() {
       setEditErrorMsg(err.message || 'Failed to update partner');
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerForPasswordReset) return;
+    setIsResettingPassword(true);
+    setResetPasswordError(null);
+    setResetPasswordSuccess(null);
+
+    const pwd = newPasswordInput.trim() || `Partner@${partnerForPasswordReset.mobile.slice(-4)}`;
+    if (pwd.length < 6) {
+      setResetPasswordError('Password must be at least 6 characters long.');
+      setIsResettingPassword(false);
+      return;
+    }
+
+    try {
+      const res = await api.resetPartnerPassword(partnerForPasswordReset.id, pwd);
+      setResetPasswordSuccess(res);
+      showToast(`✅ Password reset for ${partnerForPasswordReset.name}!`);
+      loadPartners();
+    } catch (err: any) {
+      setResetPasswordError(err.message || 'Failed to reset partner password');
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -503,9 +540,28 @@ export default function AdminPartnersPage() {
 
                   <h3 className="text-lg font-bold text-[#172033] mt-3">{p.name}</h3>
 
-                  <div className="mt-3 space-y-1.5 text-xs text-[#667085]">
-                    <p>Email: <span className="text-[#172033] font-medium">{p.email}</span></p>
-                    <p>Mobile: <span className="text-[#172033] font-medium">{p.mobile}</span></p>
+                  <div className="mt-3 space-y-2 text-xs text-[#667085]">
+                    <div className="rounded-[7px] border border-[#E6EAF0] bg-[#F8FAFC] p-2.5 space-y-1.5 font-sans">
+                      <div className="flex items-center justify-between text-[11.5px]">
+                        <span className="text-[#667085] font-semibold">Login Email:</span>
+                        <span className="text-[#172033] font-mono font-bold select-all">{p.email}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11.5px]">
+                        <span className="text-[#667085] font-semibold">Mobile / Login:</span>
+                        <span className="text-[#172033] font-mono font-bold select-all">{p.mobile}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11.5px]">
+                        <span className="text-[#667085] font-semibold">Partner Code:</span>
+                        <span className="text-[#C98219] font-mono font-extrabold select-all">{p.partnerCode}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] pt-0.5 border-t border-[#E6EAF0]">
+                        <span className="text-[#8F5A0D] font-medium">Default Password:</span>
+                        <span className="text-[#8F5A0D] font-mono bg-[#FEF7E6] px-1.5 py-0.5 rounded border border-[#F9DE9B] font-bold">
+                          Partner@{p.mobile ? p.mobile.slice(-4) : 'XXXX'}
+                        </span>
+                      </div>
+                    </div>
+
                     <p>Region: <span className="text-[#172033] font-medium">{p.district || 'Tamil Nadu'} / {p.taluk || 'HQ'}</span></p>
                     <p>Total Registered Centres: <strong className="text-[#8F5A0D] text-sm font-bold ml-1">{p.totalRegisteredUsers || 0}</strong></p>
                   </div>
@@ -676,15 +732,29 @@ export default function AdminPartnersPage() {
                     </div>
                   )}
 
-                  {/* Edit & Delete Partner Action Buttons */}
+                  {/* Edit, Reset Password & Delete Partner Action Buttons */}
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(p)}
-                      className="flex-1 rounded-[7px] border border-[#D0D5DD] bg-white py-2 px-3 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC] hover:border-[#98A2B3] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="flex-1 rounded-[7px] border border-[#D0D5DD] bg-white py-2 px-2.5 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC] hover:border-[#98A2B3] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer truncate"
                     >
-                      <Edit3 className="h-3.5 w-3.5 text-[#C98219]" />
-                      <span>Edit Details & Slab</span>
+                      <Edit3 className="h-3.5 w-3.5 text-[#C98219] shrink-0" />
+                      <span className="truncate">Edit Details</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPartnerForPasswordReset(p);
+                        setNewPasswordInput('');
+                        setResetPasswordError(null);
+                        setResetPasswordSuccess(null);
+                      }}
+                      className="rounded-[7px] border border-[#D0D5DD] bg-white py-2 px-2.5 text-xs font-bold text-[#344054] hover:bg-[#FEF7E6] hover:border-[#C98219] hover:text-[#8F5A0D] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
+                      title="Set / Reset Partner Password"
+                    >
+                      <KeyRound className="h-3.5 w-3.5 text-[#C98219]" />
+                      <span>Password</span>
                     </button>
                     <button
                       type="button"
@@ -692,7 +762,7 @@ export default function AdminPartnersPage() {
                         setDeleteError(null);
                         setPartnerToDelete(p);
                       }}
-                      className="rounded-[7px] border border-[#FDA29B] bg-white py-2 px-3 text-xs font-bold text-[#D92D20] hover:bg-[#FEF3F2] hover:border-[#D92D20] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
+                      className="rounded-[7px] border border-[#FDA29B] bg-white py-2 px-2.5 text-xs font-bold text-[#D92D20] hover:bg-[#FEF3F2] hover:border-[#D92D20] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
                       title="Delete Partner Franchise"
                     >
                       <Trash2 className="h-3.5 w-3.5 text-[#D92D20]" />
@@ -1155,6 +1225,29 @@ export default function AdminPartnersPage() {
                         <option value="DISABLED">DISABLED (Deactivated)</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[#172033] mb-1">
+                        Change Dashboard Login Password (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        placeholder="Leave blank to keep unchanged (e.g. pass@2025)"
+                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none font-mono"
+                      />
+                      <p className="text-[10.5px] text-[#667085] mt-1">
+                        Min 6 characters. If entered, updates partner login password immediately.
+                      </p>
+                    </div>
+
+                    {editStatus === 'ACTIVE' && (
+                      <div className="rounded-[7px] border border-[#A6F4C5] bg-[#ECFDF3] p-2.5 text-[11.5px] text-[#027A48] flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-[#027A48]" />
+                        <span>Status ACTIVE will automatically activate the partner login account and mark franchise fee verified.</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column: Commission Slab & Revenue Details */}
@@ -1413,6 +1506,132 @@ export default function AdminPartnersPage() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Partner Password Modal */}
+      {partnerForPasswordReset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/50 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-[14px] border border-[#E6EAF0] bg-white p-6 shadow-modal space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#172033]">
+                    Set / Reset Partner Password
+                  </h3>
+                  <p className="text-xs text-[#667085]">
+                    {partnerForPasswordReset.name} ({partnerForPasswordReset.partnerCode})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPartnerForPasswordReset(null)}
+                className="rounded-[6px] p-1.5 text-[#667085] hover:bg-[#F0F3F8] hover:text-[#172033] cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {resetPasswordSuccess ? (
+              <div className="space-y-4 py-1">
+                <div className="rounded-[8px] border border-[#A6F4C5] bg-[#ECFDF3] p-4 text-xs text-[#027A48] space-y-2">
+                  <p className="font-bold text-sm flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Password Updated Successfully!
+                  </p>
+                  <div className="pt-1 space-y-1.5 font-mono text-xs text-[#172033] bg-white p-3 rounded-[6px] border border-[#A6F4C5]">
+                    <div>Login Email: <strong className="select-all">{resetPasswordSuccess.email}</strong></div>
+                    <div>Mobile / Username: <strong className="select-all">{resetPasswordSuccess.mobile}</strong></div>
+                    <div>Partner Code: <strong className="text-[#C98219] select-all">{resetPasswordSuccess.partnerCode}</strong></div>
+                    <div className="pt-1 border-t border-[#E6EAF0]">
+                      Active Password: <strong className="text-[#027A48] text-sm select-all">{resetPasswordSuccess.newPassword}</strong>
+                    </div>
+                  </div>
+                  <p className="text-[11.5px] text-[#027A48]">
+                    Partner can now sign in at <strong>/auth/login</strong> using their Email, Mobile, or Partner Code with this password.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPartnerForPasswordReset(null)}
+                  className="w-full rounded-[7px] bg-[#172033] py-2.5 text-xs font-bold text-white hover:bg-[#222E46] cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                <div className="rounded-[7px] border border-[#E6EAF0] bg-[#F8FAFC] p-3 text-xs space-y-1 font-mono">
+                  <p className="text-[#667085]">Email: <strong className="text-[#172033]">{partnerForPasswordReset.email}</strong></p>
+                  <p className="text-[#667085]">Mobile: <strong className="text-[#172033]">{partnerForPasswordReset.mobile}</strong></p>
+                  <p className="text-[#667085]">Partner Code: <strong className="text-[#C98219]">{partnerForPasswordReset.partnerCode}</strong></p>
+                </div>
+
+                {resetPasswordError && (
+                  <div className="rounded-[7px] border border-[#FDA29B] bg-[#FEF3F2] p-2.5 text-xs text-[#D92D20] flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{resetPasswordError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-[#172033] mb-1">
+                    Enter New Password *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                    placeholder="e.g. pass@2025"
+                    className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs font-mono text-[#172033] focus:border-[#C98219] focus:outline-none"
+                  />
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-[11px] text-[#667085]">Min 6 characters</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewPasswordInput(`Partner@${partnerForPasswordReset.mobile.slice(-4)}`)}
+                      className="text-[11px] font-bold text-[#C98219] hover:underline cursor-pointer"
+                    >
+                      Use Default (Partner@{partnerForPasswordReset.mobile.slice(-4)})
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E6EAF0]">
+                  <button
+                    type="button"
+                    onClick={() => setPartnerForPasswordReset(null)}
+                    className="rounded-[7px] border border-[#D0D5DD] bg-white px-4 py-2 text-xs font-bold text-[#344054] hover:bg-[#F8FAFC] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isResettingPassword}
+                    className="rounded-[7px] bg-[#C98219] px-4 py-2 text-xs font-bold text-white hover:bg-[#B57414] shadow-subtle flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isResettingPassword ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Updating Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="h-3.5 w-3.5" />
+                        <span>Save New Password</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
