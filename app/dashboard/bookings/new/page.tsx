@@ -26,6 +26,7 @@ import {
   User,
   Plus,
   Check,
+  HeartHandshake,
 } from 'lucide-react';
 
 const OFFICIAL_ROUTES = [
@@ -79,6 +80,41 @@ export default function NewBookingPage() {
   // Section 2: Booking Details State
   const [requestedDate, setRequestedDate] = useState(getTodayDateStr());
   const [route, setRoute] = useState(OFFICIAL_ROUTES[0].id);
+
+  // Section 3: Nominee Details State (Mandatory Insurance)
+  interface NomineeInput {
+    id: string;
+    nomineeName: string;
+    nomineeAge: string;
+    nomineeRelationship: string;
+    nomineePhone: string;
+  }
+
+  const [nominees, setNominees] = useState<NomineeInput[]>([
+    { id: '1', nomineeName: '', nomineeAge: '', nomineeRelationship: 'Spouse', nomineePhone: '' },
+  ]);
+
+  const handleAddNominee = () => {
+    if (nominees.length >= 5) {
+      alert('A maximum of 5 nominees can be registered per booking pass.');
+      return;
+    }
+    setNominees([
+      ...nominees,
+      { id: String(Date.now()), nomineeName: '', nomineeAge: '', nomineeRelationship: 'Other', nomineePhone: '' },
+    ]);
+  };
+
+  const handleRemoveNominee = (index: number) => {
+    if (nominees.length <= 1) return;
+    setNominees(nominees.filter((_, i) => i !== index));
+  };
+
+  const handleNomineeChange = (index: number, field: keyof NomineeInput, value: string) => {
+    const updated = [...nominees];
+    (updated[index] as any)[field] = value;
+    setNominees(updated);
+  };
 
   // Compact Date Picker State
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -333,6 +369,28 @@ export default function NewBookingPage() {
       return;
     }
 
+    // 2b. Validate Nominees (Mandatory Pilgrim Insurance)
+    if (!nominees || nominees.length === 0) {
+      setError('Please provide at least one nominee for mandatory pilgrim insurance.');
+      return;
+    }
+    for (let i = 0; i < nominees.length; i++) {
+      const n = nominees[i];
+      if (!n.nomineeName.trim()) {
+        setError(`Nominee #${i + 1}: Full name is required.`);
+        return;
+      }
+      const nomAge = parseInt(n.nomineeAge, 10);
+      if (!n.nomineeAge || isNaN(nomAge) || nomAge < 18 || nomAge > 120) {
+        setError(`Nominee #${i + 1}: Must be an adult with a valid age (18-120 years).`);
+        return;
+      }
+      if (!n.nomineeRelationship) {
+        setError(`Nominee #${i + 1}: Please select relationship.`);
+        return;
+      }
+    }
+
     // Set loading to prevent duplicate clicks and requests
     setLoading(true);
 
@@ -353,11 +411,29 @@ export default function NewBookingPage() {
         coords = await api.ensureLocationCoordinates();
       }
 
-      // 5. Submit the booking request using existing booking flow
+      // 5. Submit the booking request using complete validated payload
+      const primaryNominee = {
+        nomineeName: nominees[0].nomineeName.trim(),
+        nomineeAge: parseInt(nominees[0].nomineeAge, 10),
+        nomineeRelationship: nominees[0].nomineeRelationship,
+        nomineePhone: nominees[0].nomineePhone.trim() || undefined,
+      };
+
       const payload: any = {
         requestedDate,
         route,
         termsAccepted: true,
+        nominee: primaryNominee,
+        nominees: nominees.map((n) => ({
+          nomineeName: n.nomineeName.trim(),
+          nomineeAge: parseInt(n.nomineeAge, 10),
+          nomineeRelationship: n.nomineeRelationship,
+          nomineePhone: n.nomineePhone.trim() || undefined,
+        })),
+        nomineeName: primaryNominee.nomineeName,
+        nomineeAge: primaryNominee.nomineeAge,
+        nomineeRelationship: primaryNominee.nomineeRelationship,
+        nomineePhone: primaryNominee.nomineePhone,
         idempotencyKey: `bk_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       };
 
@@ -772,6 +848,39 @@ export default function NewBookingPage() {
                 </div>
               </div>
             )}
+
+            {/* Account Verification Status Banner */}
+            {accountMode === 'saved' && activeAccount && (
+              <div className="flex items-center justify-between p-2.5 rounded-[7px] border bg-[#F8FAFC] text-[12px]">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#667085] font-medium">Verification Status:</span>
+                  <span
+                    className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[11px] ${
+                      activeAccount.status === 'VERIFIED'
+                        ? 'bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]'
+                        : 'bg-[#FEF7E6] text-[#B45309] border border-[#FDE68A]'
+                    }`}
+                  >
+                    {activeAccount.status === 'VERIFIED' ? (
+                      <>
+                        <CheckCircle2 className="h-3 w-3 text-[#198754]" />
+                        <span>VERIFIED</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-3 w-3 text-[#D97706]" />
+                        <span>{activeAccount.status || 'UNVERIFIED'}</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+                {activeAccount.status !== 'VERIFIED' && (
+                  <span className="text-[11px] font-semibold text-[#B45309]">
+                    Execution blocked until verified
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* SECTION 2: SCHEDULE & ROUTE (COMPACT 2-COLUMN ARRANGEMENT) */}
@@ -1015,6 +1124,140 @@ export default function NewBookingPage() {
               </div>
             </div>
           </div>
+
+          {/* SECTION 3: NOMINEE DETAILS (MANDATORY INSURANCE) */}
+          <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 sm:p-5 shadow-subtle space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#E6EAF0]">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219]">
+                  <HeartHandshake className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-[13.5px] font-bold text-[#172033]">
+                    3. Nominee Details (Pilgrim Insurance) {nominees.length > 1 ? `(${nominees.length})` : ''}
+                  </h2>
+                  <p className="text-[11px] text-[#667085]">
+                    Travancore Devaswom Board mandatory emergency insurance nominee (18+ adult)
+                  </p>
+                </div>
+              </div>
+
+              {nominees.length < 5 && (
+                <button
+                  type="button"
+                  onClick={handleAddNominee}
+                  className="inline-flex items-center gap-1 rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1 text-[11.5px] font-bold text-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Another Nominee</span>
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {nominees.map((nominee, idx) => (
+                <div
+                  key={nominee.id}
+                  className="p-3.5 rounded-[8px] border border-[#E6EAF0] bg-[#FAFBFD] space-y-2.5 relative"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11.5px] font-bold text-[#344054] uppercase tracking-wider">
+                      Nominee #{idx + 1} {idx === 0 ? '(Primary)' : ''}
+                    </span>
+                    {nominees.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNominee(idx)}
+                        className="text-[#98A2B3] hover:text-[#C2413B] p-1 rounded transition-colors cursor-pointer"
+                        title="Remove nominee"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-5">
+                      <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                        Nominee Full Name <span className="text-[#C2413B]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={nominee.nomineeName}
+                        onChange={(e) => handleNomineeChange(idx, 'nomineeName', e.target.value)}
+                        placeholder="e.g. Lakshmi S"
+                        className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                        Age (18+) <span className="text-[#C2413B]">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="18"
+                        max="120"
+                        required
+                        value={nominee.nomineeAge}
+                        onChange={(e) => handleNomineeChange(idx, 'nomineeAge', e.target.value)}
+                        placeholder="18+"
+                        className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-5">
+                      <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                        Relationship <span className="text-[#C2413B]">*</span>
+                      </label>
+                      <select
+                        value={nominee.nomineeRelationship}
+                        onChange={(e) => handleNomineeChange(idx, 'nomineeRelationship', e.target.value)}
+                        className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2 py-1.5 text-[12px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                      >
+                        <option value="Spouse">Spouse</option>
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Son">Son</option>
+                        <option value="Daughter">Daughter</option>
+                        <option value="Brother">Brother</option>
+                        <option value="Sister">Sister</option>
+                        <option value="Guardian">Guardian</option>
+                        <option value="Friend">Friend</option>
+                        <option value="Relative">Relative</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-12">
+                      <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                        Nominee Mobile Number (Optional)
+                      </label>
+                      <input
+                        type="tel"
+                        value={nominee.nomineePhone}
+                        onChange={(e) => handleNomineeChange(idx, 'nomineePhone', e.target.value)}
+                        placeholder="10-digit mobile number"
+                        className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12px] text-[#172033] focus:border-[#C98219] focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {nominees.length < 5 && (
+                <button
+                  type="button"
+                  onClick={handleAddNominee}
+                  className="w-full flex items-center justify-center gap-2 rounded-[8px] border-2 border-dashed border-[#D0D5DD] bg-[#FAFBFD] py-2.5 text-[12px] font-semibold text-[#C98219] hover:border-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>+ Add Another Nominee ({nominees.length}/5)</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Order Summary & Execution Assurance (Sticky Desktop, Single Scroll) */}
@@ -1059,6 +1302,24 @@ export default function NewBookingPage() {
                 <span className="text-[#667085]">Approved Route</span>
                 <span className="font-semibold text-[#172033] text-right truncate max-w-[160px]">
                   {selectedRouteObj ? selectedRouteObj.name : 'Not selected'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-[#F0F3F8]">
+                <span className="text-[#667085]">Pilgrims / Devotees</span>
+                <span className="font-semibold text-[#172033] text-right">
+                  Official Account Master List
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-[#F0F3F8]">
+                <span className="text-[#667085]">Emergency Nominee{nominees.length > 1 ? 's' : ''}</span>
+                <span className="font-semibold text-[#172033] text-right truncate max-w-[160px]">
+                  {nominees[0]?.nomineeName
+                    ? nominees.length > 1
+                      ? `${nominees[0].nomineeName} (+${nominees.length - 1})`
+                      : nominees[0].nomineeName
+                    : 'Not entered'}
                 </span>
               </div>
 

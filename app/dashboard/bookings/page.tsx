@@ -38,14 +38,12 @@ const FILTER_TABS = [
 function isCompleted(b: any) {
   if (!b) return false;
   const status = typeof b === 'string' ? b : b.status;
-  const ref = typeof b === 'object' ? b.officialReference : null;
-  if (ref && String(ref).trim().length > 0) return true;
-  return (
-    status === 'SUCCESS' ||
-    status === 'COMPLETED' ||
-    status === 'BOOKING_CONFIRMED' ||
-    status === 'WISHLIST_ADDED'
-  );
+  const ref = typeof b === 'object' ? (b.officialBookingReference || b.officialReference) : null;
+  const isCartId = b && b.cartId && ref === b.cartId;
+  if (ref && String(ref).trim().length > 0 && !isCartId && !String(ref).startsWith('SAB-2026-')) {
+    return status === 'SUCCESS' || status === 'COMPLETED' || status === 'BOOKING_CONFIRMED';
+  }
+  return false;
 }
 
 function isFailed(b: any) {
@@ -555,10 +553,16 @@ export default function BookingsPage() {
                   </div>
 
                   {/* Official Reference Number if Confirmed */}
-                  {completed && b.officialReference && (
+                  {completed && (b.officialBookingReference || b.officialReference) && (
                     <div className="mt-2.5 flex items-center justify-between bg-[#EAF7EE] border border-[#C3E6CB] rounded-[6px] px-2.5 py-1 text-[11.5px]">
                       <span className="text-[#155724] font-medium text-[11px]">Pass Ref:</span>
-                      <span className="font-mono font-bold text-[#155724]">{b.officialReference}</span>
+                      <span className="font-mono font-bold text-[#155724]">{b.officialBookingReference || b.officialReference}</span>
+                    </div>
+                  )}
+                  {b.cartId && (
+                    <div className="mt-1 flex items-center justify-between text-[10.5px] text-[#667085] px-1">
+                      <span>Cart ID:</span>
+                      <span className="font-mono text-[#475467]">{b.cartId}</span>
                     </div>
                   )}
                 </div>

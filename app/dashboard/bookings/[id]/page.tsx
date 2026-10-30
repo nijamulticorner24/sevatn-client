@@ -35,14 +35,12 @@ import {
 function isCompleted(b: any) {
   if (!b) return false;
   const status = typeof b === 'string' ? b : b.status;
-  const ref = typeof b === 'object' ? b.officialReference : null;
-  if (ref && String(ref).trim().length > 0) return true;
-  return (
-    status === 'SUCCESS' ||
-    status === 'COMPLETED' ||
-    status === 'BOOKING_CONFIRMED' ||
-    status === 'WISHLIST_ADDED'
-  );
+  const ref = typeof b === 'object' ? (b.officialBookingReference || b.officialReference) : null;
+  const isCartId = b && b.cartId && ref === b.cartId;
+  if (ref && String(ref).trim().length > 0 && !isCartId && !String(ref).startsWith('SAB-2026-')) {
+    return status === 'SUCCESS' || status === 'COMPLETED' || status === 'BOOKING_CONFIRMED';
+  }
+  return false;
 }
 
 function isFailed(b: any) {
@@ -291,7 +289,19 @@ export default function BookingDetailPage() {
                 <div className="mt-3 flex items-center gap-3 flex-wrap text-[12.5px]">
                   <div className="flex items-center gap-1.5 bg-[#EAF7EE] border border-[#C3E6CB] px-3 py-1 rounded-[6px]">
                     <span className="text-[#155724] font-medium">Official Reference:</span>
-                    <strong className="font-mono text-[#155724]">{booking.officialReference || 'WISH-CONFIRMED'}</strong>
+                    <strong className="font-mono text-[#155724]">{booking.officialBookingReference || booking.officialReference}</strong>
+                  </div>
+                  {booking.cartId && (
+                    <div className="flex items-center gap-1.5 bg-[#F0F3F8] border border-[#D0D5DD] px-3 py-1 rounded-[6px]" title="Portal shopping cart identifier">
+                      <span className="text-[#475467] font-medium">Cart ID:</span>
+                      <span className="font-mono text-[#475467]">{booking.cartId}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5 bg-[#F7F9FC] border border-[#E6EAF0] px-3 py-1 rounded-[6px]">
+                    <span className="text-[#475467] font-medium">Service Fee:</span>
+                    <span className={`font-semibold ${booking.financialStatus === 'CAPTURED' ? 'text-[#155724]' : 'text-[#8F5A0D]'}`}>
+                      {booking.financialStatus === 'CAPTURED' ? '₹100.00 Captured' : (booking.financialStatus || 'Reserved')}
+                    </span>
                   </div>
                   {durationText && (
                     <div className="flex items-center gap-1 text-[#285e3a] font-medium">
