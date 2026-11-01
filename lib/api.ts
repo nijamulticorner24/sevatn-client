@@ -512,11 +512,20 @@ class ApiClient {
     });
   }
 
-  async getBookings(status?: string, page = 1, search?: string) {
+  async getBookings(status?: string, page = 1, search?: string, limit?: number) {
     let q = `?page=${page}`;
     if (status && status !== 'ALL') q += `&status=${status}`;
     if (search) q += `&search=${encodeURIComponent(search)}`;
+    if (limit) q += `&limit=${limit}`;
     return this.request(`/bookings${q}`);
+  }
+
+  async getAdminBookings(status?: string, page = 1, search?: string, limit?: number) {
+    let q = `?page=${page}`;
+    if (status && status !== 'ALL') q += `&status=${status}`;
+    if (search) q += `&search=${encodeURIComponent(search)}`;
+    if (limit) q += `&limit=${limit}`;
+    return this.request(`/admin/bookings${q}`);
   }
 
   async getBookingById(id: string) {

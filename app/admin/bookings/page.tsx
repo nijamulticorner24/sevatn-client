@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { api } from '../../../lib/api';
 import { formatDate, formatTime } from '../../../lib/utils';
 import { StateBadge } from '../../../components/StateBadge';
+import { getSocket } from '../../../lib/socket';
 import {
   Layers,
   Search,
@@ -19,6 +20,9 @@ import {
   XCircle,
   Loader2,
   Plus,
+  Bell,
+  BellRing,
+  BellOff,
 } from 'lucide-react';
 import { EmptyState } from '../../../components/EmptyState';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -31,23 +35,154 @@ export default function AdminBookingsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
 
-  const loadBookings = () => {
-    setLoading(true);
-    api.getBookings(statusFilter === 'ALL' ? undefined : statusFilter, 1)
-      .then((res) => {
-        if (res?.bookings) setBookings(res.bookings);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
+  // Track known confirmed IDs to avoid duplicate alerts
+  const knownConfirmedRef = useRef<Set<string>>(new Set());
+  const isInitialLoadRef = useRef<boolean>(true);
+
+  // Initialize notification permission state on client mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  // Request browser notification permission
+  const handleRequestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Browser notifications are not supported on this browser or platform.');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
+        new Notification('SevaTN: Booking Notifications Enabled', {
+          body: 'You will receive desktop alerts when bookings are successfully confirmed.',
+          icon: '/favicon.ico',
+        });
+      } else if (permission === 'denied') {
+        alert('Notification permission was denied. Please allow notifications in your browser site permissions to receive alerts.');
+      }
+    } catch (err: any) {
+      console.error('Failed to request notification permission:', err);
+    }
   };
 
+  // Inspect incoming bookings for new confirmations
+  const checkConfirmedNotifications = useCallback((incomingBookings: any[]) => {
+    const confirmedStatuses = ['SUCCESS', 'BOOKING_CONFIRMED', 'PASS_CONFIRMED', 'CONFIRMED'];
+
+    // On initial load, record all existing confirmed bookings without firing alerts
+    if (isInitialLoadRef.current) {
+      incomingBookings.forEach((b) => {
+        if (confirmedStatuses.includes(b.status)) {
+          knownConfirmedRef.current.add(b.id);
+        }
+      });
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    // Subsequent updates: trigger notification for newly confirmed bookings
+    incomingBookings.forEach((b) => {
+      if (confirmedStatuses.includes(b.status) && !knownConfirmedRef.current.has(b.id)) {
+        knownConfirmedRef.current.add(b.id);
+
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('SevaTN: Booking Confirmed!', {
+              body: `Booking #${b.bookingCode || b.id} has been successfully confirmed.`,
+              icon: '/favicon.ico',
+            });
+          } catch (e) {
+            console.error('Notification dispatch error:', e);
+          }
+        }
+      }
+    });
+  }, []);
+
+  // Fetch bookings data (silent mode updates state without triggering full-table skeletons)
+  const loadBookings = useCallback(
+    (silent = false) => {
+      if (!silent) setLoading(true);
+      return api
+        .getBookings(statusFilter === 'ALL' ? undefined : statusFilter, 1)
+        .then((res) => {
+          if (res?.bookings) {
+            setBookings(res.bookings);
+            checkConfirmedNotifications(res.bookings);
+          }
+          if (!silent) setLoading(false);
+        })
+        .catch((err) => {
+          console.error('Error fetching bookings:', err);
+          if (!silent) setLoading(false);
+        });
+    },
+    [statusFilter, checkConfirmedNotifications]
+  );
+
+  // Initial load or when filter changes
   useEffect(() => {
-    loadBookings();
-  }, [statusFilter]);
+    loadBookings(false);
+  }, [loadBookings]);
+
+  // Polling every 5 seconds (only when the browser tab is visible)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadBookings(true);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [loadBookings]);
+
+  // Real-time WebSocket connection to events gateway
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    // Join admin room
+    socket.emit('join_room', { room: 'admin_room' });
+
+    const handleBookingConfirmed = (payload: any) => {
+      loadBookings(true);
+
+      const bookingId = payload.bookingId || payload.id;
+      if (bookingId && !knownConfirmedRef.current.has(bookingId)) {
+        knownConfirmedRef.current.add(bookingId);
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('SevaTN: Booking Confirmed!', {
+              body: `Booking #${payload.bookingCode || bookingId} has been successfully confirmed.`,
+              icon: '/favicon.ico',
+            });
+          } catch (e) {
+            console.error('Notification dispatch error:', e);
+          }
+        }
+      }
+    };
+
+    const handleBookingUpdated = (payload: any) => {
+      loadBookings(true);
+    };
+
+    socket.on('booking.confirmed', handleBookingConfirmed);
+    socket.on('admin:booking_updated', handleBookingConfirmed);
+    socket.on('booking:updated', handleBookingUpdated);
+
+    return () => {
+      socket.off('booking.confirmed', handleBookingConfirmed);
+      socket.off('admin:booking_updated', handleBookingConfirmed);
+      socket.off('booking:updated', handleBookingUpdated);
+    };
+  }, [loadBookings]);
 
   const handleClearAllQueues = async () => {
     const activeCount = bookings.filter((b) =>
@@ -72,7 +207,7 @@ export default function AdminBookingsPage() {
         type: 'success',
         text: `Queue Cleared: ${res.clearedBookings} bookings cancelled, ₹${res.releasedHolds * 100} hold funds refunded, ${res.cancelledJobs} jobs stopped, ${res.resetWorkers} workers reset.`,
       });
-      loadBookings();
+      loadBookings(false);
       setTimeout(() => setStatusMessage(null), 6000);
     } catch (err: any) {
       setStatusMessage({
@@ -97,7 +232,7 @@ export default function AdminBookingsPage() {
         type: 'success',
         text: `Booking #${bookingCode} cancelled successfully and held funds released.`,
       });
-      loadBookings();
+      loadBookings(false);
       setTimeout(() => setStatusMessage(null), 4000);
     } catch (err: any) {
       setStatusMessage({
@@ -116,7 +251,7 @@ export default function AdminBookingsPage() {
         type: 'success',
         text: `Stale leases recovered: ${res.recoveredCount} job(s) returned to cloud queue.`,
       });
-      loadBookings();
+      loadBookings(false);
       setTimeout(() => setStatusMessage(null), 4000);
     } catch (err: any) {
       alert(err.message || 'Recovery trigger failed');
@@ -158,6 +293,51 @@ export default function AdminBookingsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Notification Permission Toggle */}
+          {notificationPermission === 'granted' ? (
+            <div
+              className="inline-flex items-center gap-1.5 rounded-btn border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 shadow-subtle"
+              title="Desktop notifications are enabled for confirmed bookings"
+            >
+              <BellRing className="h-4 w-4 text-emerald-600" />
+              <span>Notifications Active</span>
+            </div>
+          ) : notificationPermission === 'denied' ? (
+            <button
+              onClick={() =>
+                alert(
+                  'Notifications are blocked by your browser. Please enable notifications in your browser site permissions to receive booking confirmation alerts.'
+                )
+              }
+              className="inline-flex items-center gap-1.5 rounded-btn border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors shadow-subtle cursor-pointer"
+              title="Notifications blocked in browser settings"
+            >
+              <BellOff className="h-4 w-4 text-red-500" />
+              <span>Notifications Blocked</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleRequestNotificationPermission}
+              className="inline-flex items-center gap-1.5 rounded-btn border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 py-2 text-xs font-bold text-amber-900 transition-colors shadow-subtle cursor-pointer animate-pulse"
+              title="Enable browser notifications for confirmed bookings"
+            >
+              <Bell className="h-4 w-4 text-amber-700" />
+              <span>Enable Notifications</span>
+            </button>
+          )}
+
+          {/* Live Polling Indicator */}
+          <div
+            className="inline-flex items-center gap-1.5 rounded-btn border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs font-semibold text-secondary-600 shadow-subtle"
+            title="Auto-refreshing every 5 seconds when tab is active"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px]">Live (5s)</span>
+          </div>
+
           {/* Create Booking Action for Admin & Super Admin */}
           <Link
             href="/dashboard/bookings/new"
@@ -191,7 +371,7 @@ export default function AdminBookingsPage() {
           </button>
 
           <button
-            onClick={loadBookings}
+            onClick={() => loadBookings(false)}
             className="flex h-9 w-9 items-center justify-center rounded-btn border border-border-default bg-white text-secondary-600 hover:bg-neutral-50 hover:text-text-primary transition-colors shadow-subtle"
             title="Refresh List"
           >
@@ -346,4 +526,3 @@ export default function AdminBookingsPage() {
     </div>
   );
 }
-

@@ -8,8 +8,9 @@ export function getSocket(): Socket {
   }
 
   if (!socketInstance) {
-    const token = localStorage.getItem('token') || '';
-    const socketUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:4000/live';
+    const token = localStorage.getItem('ta_auth_token') || localStorage.getItem('token') || '';
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
+    const socketUrl = process.env.NEXT_PUBLIC_WS_URL || `${apiBase}/live`;
 
     socketInstance = io(socketUrl, {
       transports: ['websocket', 'polling'],
@@ -45,7 +46,7 @@ export function getSocket(): Socket {
 
 export function refreshSocketAuth() {
   if (socketInstance) {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('ta_auth_token') || localStorage.getItem('token') || '';
     socketInstance.auth = { token: token ? `Bearer ${token}` : undefined };
     if (socketInstance.connected) {
       socketInstance.disconnect().connect();
