@@ -504,9 +504,9 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({
         ...data,
-        latitude: coords?.latitude ?? data.latitude,
-        longitude: coords?.longitude ?? data.longitude,
-        accuracy: coords?.accuracy ?? data.accuracy,
+        latitude: data.latitude !== undefined ? data.latitude : coords?.latitude,
+        longitude: data.longitude !== undefined ? data.longitude : coords?.longitude,
+        accuracy: data.accuracy !== undefined ? data.accuracy : coords?.accuracy,
         idempotencyKey: data.idempotencyKey || `bk_${Date.now()}`,
       }),
     });

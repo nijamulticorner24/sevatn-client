@@ -27,7 +27,10 @@ import {
   Plus,
   Check,
   HeartHandshake,
+  MapPinOff,
+  Loader2,
 } from 'lucide-react';
+import { useLocationGuard } from '@/hooks/useLocationGuard';
 
 const OFFICIAL_ROUTES = [
   { id: 'Pamba (Regular Footpath Route)', name: 'Pamba Base', desc: 'Direct traditional footpath from Pamba base', tag: 'Standard' },
@@ -46,6 +49,10 @@ const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export default function NewBookingPage() {
   const router = useRouter();
+
+  // 5 KM Geofence Location Guard
+  const { isWithinRadius, distanceKm, loading: locationLoading } = useLocationGuard();
+
   const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
   const [wallet, setWallet] = useState<any>(null);
   const [walletLoading, setWalletLoading] = useState(true);
@@ -348,6 +355,12 @@ export default function NewBookingPage() {
 
     setTermsError(false);
 
+    // 1b. Location Guard Verification
+    if (isWithinRadius === false) {
+      setError(`Access Restricted: You are currently ${distanceKm !== null ? `${distanceKm} KM` : 'more than 5 KM'} away from your registered centre. Bookings are only permitted within 5 KM.`);
+      return;
+    }
+
     // 2. Validate required booking fields
     if (accountMode === 'new' && (!officialUsername.trim() || !officialPassword)) {
       setError('Please provide your official registered username/mobile and password.');
@@ -467,11 +480,60 @@ export default function NewBookingPage() {
     }
   };
 
-  if (walletLoading) {
+  if (walletLoading || (locationLoading && isWithinRadius === null)) {
     return (
-      <div className="w-full max-w-[1300px] mx-auto py-20 flex flex-col items-center justify-center space-y-3">
-        <div className="h-9 w-9 border-3 border-[#C98219]/20 border-t-[#C98219] rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-[#667085]">Checking wallet balance...</p>
+      <div className="w-full max-w-[1300px] mx-auto py-24 flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="h-9 w-9 animate-spin text-[#C98219]" />
+        <p className="text-sm font-semibold text-[#172033]">
+          {walletLoading ? 'Checking wallet balance...' : 'Verifying 5 KM Service Location...'}
+        </p>
+        <p className="text-xs text-[#667085]">
+          {walletLoading ? 'Connecting to SevaTN financial ledger' : 'Validating GPS coordinates against registered centre geofence'}
+        </p>
+      </div>
+    );
+  }
+
+  // 5 KM Geofence Blocking Popup Modal
+  if (isWithinRadius === false) {
+    const displayDistance = distanceKm !== null ? `${distanceKm}` : 'more than 5';
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="relative w-full max-w-md rounded-2xl bg-white p-6 sm:p-7 shadow-2xl border border-red-100 text-center animate-in fade-in zoom-in-95 duration-200">
+          {/* Alert Icon */}
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600 ring-8 ring-red-50/50">
+            <MapPinOff className="h-7 w-7" />
+          </div>
+
+          {/* Title */}
+          <h3 className="text-lg font-bold text-[#172033]">
+            Access Restricted: Location Mismatch
+          </h3>
+
+          {/* Message */}
+          <p className="mt-3 text-xs leading-relaxed text-[#475467]">
+            You are currently <span className="font-bold text-red-600 font-mono">{displayDistance} KM</span> away from your registered centre. You must be within 5 KM to create a booking. Please contact your Super Admin to update your centre coordinates.
+          </p>
+
+          {/* Distance Info Badge */}
+          {distanceKm !== null && (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-1.5 text-[11px] font-medium text-neutral-600">
+              <span>Current Distance: <strong className="text-red-700">{distanceKm} KM</strong></span>
+              <span className="text-neutral-300">|</span>
+              <span>Allowed: <strong className="text-emerald-700">≤ 5.0 KM</strong></span>
+            </div>
+          )}
+
+          {/* Action Button */}
+          <div className="mt-6">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full rounded-xl bg-[#C98219] hover:bg-[#B57414] text-white py-2.5 px-4 text-xs font-bold transition-all shadow-sm cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
