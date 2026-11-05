@@ -495,15 +495,23 @@ class ApiClient {
     });
   }
 
+  calculateBookingPrice(serviceFee: number, pilgrimCount: number): number {
+    const fee = Number(serviceFee ?? 20);
+    const count = Math.max(1, Math.min(10, Number(pilgrimCount) || 1));
+    return fee * count;
+  }
+
   async createBooking(data: any) {
     let coords = this.getLocationCoordinates();
     if (!coords) {
       coords = await this.ensureLocationCoordinates();
     }
+    const pilgrimCount = Math.max(1, Math.min(10, Number(data.pilgrimCount) || (data.pilgrims?.length ?? 1)));
     return this.request('/bookings', {
       method: 'POST',
       body: JSON.stringify({
         ...data,
+        pilgrimCount,
         latitude: data.latitude !== undefined ? data.latitude : coords?.latitude,
         longitude: data.longitude !== undefined ? data.longitude : coords?.longitude,
         accuracy: data.accuracy !== undefined ? data.accuracy : coords?.accuracy,
@@ -743,6 +751,10 @@ class ApiClient {
 
   async clearAllQueues() {
     return this.request('/admin/queues/clear-all', { method: 'POST' });
+  }
+
+  async purgeAllBookings() {
+    return this.request('/admin/bookings/purge-all', { method: 'POST' });
   }
 
   // Partner Payouts & Commission APIs

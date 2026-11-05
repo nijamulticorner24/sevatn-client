@@ -219,6 +219,39 @@ export default function AdminBookingsPage() {
     }
   };
 
+  const handlePurgeAllBookings = async () => {
+    const totalCount = bookings.length;
+    const confirmed = window.confirm(
+      `🚨 PERMANENT DATABASE PURGE WARNING 🚨\n\n` +
+      `Are you sure you want to PERMANENTLY DELETE all bookings from the database?\n\n` +
+      `This will immediately:\n` +
+      `1. Permanently delete all ${totalCount || ''} bookings, jobs, pilgrims, and attempts from the database.\n` +
+      `2. Refund any active wallet holds back to centre balances.\n` +
+      `3. Reset all worker machines and account locks to clean idle state.\n\n` +
+      `This action CANNOT be undone. Click OK to proceed.`
+    );
+
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    try {
+      const res = await api.purgeAllBookings();
+      setStatusMessage({
+        type: 'success',
+        text: `Database Purged: Deleted ${res.deletedBookings} booking(s), ${res.deletedJobs} job(s), refunded ${res.releasedHolds} hold(s), reset ${res.resetWorkers} worker(s).`,
+      });
+      loadBookings(false);
+      setTimeout(() => setStatusMessage(null), 6000);
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: err.message || 'Failed to purge bookings from database',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleCancelBooking = async (id: string, bookingCode: string) => {
     const confirmed = window.confirm(
       `Cancel booking #${bookingCode}?\n\nThis will cancel the booking request and release any held ₹100 deposit back to the centre wallet.`
@@ -351,15 +384,30 @@ export default function AdminBookingsPage() {
           <button
             onClick={handleClearAllQueues}
             disabled={actionLoading}
-            className="flex items-center gap-2 rounded-btn border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 px-3.5 py-2 text-xs font-bold transition-colors shadow-subtle disabled:opacity-50"
+            className="flex items-center gap-2 rounded-btn border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 px-3.5 py-2 text-xs font-bold transition-colors shadow-subtle disabled:opacity-50 cursor-pointer"
             title="Cancel all pending/active queues and release wallet holds"
           >
             {actionLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-red-600" />
+              <Loader2 className="h-4 w-4 animate-spin text-amber-700" />
             ) : (
-              <Trash2 className="h-4 w-4 text-red-600" />
+              <RotateCcw className="h-4 w-4 text-amber-700" />
             )}
-            <span>Clear All Queues</span>
+            <span>Clear Queues</span>
+          </button>
+
+          {/* Purge All DB Bookings Action */}
+          <button
+            onClick={handlePurgeAllBookings}
+            disabled={actionLoading}
+            className="flex items-center gap-2 rounded-btn border border-red-300 bg-red-600 text-white hover:bg-red-700 px-3.5 py-2 text-xs font-bold transition-colors shadow-subtle disabled:opacity-50 cursor-pointer"
+            title="Permanently delete all bookings and jobs from the database"
+          >
+            {actionLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            ) : (
+              <Trash2 className="h-4 w-4 text-white" />
+            )}
+            <span>Purge All Bookings</span>
           </button>
 
           <button
