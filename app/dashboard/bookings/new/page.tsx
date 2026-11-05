@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Calendar,
   ArrowRight,
@@ -106,6 +107,10 @@ export default function NewBookingPage() {
   const [isNomineeModalOpen, setIsNomineeModalOpen] = useState(false);
   const [nomineeModalError, setNomineeModalError] = useState<string | null>(null);
   const [isNomineesConfirmed, setIsNomineesConfirmed] = useState(false);
+
+  // Mandatory Pre-Submit Confirmation Modal State
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const areNomineesFilled = (items: NomineeInput[], count: number) => {
     if (count < 1 || items.length !== count) return false;
@@ -505,8 +510,15 @@ export default function NewBookingPage() {
       return;
     }
 
+    // Trigger mandatory pre-submit confirmation modal before calling API
+    setShowConfirmPassword(false);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleExecuteConfirmedBooking = async () => {
     // Set loading to prevent duplicate clicks and requests
     setLoading(true);
+    setError(null);
 
     try {
       // 3. Validate current dynamically calculated fee with the backend
@@ -530,7 +542,7 @@ export default function NewBookingPage() {
         nomineeName: nominees[0].nomineeName.trim(),
         nomineeAge: parseInt(nominees[0].nomineeAge, 10),
         nomineeRelationship: nominees[0].nomineeRelationship,
-        nomineePhone: nominees[0].nomineePhone.trim() || undefined,
+        nomineePhone: nominees[0].nomineePhone?.trim() || undefined,
       };
 
       const payload: any = {
@@ -543,7 +555,7 @@ export default function NewBookingPage() {
           nomineeName: n.nomineeName.trim(),
           nomineeAge: parseInt(n.nomineeAge, 10),
           nomineeRelationship: n.nomineeRelationship,
-          nomineePhone: n.nomineePhone.trim() || undefined,
+          nomineePhone: n.nomineePhone?.trim() || undefined,
         })),
         nomineeName: primaryNominee.nomineeName,
         nomineeAge: primaryNominee.nomineeAge,
@@ -571,13 +583,17 @@ export default function NewBookingPage() {
 
       await api.createBooking(payload);
 
-      // 5. Show "Booking request submitted" only when backend confirms request was successfully queued
+      // Close modal on successful queue
+      setIsConfirmModalOpen(false);
+
+      // 6. Show "Booking request submitted" only when backend confirms request was successfully queued
       setSuccessMsg('Booking request submitted');
       setTimeout(() => {
         router.push(isSuperAdmin ? '/admin/bookings' : '/dashboard/bookings');
       }, 700);
     } catch (err: any) {
       setError(err.message || 'Failed to create booking. Please verify your balance and account details.');
+      setIsConfirmModalOpen(false);
       setLoading(false);
     }
   };
@@ -1865,6 +1881,205 @@ export default function NewBookingPage() {
               >
                 <Check className="h-4 w-4" />
                 <span>Save Nominee Details</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MANDATORY PRE-SUBMIT CONFIRMATION MODAL (BILINGUAL) */}
+      {isConfirmModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border-2 border-orange-500 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+            {/* Header: Warning banner */}
+            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 px-5 py-3.5 text-white flex items-center justify-between sticky top-0 z-10 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 text-white shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-black tracking-tight leading-tight">
+                    உங்கள் விவரங்களை உறுதிப்படுத்தவும்
+                  </h3>
+                  <p className="text-[11px] text-white/90 font-medium">
+                    Please Confirm Your Details
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsConfirmModalOpen(false)}
+                className="text-white/80 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Tamil Primary Warning Box */}
+              <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-3.5 space-y-2">
+                <h4 className="text-[13px] font-bold text-[#8F5A0D] flex items-center gap-1.5">
+                  <span>உங்கள் விவரங்களை உறுதிப்படுத்தவும்</span>
+                </h4>
+                <p className="text-[12px] leading-relaxed text-[#7A4A12]">
+                  கீழே உள்ள விவரங்களை சரிபார்க்கவும். தவறான தகவல்கள் இருந்தால், &quot;திரும்பிச் சென்று திருத்து&quot; என்பதைக் கிளிக் செய்யவும். உறுதிப்படுத்திய பிறகு, முன்பதிவை மாற்றவோ ரத்து செய்யவோ முடியாது.
+                </p>
+                <div className="pt-1 text-[12px] font-bold text-red-700 flex items-center gap-1">
+                  <span>⚠️ தவறான விவரங்கள் முன்பதிவு தோல்விக்கு வழிவகுக்கும்.</span>
+                </div>
+              </div>
+
+              {/* Data Summary Section (Display Exact Values) */}
+              <div className="rounded-xl border border-[#E6EAF0] bg-[#FAFBFD] p-4 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E6EAF0]">
+                  <span className="text-[11.5px] font-bold uppercase tracking-wider text-[#344054]">
+                    முன்பதிவு விவரங்கள் / Booking Summary Data
+                  </span>
+                  <span className="text-[10.5px] font-semibold text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] px-2 py-0.5 rounded">
+                    {pilgrimCount} {pilgrimCount > 1 ? 'Pilgrims' : 'Pilgrim'}
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-[12.5px]">
+                  {/* Account Reference Name */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
+                    <span className="text-[#667085] font-medium">Account Reference Name:</span>
+                    <span className="font-bold text-[#172033] sm:text-right">
+                      {accountMode === 'saved'
+                        ? activeAccount?.label || activeAccount?.username || 'Devotee Account'
+                        : accountLabel.trim() || officialUsername.trim() || 'New Devotee Account'}
+                    </span>
+                  </div>
+
+                  {/* Registered Mobile / Email */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
+                    <span className="text-[#667085] font-medium">Registered Mobile / Email:</span>
+                    <span className="font-bold font-mono text-[#172033] sm:text-right">
+                      {accountMode === 'saved'
+                        ? activeAccount?.username || officialUsername
+                        : officialUsername.trim()}
+                    </span>
+                  </div>
+
+                  {/* Official Portal Password */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
+                    <span className="text-[#667085] font-medium">Official Portal Password:</span>
+                    <div className="sm:text-right">
+                      <span className="font-mono font-bold text-[#172033]">
+                        {accountMode === 'saved'
+                          ? showConfirmPassword
+                            ? '•••••••••••• (Saved Account)'
+                            : '••••••••'
+                          : showConfirmPassword
+                          ? officialPassword
+                          : '••••••••'}
+                      </span>
+                      <div>
+                        <label className="inline-flex items-center gap-1.5 text-[11px] text-[#C98219] font-medium cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={showConfirmPassword}
+                            onChange={(e) => setShowConfirmPassword(e.target.checked)}
+                            className="rounded border-[#D0D5DD] text-[#C98219] accent-[#C98219] cursor-pointer"
+                          />
+                          <span>Show password</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preferred Darshan Date */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
+                    <span className="text-[#667085] font-medium">Preferred Darshan Date:</span>
+                    <span className="font-bold text-[#172033] sm:text-right">
+                      {formattedDisplayDate || requestedDate}
+                    </span>
+                  </div>
+
+                  {/* Approved Entry Route */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
+                    <span className="text-[#667085] font-medium">Approved Entry Route:</span>
+                    <span className="font-bold text-[#172033] sm:text-right">
+                      {selectedRouteObj ? selectedRouteObj.name : route}
+                    </span>
+                  </div>
+
+                  {/* Number of Pilgrims */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
+                    <span className="text-[#667085] font-medium">Number of Pilgrims:</span>
+                    <span className="font-bold text-[#172033] sm:text-right">
+                      {pilgrimCount}
+                    </span>
+                  </div>
+
+                  {/* Nominee Details for each pilgrim */}
+                  <div className="pt-1.5 space-y-1.5">
+                    <span className="text-[#667085] font-medium block">
+                      Nominee Details ({nominees.length} {nominees.length > 1 ? 'Pilgrims' : 'Pilgrim'}):
+                    </span>
+                    <div className="space-y-1.5 bg-white p-2.5 rounded-lg border border-[#E6EAF0]">
+                      {nominees.map((n, idx) => (
+                        <div
+                          key={n.id || idx}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] last:border-0 text-[12px] gap-0.5"
+                        >
+                          <span className="font-bold text-[#172033]">
+                            Pilgrim #{idx + 1}: {n.nomineeName || 'N/A'}
+                          </span>
+                          <span className="text-[#667085]">
+                            Age: <strong className="text-[#172033]">{n.nomineeAge || 'N/A'}</strong> | Relationship: <strong className="text-[#172033]">{n.nomineeRelationship || 'N/A'}</strong>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* English Section (Below, Smaller Text) */}
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-1 text-neutral-700">
+                <h5 className="text-[12px] font-bold text-neutral-800">
+                  Please Confirm Your Details
+                </h5>
+                <p className="text-[11px] leading-relaxed text-neutral-600">
+                  Please verify the details below. If something is wrong, click &quot;Go Back &amp; Edit&quot;. Once confirmed, the booking cannot be changed or cancelled.
+                </p>
+                <p className="text-[11px] font-bold text-red-600 pt-0.5">
+                  ⚠️ Wrong details will result in a failed booking.
+                </p>
+              </div>
+            </div>
+
+            {/* Buttons (Bilingual) */}
+            <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 sticky bottom-0">
+              <button
+                type="button"
+                onClick={() => setIsConfirmModalOpen(false)}
+                disabled={loading}
+                className="w-full sm:w-auto rounded-lg border border-[#D0D5DD] bg-white px-4 py-2.5 text-[12px] font-semibold text-[#344054] hover:bg-neutral-100 transition-colors cursor-pointer"
+              >
+                திரும்பிச் சென்று திருத்து (Go Back &amp; Edit)
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteConfirmedBooking}
+                disabled={loading}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-[#C98219] hover:bg-[#B57414] px-5 py-2.5 text-[12.5px] font-bold text-white transition-all shadow-subtle hover:shadow cursor-pointer disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>சமர்ப்பிக்கிறது... (Submitting...)</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>ஆம், சமர்ப்பிக்கவும் (Yes, Submit)</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
