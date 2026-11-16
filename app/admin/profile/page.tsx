@@ -122,7 +122,7 @@ export default function AdminProfilePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* Header */}
       <div className="pb-4 border-b border-[#E6EAF0] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
@@ -332,7 +332,7 @@ export default function AdminProfilePage() {
                         required
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder="admin.new@ticketassist.in"
+                        placeholder="admin.new@sevatn.online"
                         className="w-full px-3.5 py-2.5 text-[13px] rounded-lg border border-[#D0D5DD] bg-white focus:outline-none focus:border-[#C98219] focus:ring-1 focus:ring-[#C98219]"
                       />
                       <Mail className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-[#98A2B3]" />

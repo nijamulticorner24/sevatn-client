@@ -644,7 +644,7 @@ class ApiClient {
   }
 
   async createCentre(data: any) {
-    return this.request('/admin/centres', {
+    return this.request('/centres', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -758,11 +758,12 @@ class ApiClient {
   }
 
   // Partner Payouts & Commission APIs
-  async getPartnerCentres(page = 1, district?: string, status?: string, search?: string) {
+  async getPartnerCentres(page = 1, district?: string, status?: string, search?: string, distributorId?: string) {
     let q = `?page=${page}`;
     if (district && district !== 'ALL') q += `&district=${encodeURIComponent(district)}`;
     if (status && status !== 'ALL') q += `&status=${encodeURIComponent(status)}`;
     if (search && search.trim()) q += `&search=${encodeURIComponent(search.trim())}`;
+    if (distributorId && distributorId !== 'ALL') q += `&distributorId=${encodeURIComponent(distributorId)}`;
     return this.request(`/partner/centres${q}`);
   }
 
@@ -997,6 +998,131 @@ class ApiClient {
 
   async getQueueAndWorkerDiagnostics() {
     return this.request('/workers/diagnostics/queue-health');
+  }
+
+  // =========================================================================
+  // THREE-LEVEL TICKET PRICING APIS
+  // =========================================================================
+
+  async getAdminPricingConfig() {
+    return this.request('/admin/pricing/config');
+  }
+
+  async updateAdminPricingConfig(data: {
+    baseTicketPrice: number;
+    maxPartnerMarkup: number;
+    maxDistributorMarkup: number;
+    isActive?: boolean;
+  }) {
+    return this.request('/admin/pricing/config', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPricingAuditLogs(limit = 100) {
+    return this.request(`/admin/pricing/audit?limit=${limit}`);
+  }
+
+  async getPartnerMarkup() {
+    return this.request('/partner/markup');
+  }
+
+  async updatePartnerMarkup(markup: number) {
+    return this.request('/partner/markup', {
+      method: 'PATCH',
+      body: JSON.stringify({ markup }),
+    });
+  }
+
+  async getDistributorMarkup() {
+    return this.request('/distributor/markup');
+  }
+
+  async updateDistributorMarkup(markup: number) {
+    return this.request('/distributor/markup', {
+      method: 'PATCH',
+      body: JSON.stringify({ markup }),
+    });
+  }
+
+  async getBookingPricingPreview(quantity = 1) {
+    return this.request(`/bookings/pricing/preview?quantity=${quantity}`);
+  }
+
+  // =========================================================================
+  // PARTNER DISTRIBUTOR MANAGEMENT APIS
+  // =========================================================================
+
+  async getPartnerDistributors() {
+    return this.request('/partner/distributors');
+  }
+
+  async createPartnerDistributor(data: any) {
+    return this.request('/partner/distributors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPartnerDistributorById(id: string) {
+    return this.request(`/partner/distributors/${encodeURIComponent(id)}`);
+  }
+
+  async updatePartnerDistributor(id: string, data: any) {
+    return this.request(`/partner/distributors/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePartnerDistributorStatus(id: string, status: string, reason?: string) {
+    return this.request(`/partner/distributors/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, reason }),
+    });
+  }
+
+  // =========================================================================
+  // DISTRIBUTOR PORTAL APIS
+  // =========================================================================
+
+  async getDistributorOverview() {
+    return this.request('/distributor/overview');
+  }
+
+  async getDistributorProfile() {
+    return this.request('/distributor/profile');
+  }
+
+  async getDistributorCentres(page = 1, limit = 50, search?: string) {
+    const q = new URLSearchParams();
+    if (page) q.set('page', page.toString());
+    if (limit) q.set('limit', limit.toString());
+    if (search) q.set('search', search);
+    const qs = q.toString();
+    return this.request(`/distributor/centres${qs ? `?${qs}` : ''}`);
+  }
+
+  async createDistributorCentreInvitation(data?: any) {
+    return this.request('/distributor/centres/invitations', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    });
+  }
+
+  async getDistributorCentreInvitations() {
+    return this.request('/distributor/centres/invitations');
+  }
+
+  async regenerateDistributorCentreInvitation(id: string) {
+    return this.request(`/distributor/centres/invitations/${encodeURIComponent(id)}/regenerate`, {
+      method: 'POST',
+    });
+  }
+
+  async getAllDistributorsAdmin() {
+    return this.request('/admin/distributors');
   }
 }
 

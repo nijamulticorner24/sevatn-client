@@ -145,7 +145,7 @@ export default function AdminPayoutsPage() {
   const pendingCount = payouts.filter((p) => p.status === 'REQUESTED' || p.status === 'PROCESSING').length;
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* Real-time Toast Banner */}
       {successToast && (
         <div className="rounded-[10px] border border-[#C3E6CB] bg-[#EAF7EE] p-4 text-[#106A3B] shadow-subtle flex items-center justify-between animate-in fade-in">

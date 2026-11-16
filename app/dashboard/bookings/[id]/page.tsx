@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { api } from '../../../../lib/api';
 import { formatDate, formatTime, formatCurrency } from '../../../../lib/utils';
 import { StateBadge } from '../../../../components/StateBadge';
+import { useToast } from '../../../../components/ui/Toast';
 import {
   ArrowLeft,
   ShieldCheck,
@@ -105,6 +106,7 @@ function formatDuration(startDate: string | Date, endDate?: string | Date) {
 export default function BookingDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const bookingId = params?.id as string;
 
   const [booking, setBooking] = useState<any>(null);
@@ -138,10 +140,17 @@ export default function BookingDetailPage() {
     setActionLoading(true);
     try {
       await api.resolveHumanAction(bookingId, action, manualRef, humanNotes);
+      toast.success(
+        action === 'SUCCESS_CONFIRMED'
+          ? 'Booking confirmed successfully.'
+          : action === 'RETRY_QUEUE'
+          ? 'Returned to queue for next attempt.'
+          : 'Booking cancelled.'
+      );
       setHumanModalOpen(false);
       fetchBooking();
     } catch (err: any) {
-      alert(err.message || 'Action failed');
+      toast.error(err.message || 'Action failed');
     } finally {
       setActionLoading(false);
     }

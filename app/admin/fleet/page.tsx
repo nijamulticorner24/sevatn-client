@@ -588,7 +588,7 @@ export default function WorkerFleetPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1540px] mx-auto pb-12 w-full px-2 sm:px-4">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* 1. Page Header with Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-subtle">
         <div>

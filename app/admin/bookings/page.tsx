@@ -26,8 +26,11 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '../../../components/EmptyState';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { useToast } from '../../../components/ui/Toast';
 
 export default function AdminBookingsPage() {
+  const toast = useToast();
   const [bookings, setBookings] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,6 +39,21 @@ export default function AdminBookingsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [confirmModalData, setConfirmModalData] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    isDestructive: boolean;
+    action: () => Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    confirmLabel: 'Confirm',
+    isDestructive: false,
+    action: async () => {},
+  });
 
   // Track known confirmed IDs to avoid duplicate alerts
   const knownConfirmedRef = useRef<Set<string>>(new Set());
@@ -184,97 +202,90 @@ export default function AdminBookingsPage() {
     };
   }, [loadBookings]);
 
-  const handleClearAllQueues = async () => {
+  const handleClearAllQueues = () => {
     const activeCount = bookings.filter((b) =>
       !['SUCCESS', 'CANCELLED', 'FAILED', 'COMPLETED'].includes(b.status)
     ).length;
 
-    const confirmed = window.confirm(
-      `⚠️ ARE YOU SURE YOU WANT TO CLEAR ALL ACTIVE QUEUES?\n\n` +
-      `This will immediately:\n` +
-      `1. Cancel all ${activeCount || 'pending'} queued & executing booking requests.\n` +
-      `2. Automatically release all reserved funds (₹100/booking) back to centre wallets.\n` +
-      `3. Terminate active jobs, release account locks, and reset worker machines to idle.\n\n` +
-      `Click OK to proceed with complete queue clearing.`
-    );
-
-    if (!confirmed) return;
-
-    setActionLoading(true);
-    try {
-      const res = await api.clearAllQueues();
-      setStatusMessage({
-        type: 'success',
-        text: `Queue Cleared: ${res.clearedBookings} bookings cancelled, ₹${res.releasedHolds * 100} hold funds refunded, ${res.cancelledJobs} jobs stopped, ${res.resetWorkers} workers reset.`,
-      });
-      loadBookings(false);
-      setTimeout(() => setStatusMessage(null), 6000);
-    } catch (err: any) {
-      setStatusMessage({
-        type: 'error',
-        text: err.message || 'Failed to clear all queues',
-      });
-    } finally {
-      setActionLoading(false);
-    }
+    setConfirmModalData({
+      isOpen: true,
+      title: 'Clear All Active Queues',
+      description: `Cancel all ${activeCount || 'pending'} queued & executing requests, release held funds back to centres, and reset worker machines to idle?`,
+      confirmLabel: 'Clear All Queues',
+      isDestructive: true,
+      action: async () => {
+        setActionLoading(true);
+        try {
+          const res = await api.clearAllQueues();
+          const text = `Queue Cleared: ${res.clearedBookings} bookings cancelled, ₹${res.releasedHolds * 100} hold funds refunded.`;
+          toast.success(text);
+          setStatusMessage({ type: 'success', text });
+          setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+          loadBookings(false);
+          setTimeout(() => setStatusMessage(null), 6000);
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to clear all queues');
+          setStatusMessage({ type: 'error', text: err.message || 'Failed to clear all queues' });
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
   };
 
-  const handlePurgeAllBookings = async () => {
+  const handlePurgeAllBookings = () => {
     const totalCount = bookings.length;
-    const confirmed = window.confirm(
-      `🚨 PERMANENT DATABASE PURGE WARNING 🚨\n\n` +
-      `Are you sure you want to PERMANENTLY DELETE all bookings from the database?\n\n` +
-      `This will immediately:\n` +
-      `1. Permanently delete all ${totalCount || ''} bookings, jobs, pilgrims, and attempts from the database.\n` +
-      `2. Refund any active wallet holds back to centre balances.\n` +
-      `3. Reset all worker machines and account locks to clean idle state.\n\n` +
-      `This action CANNOT be undone. Click OK to proceed.`
-    );
-
-    if (!confirmed) return;
-
-    setActionLoading(true);
-    try {
-      const res = await api.purgeAllBookings();
-      setStatusMessage({
-        type: 'success',
-        text: `Database Purged: Deleted ${res.deletedBookings} booking(s), ${res.deletedJobs} job(s), refunded ${res.releasedHolds} hold(s), reset ${res.resetWorkers} worker(s).`,
-      });
-      loadBookings(false);
-      setTimeout(() => setStatusMessage(null), 6000);
-    } catch (err: any) {
-      setStatusMessage({
-        type: 'error',
-        text: err.message || 'Failed to purge bookings from database',
-      });
-    } finally {
-      setActionLoading(false);
-    }
+    setConfirmModalData({
+      isOpen: true,
+      title: '🚨 Permanent Database Purge',
+      description: `PERMANENTLY delete all ${totalCount || ''} bookings, jobs, pilgrims, and attempts from the database? This action CANNOT be undone.`,
+      confirmLabel: 'Permanently Purge Database',
+      isDestructive: true,
+      action: async () => {
+        setActionLoading(true);
+        try {
+          const res = await api.purgeAllBookings();
+          const text = `Database Purged: Deleted ${res.deletedBookings} bookings, refunded ${res.releasedHolds} holds.`;
+          toast.success(text);
+          setStatusMessage({ type: 'success', text });
+          setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+          loadBookings(false);
+          setTimeout(() => setStatusMessage(null), 6000);
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to purge bookings');
+          setStatusMessage({ type: 'error', text: err.message || 'Failed to purge bookings' });
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
   };
 
-  const handleCancelBooking = async (id: string, bookingCode: string) => {
-    const confirmed = window.confirm(
-      `Cancel booking #${bookingCode}?\n\nThis will cancel the booking request and release any held ₹100 deposit back to the centre wallet.`
-    );
-    if (!confirmed) return;
-
-    setCancellingId(id);
-    try {
-      await api.cancelBooking(id);
-      setStatusMessage({
-        type: 'success',
-        text: `Booking #${bookingCode} cancelled successfully and held funds released.`,
-      });
-      loadBookings(false);
-      setTimeout(() => setStatusMessage(null), 4000);
-    } catch (err: any) {
-      setStatusMessage({
-        type: 'error',
-        text: err.message || `Failed to cancel booking #${bookingCode}`,
-      });
-    } finally {
-      setCancellingId(null);
-    }
+  const handleCancelBooking = (id: string, bookingCode: string) => {
+    setConfirmModalData({
+      isOpen: true,
+      title: `Cancel Booking #${bookingCode}`,
+      description: `Cancel booking #${bookingCode} and immediately release held deposit back to the centre wallet?`,
+      confirmLabel: 'Cancel Booking',
+      isDestructive: true,
+      action: async () => {
+        setCancellingId(id);
+        try {
+          await api.cancelBooking(id);
+          const text = `Booking #${bookingCode} cancelled successfully and held funds released.`;
+          toast.success(text);
+          setStatusMessage({ type: 'success', text });
+          setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+          loadBookings(false);
+          setTimeout(() => setStatusMessage(null), 4000);
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to cancel booking');
+          setStatusMessage({ type: 'error', text: err.message || 'Failed to cancel booking' });
+        } finally {
+          setCancellingId(null);
+        }
+      },
+    });
   };
 
   const handleRecoverStale = async () => {
@@ -308,7 +319,7 @@ export default function AdminBookingsPage() {
   ).length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-subtle">
         <div>
@@ -571,6 +582,18 @@ export default function AdminBookingsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmModalData.isOpen}
+        title={confirmModalData.title}
+        description={confirmModalData.description}
+        confirmLabel={confirmModalData.confirmLabel}
+        cancelLabel="Cancel"
+        isDestructive={confirmModalData.isDestructive}
+        loading={actionLoading || Boolean(cancellingId)}
+        onConfirm={confirmModalData.action}
+        onCancel={() => setConfirmModalData((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

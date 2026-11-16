@@ -26,14 +26,23 @@ import {
   Zap,
   ChevronRight,
   ExternalLink,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 
 const FILTER_TABS = [
   { key: 'ALL', label: 'All Requests' },
+  { key: 'ACTION_REQUIRED', label: 'Action Needed' },
   { key: 'PENDING', label: 'Watching & Queued' },
   { key: 'COMPLETED', label: 'Confirmed Passes' },
-  { key: 'FAILED', label: 'Failed / Action Needed' },
+  { key: 'FAILED', label: 'Failed' },
 ];
+
+function isActionRequired(b: any) {
+  if (!b) return false;
+  const status = typeof b === 'string' ? b : b.status;
+  return status === 'REQUIRES_HUMAN' || status === 'OTP_REQUIRED' || status === 'CAPTCHA_REQUIRED';
+}
 
 function isCompleted(b: any) {
   if (!b) return false;
@@ -49,6 +58,7 @@ function isCompleted(b: any) {
 function isFailed(b: any) {
   if (!b) return false;
   if (isCompleted(b)) return false;
+  if (isActionRequired(b)) return false;
   const status = typeof b === 'string' ? b : b.status;
   return (
     status === 'FAILED' ||
@@ -58,8 +68,7 @@ function isFailed(b: any) {
     status === 'NO_AVAILABILITY' ||
     status === 'EXPIRED' ||
     status === 'TIMEOUT' ||
-    status === 'WORKER_ERROR' ||
-    status === 'REQUIRES_HUMAN'
+    status === 'WORKER_ERROR'
   );
 }
 
@@ -70,7 +79,7 @@ function isCancelled(b: any) {
 }
 
 function isPending(b: any) {
-  return !isCompleted(b) && !isFailed(b) && !isCancelled(b);
+  return !isCompleted(b) && !isFailed(b) && !isCancelled(b) && !isActionRequired(b);
 }
 
 // Live elapsed timer component ticking every second
@@ -158,6 +167,29 @@ function playSuccessChime() {
   }
 }
 
+function playAttentionChime() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(440, now);
+    osc1.frequency.setValueAtTime(880, now + 0.15);
+    gain1.gain.setValueAtTime(0.2, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.45);
+  } catch (e) {
+    // Audio context may be restricted
+  }
+}
+
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [search, setSearch] = useState('');
@@ -165,10 +197,12 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [recentSuccessToast, setRecentSuccessToast] = useState<any | null>(null);
 
-  // Keep track of known completed booking IDs to avoid duplicate alerts
+  // Keep track of known booking IDs to avoid duplicate alerts
   const knownCompletedIds = useRef<Set<string>>(new Set());
+  const knownActionRequiredIds = useRef<Set<string>>(new Set());
   const isInitialLoad = useRef<boolean>(true);
 
   // Check notification permission on mount
@@ -222,19 +256,35 @@ export default function BookingsPage() {
         if (res?.bookings) {
           const newBookings = res.bookings;
 
-          // Check for newly completed bookings to trigger Desktop Notification
+          // Check for newly completed or action-required bookings
           if (!isInitialLoad.current) {
             newBookings.forEach((b: any) => {
-              if (isCompleted(b.status) && !knownCompletedIds.current.has(b.id)) {
+              if (isCompleted(b) && !knownCompletedIds.current.has(b.id)) {
                 knownCompletedIds.current.add(b.id);
                 triggerDesktopAlert(b);
               }
+              if (isActionRequired(b) && !knownActionRequiredIds.current.has(b.id)) {
+                knownActionRequiredIds.current.add(b.id);
+                if (soundEnabled) playAttentionChime();
+                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                  try {
+                    new Notification(`⚠️ Action Required: #${b.bookingCode}`, {
+                      body: `Official portal presented an OTP or verification challenge for devotee ${b.account?.username || 'Devotee'}!`,
+                      icon: '/favicon.ico',
+                      tag: `action-${b.id}`,
+                    });
+                  } catch (err) {}
+                }
+              }
             });
           } else {
-            // Seed known completed IDs on initial fetch
+            // Seed known completed and action-required IDs on initial fetch
             newBookings.forEach((b: any) => {
-              if (isCompleted(b.status)) {
+              if (isCompleted(b)) {
                 knownCompletedIds.current.add(b.id);
+              }
+              if (isActionRequired(b)) {
+                knownActionRequiredIds.current.add(b.id);
               }
             });
             isInitialLoad.current = false;
@@ -259,13 +309,16 @@ export default function BookingsPage() {
   }, [search]);
 
   // Statistics
+  const urgentBookings = bookings.filter((b) => isActionRequired(b));
   const totalCount = bookings.length;
+  const actionRequiredCount = urgentBookings.length;
   const pendingCount = bookings.filter((b) => isPending(b)).length;
   const completedCount = bookings.filter((b) => isCompleted(b)).length;
   const failedCount = bookings.filter((b) => isFailed(b)).length;
 
   // Filter bookings according to activeTab
   const filteredBookings = bookings.filter((b) => {
+    if (activeTab === 'ACTION_REQUIRED') return isActionRequired(b);
     if (activeTab === 'PENDING') return isPending(b);
     if (activeTab === 'COMPLETED') return isCompleted(b);
     if (activeTab === 'FAILED') return isFailed(b);
@@ -312,12 +365,31 @@ export default function BookingsPage() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Sound Alert Toggle */}
+          <button
+            type="button"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-[11.5px] font-semibold transition-colors ${
+              soundEnabled
+                ? 'border-[#E4E7EC] bg-white text-[#172033] hover:bg-[#F8FAFC]'
+                : 'border-[#FECDCA] bg-[#FEF3F2] text-[#B42318]'
+            }`}
+            title={soundEnabled ? 'Chime sound alerts enabled' : 'Chime sound alerts muted'}
+          >
+            {soundEnabled ? (
+              <Volume2 className="h-3.5 w-3.5 text-[#C98219]" />
+            ) : (
+              <VolumeX className="h-3.5 w-3.5 text-[#C2413B]" />
+            )}
+            <span>{soundEnabled ? 'Sound On' : 'Muted'}</span>
+          </button>
+
           {/* Notification Permission Toggle */}
           {notificationPermission !== 'granted' ? (
             <button
               type="button"
               onClick={requestNotificationAccess}
-              className="flex items-center gap-1.5 rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] px-3.5 py-2 text-[12.5px] font-semibold text-[#8F5A0D] hover:bg-[#FCE0A6] transition-colors shadow-subtle"
+              className="flex items-center gap-1.5 rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] px-3.5 py-1.5 text-[12px] font-semibold text-[#8F5A0D] hover:bg-[#FCE0A6] transition-colors shadow-subtle"
             >
               <Bell className="h-3.5 w-3.5 text-[#C98219]" />
               <span>Enable Desktop Alerts</span>
@@ -338,6 +410,40 @@ export default function BookingsPage() {
           </Link>
         </div>
       </div>
+
+      {/* Urgent Action Required Banner */}
+      {urgentBookings.length > 0 && (
+        <div className="rounded-[10px] border border-[#F5C6CB] bg-[#FDECEC] p-4 text-[#992B26] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <div className="h-8 w-8 rounded-full bg-[#F8D7DA] text-[#C2413B] flex items-center justify-center shrink-0 animate-pulse mt-0.5">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[13.5px] font-bold">
+                Action Required: {urgentBookings.length} Booking{urgentBookings.length !== 1 ? 's' : ''} Need Immediate Attention
+              </p>
+              <p className="text-[12px] text-[#A8322B] mt-0.5">
+                The official portal presented an OTP or verification challenge. Complete it now before the session times out.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('ACTION_REQUIRED')}
+              className="rounded-[6px] border border-[#F5C6CB] bg-white text-[#C2413B] hover:bg-[#FDECEC] px-3 py-1.5 text-[12px] font-bold transition-colors"
+            >
+              Filter Action Items
+            </button>
+            <Link
+              href={`/dashboard/bookings/${urgentBookings[0].id}`}
+              className="rounded-[6px] bg-[#C2413B] text-white px-3.5 py-1.5 text-[12px] font-bold hover:bg-[#A8322B] transition-colors shadow-subtle shrink-0"
+            >
+              Resolve #{urgentBookings[0].bookingCode}
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* 4 Metric Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
@@ -378,7 +484,16 @@ export default function BookingsPage() {
             <span className="text-[11.5px] font-bold uppercase tracking-wider">Action Needed / Failed</span>
             <AlertCircle className="h-4 w-4 text-[#C2413B]" />
           </div>
-          <p className="text-[24px] font-bold text-[#C2413B] mt-2 tabular-nums">{failedCount}</p>
+          <div className="flex items-baseline gap-2 mt-2">
+            <p className="text-[24px] font-bold text-[#C2413B] tabular-nums">
+              {actionRequiredCount > 0 ? `${actionRequiredCount} Action` : failedCount}
+            </p>
+            {actionRequiredCount > 0 && (
+              <span className="text-[11px] font-bold text-[#C2413B] bg-[#FDECEC] px-1.5 py-0.5 rounded border border-[#F5C6CB] animate-pulse">
+                Urgent
+              </span>
+            )}
+          </div>
           <p className="text-[11.5px] text-[#667085] mt-0.5">Human OTP or quota full</p>
         </div>
       </div>
@@ -391,6 +506,8 @@ export default function BookingsPage() {
             const count =
               tab.key === 'ALL'
                 ? totalCount
+                : tab.key === 'ACTION_REQUIRED'
+                ? actionRequiredCount
                 : tab.key === 'PENDING'
                 ? pendingCount
                 : tab.key === 'COMPLETED'

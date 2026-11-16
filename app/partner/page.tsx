@@ -16,20 +16,40 @@ import {
   FileCheck2,
   TrendingUp,
   ExternalLink,
+  Plus,
+  CheckCircle2,
+  AlertCircle,
+  Ticket,
+  Percent,
+  Layers,
+  Activity,
+  UserCheck,
 } from 'lucide-react';
 
 export default function PartnerOverviewPage() {
   const [profile, setProfile] = useState<any>(null);
   const [centres, setCentres] = useState<any[]>([]);
+  const [distributors, setDistributors] = useState<any[]>([]);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [markupData, setMarkupData] = useState<any>(null);
+  const [payoutsData, setPayoutsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.getMe().catch(() => null),
       api.getPartnerCentres(1).catch(() => ({ centres: [] })),
-    ]).then(([profileData, centresData]) => {
+      api.getPartnerDistributors().catch(() => []),
+      api.getPartnerInvitations().catch(() => ({ invitations: [] })),
+      api.getPartnerMarkup().catch(() => null),
+      api.getPartnerPayouts().catch(() => null),
+    ]).then(([profileData, centresData, distData, invData, markupRes, payoutRes]) => {
       if (profileData) setProfile(profileData);
       if (centresData?.centres) setCentres(centresData.centres);
+      if (Array.isArray(distData)) setDistributors(distData);
+      if (invData?.invitations) setInvitations(invData.invitations);
+      if (markupRes) setMarkupData(markupRes);
+      if (payoutRes) setPayoutsData(payoutRes);
       setLoading(false);
     });
   }, []);
@@ -39,19 +59,64 @@ export default function PartnerOverviewPage() {
   const commissionRate = Number(partner?.commissionRate || 20);
   const commissionSlab = partner?.commissionSlab || `${commissionPercentage}%`;
 
+  const totalDistributors = distributors.length;
+  const activeDistributors = distributors.filter((d) => d.status === 'ACTIVE').length;
   const totalCentresCount = centres.length;
   const activeCentresCount = centres.filter((c) => c.status === 'ACTIVE').length;
-  const estimatedBookings = totalCentresCount * 18;
-  const totalCommissionEarned = estimatedBookings * commissionRate;
+  const pendingInvitations = invitations.filter((i) => i.status === 'ACTIVE' && (!i.expiresAt || new Date(i.expiresAt) > new Date())).length;
+
+  const actualBalance = Number(payoutsData?.availableBalance ?? 0);
+  const actualTotalEarned = Number(payoutsData?.totalEarned ?? actualBalance);
+  const totalCommissionEarned = actualTotalEarned;
+
+  // Group centres by distributor
+  const distributorGroups: { [key: string]: { name: string; code: string; count: number; active: number } } = {};
+  let directCentresCount = 0;
+
+  centres.forEach((c) => {
+    if (c.distributor) {
+      const key = c.distributor.id;
+      if (!distributorGroups[key]) {
+        distributorGroups[key] = {
+          name: c.distributor.name,
+          code: c.distributor.distributorCode,
+          count: 0,
+          active: 0,
+        };
+      }
+      distributorGroups[key].count++;
+      if (c.status === 'ACTIVE') distributorGroups[key].active++;
+    } else {
+      directCentresCount++;
+    }
+  });
+
+  // Recent activity aggregated from distributors, centres and invitations
+  const activityList = [
+    ...distributors.map((d) => ({
+      type: 'DISTRIBUTOR',
+      title: `Distributor Created: ${d.name} (${d.distributorCode})`,
+      subtitle: `Assigned slab ${d.commissionSlab || 'STANDARD'} • Markup +₹${d.markup || 0}`,
+      date: d.createdAt,
+      status: d.status,
+    })),
+    ...centres.map((c) => ({
+      type: 'CENTRE',
+      title: `Centre Onboarded: ${c.centreName} (${c.centreCode})`,
+      subtitle: `${c.district} • ${c.distributor ? `Managed by ${c.distributor.name}` : 'Direct Partner'}`,
+      date: c.createdAt,
+      status: c.status,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6);
 
   if (loading) {
     return (
       <div className="space-y-6">
         <div className="h-28 rounded-[10px] border border-[#E6EAF0] bg-white animate-pulse" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="h-32 rounded-[10px] border border-[#E6EAF0] bg-white animate-pulse" />
-          <div className="h-32 rounded-[10px] border border-[#E6EAF0] bg-white animate-pulse" />
-          <div className="h-32 rounded-[10px] border border-[#E6EAF0] bg-white animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-24 rounded-[10px] border border-[#E6EAF0] bg-white animate-pulse" />
+          ))}
         </div>
       </div>
     );
@@ -68,234 +133,276 @@ export default function PartnerOverviewPage() {
               <span>Authorized Regional Franchise • Partner Dashboard</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#172033]">
-              {partner?.name || 'NIJA Digital Network & e-Services'}
+              {partner?.name || 'Regional Franchise Partner'}
             </h1>
             <p className="text-xs sm:text-sm text-[#667085] mt-1 max-w-xl">
-              Partner Code: <span className="font-mono font-bold text-[#172033]">{partner?.partnerCode || 'PT-001'}</span> • Regional Jurisdiction: <span className="font-semibold text-[#172033]">{partner?.district || 'Chennai'} ({partner?.taluk || 'Guindy'})</span>
+              Partner Code: <span className="font-mono font-bold text-[#172033]">{partner?.partnerCode || 'PT-001'}</span> • Regional Jurisdiction: <span className="font-semibold text-[#172033]">{partner?.district || 'Tamil Nadu'} {partner?.taluk ? `(${partner.taluk})` : ''}</span>
             </p>
           </div>
 
           <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-4 shrink-0 space-y-2 min-w-[240px]">
             <div className="flex items-center justify-between text-xs">
               <span className="text-[#667085]">Partner Status</span>
-              {partner?.status === 'ACTIVE' ? (
-                <span className="rounded bg-[#EAF7EE] px-2 py-0.5 text-[10px] font-bold text-[#198754] border border-[#C3E6CB]">
-                  ACTIVE FRANCHISE
-                </span>
-              ) : partner?.status === 'PENDING_APPROVAL' ? (
-                <span className="rounded bg-[#EFF8FF] px-2 py-0.5 text-[10px] font-bold text-[#175CD3] border border-[#B2DDFF]">
-                  AWAITING APPROVAL
-                </span>
-              ) : (
-                <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
-                  PENDING PAYMENT
-                </span>
-              )}
+              <span className="rounded bg-[#EAF7EE] px-2 py-0.5 text-[10px] font-bold text-[#198754] border border-[#C3E6CB]">
+                {partner?.status || 'ACTIVE'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-xs border-t border-[#E6EAF0] pt-2">
-              <span className="text-[#667085]">Franchise License Fee</span>
-              <span className="font-bold text-[#172033]">₹599.00 {partner?.feePaid ? '(Paid)' : '(Pending)'}</span>
+              <span className="text-[#667085]">Configured Ticket Markup</span>
+              <span className="font-bold text-[#C98219]">+{formatINR(markupData?.currentMarkup || 0)}</span>
             </div>
             <div className="flex items-center justify-between text-xs border-t border-[#E6EAF0] pt-2">
-              <span className="text-[#667085]">Centre Onboarding Fee</span>
-              <span className="font-bold text-[#172033]">₹249.00</span>
-            </div>
-            <div className="flex items-center justify-between text-xs border-t border-[#E6EAF0] pt-2">
-              <span className="text-[#667085]">Commission Split ({commissionPercentage}%)</span>
+              <span className="text-[#667085]">Commission Split</span>
               <span className="font-bold text-[#8F5A0D]">₹{commissionRate.toFixed(2)} / Pass ({commissionSlab})</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {partner?.status !== 'ACTIVE' && (
-          <div className="mt-4 rounded-[8px] border border-[#F9DE9B] bg-[#FEF7E6] p-4 text-xs text-[#8F5A0D] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-[#C98219] shrink-0" />
-              <span>
-                {partner?.status === 'PENDING_APPROVAL'
-                  ? 'Your franchise fee payment has been submitted and is awaiting administrator verification.'
-                  : 'Your partner franchise account is in Pending Payment status. Please complete the ₹599.00 franchise fee.'}
+      {/* 5 Hierarchy Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Total Distributors</span>
+          <p className="text-2xl font-black text-[#172033] mt-1">{totalDistributors}</p>
+          <span className="text-[11px] text-[#667085] mt-1">{activeDistributors} active</span>
+        </div>
+
+        <div className="rounded-[10px] border border-[#C3E6CB] bg-[#EAF7EE]/50 p-4 shadow-subtle flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#198754] uppercase tracking-wider">Active Distributors</span>
+          <p className="text-2xl font-black text-[#198754] mt-1">{activeDistributors}</p>
+          <span className="text-[11px] text-[#198754] mt-1">Operational</span>
+        </div>
+
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Total Centres</span>
+          <p className="text-2xl font-black text-[#172033] mt-1">{totalCentresCount}</p>
+          <span className="text-[11px] text-[#667085] mt-1">{activeCentresCount} active</span>
+        </div>
+
+        <div className="rounded-[10px] border border-[#C3E6CB] bg-[#EAF7EE]/50 p-4 shadow-subtle flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#198754] uppercase tracking-wider">Active Centres</span>
+          <p className="text-2xl font-black text-[#198754] mt-1">{activeCentresCount}</p>
+          <span className="text-[11px] text-[#198754] mt-1">Geofence Validated</span>
+        </div>
+
+        <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FEF7E6]/60 p-4 shadow-subtle flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-[#8F5A0D] uppercase tracking-wider">Pending Invites</span>
+          <p className="text-2xl font-black text-[#C98219] mt-1">{pendingInvitations}</p>
+          <span className="text-[11px] text-[#8F5A0D] mt-1">Awaiting registration</span>
+        </div>
+      </div>
+
+      {/* Quick Actions Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Link
+          href="/partner/distributors"
+          className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
+        >
+          <Plus className="h-4 w-4 text-[#C98219]" />
+          <span>Create Distributor</span>
+        </Link>
+        <Link
+          href="/partner/distributors"
+          className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
+        >
+          <Users className="h-4 w-4 text-[#C98219]" />
+          <span>View Distributors</span>
+        </Link>
+        <Link
+          href="/partner/centres"
+          className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
+        >
+          <Building2 className="h-4 w-4 text-[#C98219]" />
+          <span>View Centres</span>
+        </Link>
+        <Link
+          href="/partner/markup"
+          className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
+        >
+          <DollarSign className="h-4 w-4 text-[#C98219]" />
+          <span>Manage Ticket Markup</span>
+        </Link>
+      </div>
+
+      {/* Distributor Overview & Centre Network Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Distributor Overview */}
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-[#172033] flex items-center gap-2">
+              <Users className="h-4 w-4 text-[#C98219]" />
+              <span>Distributor Network ({distributors.length})</span>
+            </h3>
+            <Link
+              href="/partner/distributors"
+              className="text-xs font-bold text-[#C98219] hover:underline flex items-center gap-1"
+            >
+              <span>View All</span>
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {distributors.length === 0 ? (
+            <div className="p-8 text-center text-xs text-[#667085]">
+              <Building2 className="h-8 w-8 text-[#CBD5E1] mx-auto mb-2" />
+              <p className="font-semibold text-[#172033]">No Distributors Onboarded</p>
+              <p className="mt-1">Add your first regional Distributor to begin expanding your network.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {distributors.slice(0, 4).map((d) => (
+                <div
+                  key={d.id}
+                  className="rounded-[8px] border border-[#E6EAF0] p-3 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold text-[#C98219] bg-[#FEF7E6] px-1.5 py-0.5 rounded border border-[#F9DE9B]">
+                        {d.distributorCode}
+                      </span>
+                      <p className="text-xs font-bold text-[#172033] truncate">{d.name}</p>
+                    </div>
+                    <p className="text-[11px] text-[#667085] mt-0.5">
+                      {d.centresCount || 0} Centres • Markup +₹{d.markup || 0} • Slab {d.commissionSlab || 'STANDARD'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold border ${
+                        d.status === 'ACTIVE'
+                          ? 'bg-[#EAF7EE] text-[#198754] border-[#C3E6CB]'
+                          : 'bg-[#FDECEC] text-[#C2413B] border-[#F5C6CB]'
+                      }`}
+                    >
+                      {d.status}
+                    </span>
+                    <Link
+                      href={`/partner/distributors/${d.id}`}
+                      className="text-xs font-bold text-[#175CD3] hover:underline"
+                    >
+                      Details
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Centre Network Distribution Grouped by Distributor */}
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-[#172033] flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-[#C98219]" />
+              <span>Centres Network Distribution</span>
+            </h3>
+            <Link
+              href="/partner/centres"
+              className="text-xs font-bold text-[#C98219] hover:underline flex items-center gap-1"
+            >
+              <span>View All ({centres.length})</span>
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="space-y-2.5">
+            {/* Direct / Legacy Centres */}
+            <div className="rounded-[8px] border border-[#E6EAF0] p-3 flex items-center justify-between bg-[#F8FAFC]">
+              <div>
+                <p className="text-xs font-bold text-[#172033]">Direct Franchise Centres (Legacy)</p>
+                <p className="text-[11px] text-[#667085]">Directly assigned without distributor</p>
+              </div>
+              <span className="font-mono font-bold text-sm text-[#172033]">
+                {directCentresCount} centres
               </span>
             </div>
-            {partner?.invitations?.[0]?.token && (
-              <Link
-                href={`/partner/onboard/${partner.invitations[0].token}`}
-                className="rounded-[6px] bg-[#C98219] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#B57414] shrink-0"
-              >
-                Complete Onboarding & Payment
-              </Link>
+
+            {/* Subordinate Distributors Grouping */}
+            {Object.keys(distributorGroups).length === 0 && directCentresCount === 0 ? (
+              <div className="p-6 text-center text-xs text-[#667085]">
+                <p className="font-semibold text-[#172033]">No Network Centres Found</p>
+                <p className="mt-1">Onboard centres via direct invitation or your distributors.</p>
+              </div>
+            ) : (
+              Object.entries(distributorGroups).slice(0, 4).map(([distId, group]) => (
+                <div
+                  key={distId}
+                  className="rounded-[8px] border border-[#E6EAF0] p-3 flex items-center justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[#172033] truncate">
+                      {group.name} ({group.code})
+                    </p>
+                    <p className="text-[11px] text-[#198754]">
+                      {group.active} active centres
+                    </p>
+                  </div>
+                  <Link
+                    href={`/partner/centres?distributorId=${distId}`}
+                    className="font-mono font-bold text-xs text-[#175CD3] hover:underline"
+                  >
+                    {group.count} centres →
+                  </Link>
+                </div>
+              ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Recent Activity Section */}
+      <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-6 shadow-subtle space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-[#172033] flex items-center gap-2">
+            <Activity className="h-4 w-4 text-[#C98219]" />
+            <span>Recent Network Activity</span>
+          </h3>
+          <span className="text-xs text-[#667085]">Auto-refreshed with real system timestamps</span>
+        </div>
+
+        {activityList.length === 0 ? (
+          <div className="p-8 text-center text-xs text-[#667085]">
+            <Clock className="h-8 w-8 text-[#CBD5E1] mx-auto mb-2" />
+            <p className="font-semibold text-[#172033]">No Activity Recorded Yet</p>
+            <p className="mt-1">Onboard distributors or centres to see activity updates here.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[#F0F3F7]">
+            {activityList.map((item, index) => (
+              <div key={index} className="py-3 flex items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
+                      item.type === 'DISTRIBUTOR'
+                        ? 'bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]'
+                        : 'bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]'
+                    }`}
+                  >
+                    {item.type === 'DISTRIBUTOR' ? <Users className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[#172033] truncate">{item.title}</p>
+                    <p className="text-[11px] text-[#667085] truncate">{item.subtitle}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold border ${
+                      item.status === 'ACTIVE'
+                        ? 'bg-[#EAF7EE] text-[#198754] border-[#C3E6CB]'
+                        : 'bg-[#FEF7E6] text-[#8F5A0D] border-[#F9DE9B]'
+                    }`}
+                  >
+                    {item.status}
+                  </span>
+                  <span className="block text-[10.5px] text-[#667085] mt-0.5">
+                    {formatDate(item.date)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-      </div>
-
-      {/* Partner Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Total Centres */}
-        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#667085]">Network Centres</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
-                <Building2 className="h-4 w-4" />
-              </div>
-            </div>
-            <p className="mt-2 text-2xl font-extrabold text-[#172033] tabular-nums">
-              {totalCentresCount}
-            </p>
-            <p className="text-[11px] text-[#198754] font-medium mt-0.5">
-              {activeCentresCount} Active & Validated
-            </p>
-          </div>
-          <Link
-            href="/partner/centres"
-            className="mt-4 text-xs font-bold text-[#C98219] hover:underline flex items-center gap-1"
-          >
-            <span>View All Centres</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-
-        {/* Metric 2: Network Bookings */}
-        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#667085]">Network Bookings</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#F7F9FC] text-[#475467] border border-[#E6EAF0]">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-            </div>
-            <p className="mt-2 text-2xl font-extrabold text-[#172033] tabular-nums">
-              {estimatedBookings}
-            </p>
-            <p className="text-[11px] text-[#667085] mt-0.5">
-              Passes processed by your network
-            </p>
-          </div>
-          <Link
-            href="/partner/ledger"
-            className="mt-4 text-xs font-bold text-[#C98219] hover:underline flex items-center gap-1"
-          >
-            <span>View Split Ledger</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-
-        {/* Metric 3: Total Commission Earned */}
-        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#667085]">Partner Commission</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#EAF7EE] text-[#198754] border border-[#C3E6CB]">
-                <DollarSign className="h-4 w-4" />
-              </div>
-            </div>
-            <p className="mt-2 text-2xl font-extrabold text-[#198754] tabular-nums">
-              {formatINR(totalCommissionEarned)}
-            </p>
-            <p className="text-[11px] text-[#667085] mt-0.5">
-              {commissionPercentage}% of Service Fee (₹{commissionRate.toFixed(2)}/pass)
-            </p>
-          </div>
-          <Link
-            href="/partner/payouts"
-            className="mt-4 text-xs font-bold text-[#198754] hover:underline flex items-center gap-1"
-          >
-            <span>Withdraw Earnings & Payouts</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-
-        {/* Metric 4: Onboarding Velocity */}
-        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#667085]">Franchise Growth</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
-                <TrendingUp className="h-4 w-4" />
-              </div>
-            </div>
-            <p className="mt-2 text-lg font-bold text-[#172033]">
-              100% Territory Coverage
-            </p>
-            <p className="text-[11px] text-[#667085] mt-0.5">
-              Tamil Nadu State Division
-            </p>
-          </div>
-          <Link
-            href="/partner/invitations"
-            className="mt-4 text-xs font-bold text-[#C98219] hover:underline flex items-center gap-1"
-          >
-            <span>Onboard More Centres</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-      </div>
-
-      {/* Network Centres Directory Preview */}
-      <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-6 shadow-subtle">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-base font-bold text-[#172033] flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-[#C98219]" />
-              Centres Registered Under Your Partner Franchise
-            </h3>
-            <p className="text-xs text-[#667085] mt-0.5">
-              Real-time monitoring of active eSevai operators and booking volume.
-            </p>
-          </div>
-          <Link
-            href="/partner/centres"
-            className="text-xs font-bold text-[#C98219] hover:underline flex items-center gap-1"
-          >
-            <span>View All Centres ({centres.length})</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-
-        <div className="overflow-x-auto rounded-[8px] border border-[#E6EAF0]">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#F8FAFC] text-[#667085] font-semibold border-b border-[#E6EAF0]">
-              <tr>
-                <th className="py-3 px-4">Centre Name & Code</th>
-                <th className="py-3 px-4">Operator</th>
-                <th className="py-3 px-4">District / Taluk</th>
-                <th className="py-3 px-4">5 KM Geofence</th>
-                <th className="py-3 px-4">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E6EAF0] bg-white">
-              {centres.slice(0, 5).map((c) => (
-                <tr key={c.id} className="hover:bg-[#FAFBFD] transition-colors">
-                  <td className="py-3 px-4 font-bold text-[#172033]">
-                    {c.centreName}
-                    <span className="block text-[11px] font-mono font-normal text-[#667085]">
-                      {c.centreCode}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-[#475467]">
-                    {c.user?.name || 'Operator'}
-                    <span className="block text-[11px] text-[#667085]">{c.user?.mobile || ''}</span>
-                  </td>
-                  <td className="py-3 px-4 text-[#475467]">
-                    {c.district} ({c.taluk})
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#198754]">
-                      <MapPin className="h-3 w-3" />
-                      GPS Configured
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="rounded bg-[#EAF7EE] px-2 py-0.5 text-[10px] font-bold text-[#198754] border border-[#C3E6CB]">
-                      ACTIVE
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );

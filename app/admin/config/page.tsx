@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { api } from '../../../lib/api';
 import {
   Settings,
@@ -22,15 +23,12 @@ import {
   AlertCircle,
   Copy,
   Check,
+  ArrowRight,
 } from 'lucide-react';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
 
 export default function SystemConfigPage() {
   const [config, setConfig] = useState<any>({
-    serviceFee: 100,
-    registrationFee: 249,
-    franchiseFee: 599,
-    partnerMinWithdrawal: 100,
     accountValidityDays: 365,
     checkingIntervalSeconds: 300,
     leaseTimeoutSeconds: 120,
@@ -120,7 +118,7 @@ export default function SystemConfigPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[#E6EAF0]">
         <div>
@@ -129,10 +127,10 @@ export default function SystemConfigPage() {
             <span>Platform Administration</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[#172033]">
-            System, Payments & Compliance Configuration
+            Payment Methods Architecture &amp; System Configuration
           </h1>
           <p className="text-xs text-[#667085] mt-1">
-            Manage online gateway providers, upload offline UPI payment QR codes, configure platform fees, and set compliance intervals.
+            Configure online gateway providers (Razorpay, Cashfree, PhonePe, Stripe) and offline UPI QR codes for wallet top-ups and platform collections.
           </p>
         </div>
 
@@ -476,69 +474,29 @@ export default function SystemConfigPage() {
           </div>
 
           {/* ============================================================ */}
-          {/* 2. FINANCIAL ARCHITECTURE & FRANCHISE PRICING               */}
+          {/* NOTICE: FINANCIAL ARCHITECTURE MOVED TO /admin/pricing       */}
           {/* ============================================================ */}
-          <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-6 shadow-subtle space-y-4">
-            <h2 className="text-xs font-bold text-[#172033] uppercase tracking-wider pb-3 border-b border-[#E6EAF0] flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-[#C98219]" />
-              <span>Platform Financial Fee & License Architecture</span>
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div>
-                <label className="block text-xs font-semibold text-[#172033] mb-1.5">
-                  Service Fee per Booking (₹)
-                </label>
-                <input
-                  type="number"
-                  value={config.serviceFee}
-                  onChange={(e) => setConfig({ ...config, serviceFee: Number(e.target.value) })}
-                  className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
-                />
-                <p className="text-[11px] text-[#667085] mt-1">Standard fee debited from centre wallet on confirmed pass</p>
+          <div className="rounded-[10px] border border-[#B2DDFF] bg-[#EFF8FF] p-5 shadow-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[#D1E9FF] text-[#175CD3] shrink-0">
+                <DollarSign className="h-5 w-5" />
               </div>
-
               <div>
-                <label className="block text-xs font-semibold text-[#172033] mb-1.5">
-                  Centre Onboarding Fee (₹)
-                </label>
-                <input
-                  type="number"
-                  value={config.registrationFee}
-                  onChange={(e) => setConfig({ ...config, registrationFee: Number(e.target.value) })}
-                  className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
-                />
-                <p className="text-[11px] text-[#667085] mt-1">One-time registration fee for eSevai / CSC centres (Default: ₹249)</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#172033] mb-1.5">
-                  Partner Franchise License Fee (₹)
-                </label>
-                <input
-                  type="number"
-                  value={config.franchiseFee || 599}
-                  onChange={(e) => setConfig({ ...config, franchiseFee: Number(e.target.value) })}
-                  className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
-                />
-                <p className="text-[11px] text-[#667085] mt-1">One-time regional franchise partner onboarding fee (Default: ₹599)</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#172033] mb-1.5 flex items-center justify-between">
-                  <span>Partner Min Withdrawal (₹)</span>
-                  <span className="text-[10px] font-bold text-[#C98219] bg-[#FEF7E6] px-1.5 py-0.5 rounded border border-[#F9DE9B]">Payout Limit</span>
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={config.partnerMinWithdrawal ?? 100}
-                  onChange={(e) => setConfig({ ...config, partnerMinWithdrawal: Number(e.target.value) })}
-                  className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
-                />
-                <p className="text-[11px] text-[#667085] mt-1">Minimum wallet balance partner can request to withdraw (Default: ₹100)</p>
+                <h4 className="text-sm font-bold text-[#172033]">
+                  Platform Financial Fee &amp; License Architecture Moved
+                </h4>
+                <p className="text-xs text-[#475467] mt-0.5">
+                  Platform Service Fees, Centre Onboarding Fees, Franchise License Fees, and Three-Level Ticket Markups are now centrally managed in <strong>Pricing &amp; Markups Hub</strong>.
+                </p>
               </div>
             </div>
+            <Link
+              href="/admin/pricing"
+              className="inline-flex items-center gap-2 rounded-[8px] bg-[#175CD3] hover:bg-[#154fc1] text-white px-4 py-2 text-xs font-bold shadow-subtle shrink-0 transition-colors self-start sm:self-auto"
+            >
+              <span>Manage Pricing &amp; Fees</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
           {/* ============================================================ */}

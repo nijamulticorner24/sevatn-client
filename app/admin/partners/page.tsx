@@ -384,7 +384,7 @@ export default function AdminPartnersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* Toast Notification */}
       {successToast && (
         <div className="fixed top-5 right-5 z-50 rounded-[8px] border border-[#A6F4C5] bg-[#ECFDF3] px-4 py-3 text-xs font-bold text-[#027A48] shadow-modal flex items-center gap-2 animate-in fade-in slide-in-from-top-3">

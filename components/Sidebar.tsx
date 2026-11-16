@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   DollarSign,
   UserCheck,
+  UserPlus,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -33,6 +34,39 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
   const pathname = usePathname();
   const isSuperAdmin = userRole === 'SUPER_ADMIN';
+  const isPartner = userRole === 'PARTNER';
+
+  // Partner Navigation Groups
+  const partnerNavGroups = [
+    {
+      group: 'Overview',
+      items: [
+        { name: 'Dashboard', href: '/partner', icon: LayoutDashboard },
+      ],
+    },
+    {
+      group: 'Network Management',
+      items: [
+        { name: 'Distributors', href: '/partner/distributors', icon: Users },
+        { name: 'Centres', href: '/partner/centres', icon: Building2 },
+        { name: 'Invitations', href: '/partner/invitations', icon: UserPlus },
+      ],
+    },
+    {
+      group: 'Business Settings',
+      items: [
+        { name: 'Ticket Markup', href: '/partner/markup', icon: DollarSign },
+        { name: 'Profile', href: '/partner/profile', icon: UserCheck },
+      ],
+    },
+    {
+      group: 'Finance',
+      items: [
+        { name: 'Payouts', href: '/partner/payouts', icon: DollarSign },
+        { name: 'Ledger', href: '/partner/ledger', icon: Receipt },
+      ],
+    },
+  ];
 
   const isTicketAssistContext =
     pathname?.startsWith('/dashboard/ticket-assist') ||
@@ -78,7 +112,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
   // Admin Links
   const adminLinks = [
     { name: 'Admin Overview', href: '/admin', icon: LayoutDashboard },
+    { name: 'Pricing & Markups', href: '/admin/pricing', icon: DollarSign },
     { name: 'Partners', href: '/admin/partners', icon: Users },
+    { name: 'Distributors', href: '/admin/distributors', icon: Building2 },
     { name: 'Partner Payouts', href: '/admin/payouts', icon: DollarSign },
     { name: 'Worker PC Fleet', href: '/admin/fleet', icon: MonitorDot, badge: 'Live' },
     { name: 'Central Queue', href: '/admin/bookings', icon: ListOrdered },
@@ -92,8 +128,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
   return (
     <aside className="w-64 shrink-0 hidden md:block">
       <div className="sticky top-20 flex flex-col gap-6 rounded-[10px] bg-white p-4 border border-[#E6EAF0] shadow-subtle">
-        {/* CONTEXT 1: TICKETASSIST SERVICE NAVIGATION */}
-        {isTicketAssistContext ? (
+        {/* CONTEXT 0: PARTNER PORTAL NAVIGATION */}
+        {isPartner || pathname?.startsWith('/partner') ? (
+          <>
+            <div className="border-b border-[#E6EAF0] pb-2">
+              <p className="text-[10px] font-extrabold tracking-wider text-[#C98219] uppercase">
+                PARTNER PORTAL
+              </p>
+            </div>
+            {partnerNavGroups.map((group) => (
+              <div key={group.group}>
+                <p className="px-3 text-[10.5px] font-bold tracking-wider text-[#98A2B3] uppercase mb-1">
+                  {group.group}
+                </p>
+                <nav className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = pathname === item.href;
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-[13px] font-medium transition-colors',
+                          active
+                            ? 'bg-[#FDF7ED] text-[#172033] font-semibold border-l-2 border-[#C98219]'
+                            : 'text-[#475467] hover:bg-[#F8FAFC] hover:text-[#172033]',
+                        )}
+                      >
+                        <Icon className={cn('h-4 w-4', active ? 'text-[#C98219]' : 'text-[#667085]')} />
+                        <span>{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            ))}
+          </>
+        ) : isTicketAssistContext ? (
           <>
             {/* Back to Platform Link */}
             <div className="border-b border-[#E6EAF0] pb-3">

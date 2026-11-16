@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useRouter } from 'next/navigation';
+import { NotificationPermissionGuard } from '@/components/platform/NotificationPermissionGuard';
 
 export default function AdminLayout({
   children,
@@ -33,5 +34,9 @@ export default function AdminLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <NotificationPermissionGuard allowSuperAdminBypass={true}>
+      {children}
+    </NotificationPermissionGuard>
+  );
 }

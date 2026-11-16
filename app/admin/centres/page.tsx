@@ -33,6 +33,8 @@ import {
 import { MetricBlock } from '../../../components/MetricBlock';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
 import { EmptyState } from '../../../components/EmptyState';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { useToast } from '../../../components/ui/Toast';
 
 const TN_DISTRICTS = [
   'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
@@ -79,6 +81,24 @@ export default function AdminCentresPage() {
     status: 'ACTIVE',
     latitude: '',
     longitude: '',
+  });
+
+  const toast = useToast();
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    isDestructive: boolean;
+    action: () => Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    confirmLabel: 'Confirm',
+    isDestructive: false,
+    action: async () => {},
   });
 
   // Edit Form State
@@ -212,48 +232,70 @@ export default function AdminCentresPage() {
     }
   };
 
-  const handleToggleStatus = async (centre: any) => {
+  const handleToggleStatus = (centre: any) => {
     const isCurrentlyActive = centre.status === 'ACTIVE';
-    const confirmMsg = isCurrentlyActive
-      ? `Are you sure you want to suspend centre '${centre.centreName}' (${centre.centreCode})?`
-      : `Activate centre '${centre.centreName}' (${centre.centreCode}) and renew license cycle?`;
-
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      if (isCurrentlyActive) {
-        await api.suspendCentre(centre.id);
-      } else {
-        await api.activateCentre(centre.id);
-      }
-      loadData();
-    } catch (err: any) {
-      alert(`Action failed: ${err.message}`);
-    }
+    setConfirmAction({
+      isOpen: true,
+      title: isCurrentlyActive ? 'Suspend Centre' : 'Activate Centre',
+      description: isCurrentlyActive
+        ? `Are you sure you want to suspend centre '${centre.centreName}' (${centre.centreCode})? The operator will not be able to log in or book passes.`
+        : `Activate centre '${centre.centreName}' (${centre.centreCode}) and renew license cycle?`,
+      confirmLabel: isCurrentlyActive ? 'Suspend Centre' : 'Activate Centre',
+      isDestructive: isCurrentlyActive,
+      action: async () => {
+        setConfirmLoading(true);
+        try {
+          if (isCurrentlyActive) {
+            await api.suspendCentre(centre.id);
+            toast.success(`Centre '${centre.centreName}' suspended.`);
+          } else {
+            await api.activateCentre(centre.id);
+            toast.success(`Centre '${centre.centreName}' activated.`);
+          }
+          setConfirmAction((prev) => ({ ...prev, isOpen: false }));
+          loadData();
+        } catch (err: any) {
+          toast.error(err.message || 'Action failed');
+        } finally {
+          setConfirmLoading(false);
+        }
+      },
+    });
   };
 
-  const handleReissueActivation = async (centre: any) => {
-    const confirmMsg = `Reissue activation password for '${centre.centreName}'? The operator will be required to change password upon sign in.`;
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      const res = await api.reissueCentreActivation(centre.id);
-      const code = res.centreCode || centre.centreCode;
-      const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/c/${code}` : `/c/${code}`;
-      setCredentialsData({
-        centreName: centre.centreName,
-        centreCode: code,
-        ownerName: centre.user?.name,
-        email: res.operatorEmail || centre.user?.email,
-        mobile: centre.user?.mobile,
-        temporaryPassword: res.temporaryPassword,
-        portalUrl,
-      });
-      setIsCredsModalOpen(true);
-      loadData();
-    } catch (err: any) {
-      alert(`Failed to reissue activation: ${err.message}`);
-    }
+  const handleReissueActivation = (centre: any) => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Reissue Activation Password',
+      description: `Reissue activation password for '${centre.centreName}'? The operator will be required to change password upon sign in.`,
+      confirmLabel: 'Reissue Password',
+      isDestructive: false,
+      action: async () => {
+        setConfirmLoading(true);
+        try {
+          const res = await api.reissueCentreActivation(centre.id);
+          const code = res.centreCode || centre.centreCode;
+          const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/c/${code}` : `/c/${code}`;
+          setCredentialsData({
+            centreName: centre.centreName,
+            centreCode: code,
+            ownerName: centre.user?.name,
+            email: res.operatorEmail || centre.user?.email,
+            mobile: centre.user?.mobile,
+            temporaryPassword: res.temporaryPassword,
+            portalUrl,
+          });
+          setIsCredsModalOpen(true);
+          setConfirmAction((prev) => ({ ...prev, isOpen: false }));
+          toast.success('Activation password reissued.');
+          loadData();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to reissue activation');
+        } finally {
+          setConfirmLoading(false);
+        }
+      },
+    });
   };
 
   const copyCredentials = () => {
@@ -300,7 +342,7 @@ export default function AdminCentresPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-subtle">
         <div>
@@ -1177,6 +1219,19 @@ export default function AdminCentresPage() {
           </div>
         </div>
       )}
+
+      {/* Reusable Action Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmAction.isOpen}
+        title={confirmAction.title}
+        description={confirmAction.description}
+        confirmLabel={confirmAction.confirmLabel}
+        cancelLabel="Cancel"
+        isDestructive={confirmAction.isDestructive}
+        loading={confirmLoading}
+        onConfirm={confirmAction.action}
+        onCancel={() => setConfirmAction((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

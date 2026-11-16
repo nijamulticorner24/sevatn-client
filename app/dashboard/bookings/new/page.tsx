@@ -32,8 +32,11 @@ import {
   Loader2,
   X,
   Edit3,
+  RefreshCw,
 } from 'lucide-react';
 import { useLocationGuard } from '@/hooks/useLocationGuard';
+import { useToast } from '@/components/ui/Toast';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const OFFICIAL_ROUTES = [
   { id: 'Pamba (Regular Footpath Route)', name: 'Pamba Base', desc: 'Direct traditional footpath from Pamba base', tag: 'Standard' },
@@ -52,14 +55,17 @@ const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 export default function NewBookingPage() {
   const router = useRouter();
+  const toast = useToast();
 
   // 5 KM Geofence Location Guard
-  const { isWithinRadius, distanceKm, loading: locationLoading } = useLocationGuard();
+  const { isWithinRadius, distanceKm, loading: locationLoading, refreshLocation } = useLocationGuard();
+  const [recalibratingGPS, setRecalibratingGPS] = useState(false);
 
   const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
   const [wallet, setWallet] = useState<any>(null);
   const [walletLoading, setWalletLoading] = useState(true);
   const [serviceFee, setServiceFee] = useState<number>(20);
+  const [pricingBreakdown, setPricingBreakdown] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -72,6 +78,8 @@ export default function NewBookingPage() {
   const [accountMode, setAccountMode] = useState<'saved' | 'new'>('saved');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+  const [accountSearch, setAccountSearch] = useState('');
+  const [pendingDeleteAccountId, setPendingDeleteAccountId] = useState<string | null>(null);
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
   const [accountLabel, setAccountLabel] = useState('');
   const [officialUsername, setOfficialUsername] = useState('');
@@ -230,6 +238,41 @@ export default function NewBookingPage() {
     setError(null);
   };
 
+  const handleCopyNominee1ToAll = () => {
+    if (nominees.length <= 1) return;
+    const first = nominees[0];
+    if (!first.nomineeName.trim()) {
+      setNomineeModalError('Please enter Nominee for Pilgrim #1 before copying to all.');
+      return;
+    }
+    const updated = nominees.map((n, idx) => {
+      if (idx === 0) return n;
+      return {
+        ...n,
+        nomineeName: first.nomineeName,
+        nomineeAge: first.nomineeAge,
+        nomineePhone: first.nomineePhone || '',
+        nomineeRelationship: n.nomineeRelationship || 'Relative',
+      };
+    });
+    setNominees(updated);
+    setNomineeModalError(null);
+  };
+
+  const handleRetryGPS = async () => {
+    setRecalibratingGPS(true);
+    try {
+      if (refreshLocation) {
+        await refreshLocation();
+      }
+      toast.success('GPS coordinates re-checked.');
+    } catch (err: any) {
+      toast.error(err.message || 'GPS calibration failed');
+    } finally {
+      setRecalibratingGPS(false);
+    }
+  };
+
   // Compact Date Picker State
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarYear, setCalendarYear] = useState(() => {
@@ -278,6 +321,21 @@ export default function NewBookingPage() {
     });
   }, []);
 
+  // Three-Level Pricing Breakdown Preview Listener
+  useEffect(() => {
+    const qty = Math.max(1, pilgrimCount || 1);
+    api.getBookingPricingPreview(qty)
+      .then((res) => {
+        if (res) {
+          setPricingBreakdown(res);
+          if (res.finalTicketPrice) {
+            setServiceFee(res.finalTicketPrice);
+          }
+        }
+      })
+      .catch(() => null);
+  }, [pilgrimCount]);
+
   // Listen for outside click to close popovers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -319,16 +377,20 @@ export default function NewBookingPage() {
     }
   };
 
-  const handleDeleteAccount = async (e: React.MouseEvent, accountId: string) => {
+  const handleDeleteAccount = (e: React.MouseEvent, accountId: string) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this saved devotee profile?')) {
-      return;
-    }
+    setPendingDeleteAccountId(accountId);
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!pendingDeleteAccountId) return;
+    const accountId = pendingDeleteAccountId;
     setDeletingAccountId(accountId);
     try {
       await api.deleteAccount(accountId);
       const updated = savedAccounts.filter((a) => a.id !== accountId);
       setSavedAccounts(updated);
+      toast.success('Devotee profile removed successfully.');
       if (selectedAccountId === accountId) {
         if (updated.length > 0) {
           handleAccountSelect(updated[0].id);
@@ -341,9 +403,10 @@ export default function NewBookingPage() {
         }
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to delete devotee profile');
+      toast.error(err.message || 'Failed to delete devotee profile');
     } finally {
       setDeletingAccountId(null);
+      setPendingDeleteAccountId(null);
     }
   };
 
@@ -428,6 +491,15 @@ export default function NewBookingPage() {
       r.desc.toLowerCase().includes(q) ||
       r.tag.toLowerCase().includes(q) ||
       r.id.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredSavedAccounts = savedAccounts.filter((a) => {
+    if (!accountSearch.trim()) return true;
+    const q = accountSearch.toLowerCase().trim();
+    return (
+      (a.label && a.label.toLowerCase().includes(q)) ||
+      (a.username && a.username.toLowerCase().includes(q))
     );
   });
 
@@ -642,13 +714,27 @@ export default function NewBookingPage() {
             </div>
           )}
 
-          {/* Action Button */}
-          <div className="mt-6">
+          {/* Action Buttons */}
+          <div className="mt-6 flex flex-col sm:flex-row gap-2.5">
             <button
-              onClick={() => router.push('/dashboard')}
-              className="w-full rounded-xl bg-[#C98219] hover:bg-[#B57414] text-white py-2.5 px-4 text-xs font-bold transition-all shadow-sm cursor-pointer"
+              type="button"
+              onClick={handleRetryGPS}
+              disabled={recalibratingGPS}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#C98219] hover:bg-[#B57414] text-white py-2.5 px-4 text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
             >
-              Close
+              {recalibratingGPS ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              <span>{recalibratingGPS ? 'Calibrating...' : 'Recalibrate GPS'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="rounded-xl border border-[#D0D5DD] bg-white hover:bg-[#F9FAFB] text-[#344054] py-2.5 px-4 text-xs font-semibold transition-all cursor-pointer"
+            >
+              Back to Dashboard
             </button>
           </div>
         </div>
@@ -903,9 +989,28 @@ export default function NewBookingPage() {
                   </button>
 
                   {isAccountDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1.5 z-40 w-full bg-white rounded-[8px] border border-[#E6EAF0] shadow-modal overflow-hidden animate-in fade-in zoom-in-95 duration-100 max-h-[260px] overflow-y-auto">
-                      <div className="p-1 space-y-0.5">
-                        {savedAccounts.map((acc) => {
+                    <div className="absolute top-full left-0 mt-1.5 z-40 w-full bg-white rounded-[8px] border border-[#E6EAF0] shadow-modal overflow-hidden animate-in fade-in zoom-in-95 duration-100 max-h-[300px] flex flex-col">
+                      <div className="p-2 border-b border-[#E6EAF0] bg-[#FAFBFD] sticky top-0 z-10">
+                        <div className="relative">
+                          <Search className="h-3.5 w-3.5 text-[#98A2B3] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            placeholder="Filter devotee name or username..."
+                            value={accountSearch}
+                            onChange={(e) => setAccountSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full pl-8 pr-2.5 py-1.5 text-[12px] bg-white border border-[#D0D5DD] rounded-[6px] focus:outline-none focus:border-[#C98219]"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="p-1 space-y-0.5 overflow-y-auto flex-1">
+                        {filteredSavedAccounts.length === 0 ? (
+                          <div className="p-3 text-center text-[12px] text-[#667085]">
+                            No matching devotee profile found.
+                          </div>
+                        ) : (
+                          filteredSavedAccounts.map((acc) => {
                           const isSelected = selectedAccountId === acc.id;
                           return (
                             <div
@@ -951,7 +1056,8 @@ export default function NewBookingPage() {
                               </div>
                             </div>
                           );
-                        })}
+                        })
+                      )}
                       </div>
                     </div>
                   )}
@@ -1379,6 +1485,38 @@ export default function NewBookingPage() {
                 <p className="text-[11px] text-[#667085]">
                   Sabarimala portal allows up to 10 pilgrims per booking transaction. Service fee is ₹{serviceFee} per pilgrim. Nominee details popup will open to enter required insurance information.
                 </p>
+
+                {/* Three-Level Pricing Breakdown Preview */}
+                {pricingBreakdown && (
+                  <div className="rounded-[8px] bg-[#F8FAFC] border border-[#E6EAF0] p-3 text-xs space-y-1.5 mt-2">
+                    <div className="flex items-center justify-between text-[#667085]">
+                      <span>Base Assistance Fee:</span>
+                      <span className="font-semibold text-[#172033]">₹{pricingBreakdown.baseTicketPrice}</span>
+                    </div>
+                    {pricingBreakdown.partnerMarkup > 0 && (
+                      <div className="flex items-center justify-between text-[#667085]">
+                        <span>Regional Partner Markup:</span>
+                        <span className="font-semibold text-[#175CD3]">+₹{pricingBreakdown.partnerMarkup}</span>
+                      </div>
+                    )}
+                    {pricingBreakdown.distributorMarkup > 0 && (
+                      <div className="flex items-center justify-between text-[#667085]">
+                        <span>Taluk Distributor Markup:</span>
+                        <span className="font-semibold text-[#C98219]">+₹{pricingBreakdown.distributorMarkup}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between border-t border-[#E6EAF0] pt-1.5 text-[#172033] font-bold">
+                      <span>Effective Rate per Devotee:</span>
+                      <span className="text-[#198754]">₹{pricingBreakdown.finalTicketPrice}</span>
+                    </div>
+                    {pilgrimCount > 1 && (
+                      <div className="flex items-center justify-between text-[#172033] font-bold text-[12px] pt-0.5">
+                        <span>Total Payable ({pilgrimCount} Devotees):</span>
+                        <span className="text-[#198754]">₹{pricingBreakdown.totalTicketAmount}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1771,6 +1909,20 @@ export default function NewBookingPage() {
 
             {/* Modal Body */}
             <div className="p-5 overflow-y-auto space-y-3.5 flex-1">
+              {nominees.length > 1 && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-[8px] bg-[#FDF7ED] border border-[#E8D5B7] text-[#7A4A12]">
+                  <div className="text-[12px] leading-relaxed">
+                    <span className="font-bold">Group / Family Quick-Fill:</span> Apply Nominee #1 details to all remaining pilgrims in one tap.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyNominee1ToAll}
+                    className="shrink-0 self-start sm:self-center rounded-[6px] bg-[#C98219] hover:bg-[#B57414] text-white px-3 py-1.5 text-[11.5px] font-bold transition-all shadow-xs active:scale-95"
+                  >
+                    Copy #1 to All
+                  </button>
+                </div>
+              )}
               {nominees.map((nominee, idx) => (
                 <div
                   key={nominee.id || idx}
@@ -2085,6 +2237,50 @@ export default function NewBookingPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Devotee Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteAccountId)}
+        title="Delete Saved Devotee Profile"
+        description="Are you sure you want to delete this saved devotee profile? The credentials will be permanently removed from your centre's stored list."
+        confirmLabel="Delete Profile"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        loading={Boolean(deletingAccountId)}
+        onConfirm={confirmDeleteAccount}
+        onCancel={() => setPendingDeleteAccountId(null)}
+      />
+
+      {/* Mobile Sticky Docked Summary Bar */}
+      <div className="lg:hidden fixed bottom-14 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E4E7EC] px-4 py-2.5 shadow-modal flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">
+            Total ({pilgrimCount} Pilgrim{pilgrimCount !== 1 ? 's' : ''})
+          </p>
+          <p className="text-[16px] font-extrabold text-[#172033] tabular-nums leading-tight">
+            ₹{(pricingBreakdown?.totalPrice || serviceFee * Math.max(1, pilgrimCount)).toLocaleString('en-IN')}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (pilgrimCount < 1) {
+              setExplicitPilgrimCount(1, true);
+              return;
+            }
+            if (!isNomineesConfirmed) {
+              setIsNomineeModalOpen(true);
+              return;
+            }
+            setIsConfirmModalOpen(true);
+          }}
+          disabled={loading || isInsufficientBalance}
+          className="rounded-[7px] bg-[#C98219] hover:bg-[#B57414] text-white font-bold px-4 py-2 text-[12.5px] shadow-subtle flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <span>Review &amp; Submit</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

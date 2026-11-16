@@ -257,7 +257,7 @@ export default function DiagnosticsPage() {
   const metadata = analyticsData?.metadata;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* 1. Header with Title & Quick Controls */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-[#E6EAF0]">
         <div>

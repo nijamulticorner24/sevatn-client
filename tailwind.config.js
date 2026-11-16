@@ -44,8 +44,8 @@ module.exports = {
           border: '#E8D5B7',
         },
         border: {
-          DEFAULT: '#E6EAF0',
-          subtle: '#EEF2F6',
+          DEFAULT: '#E4E7EC',
+          subtle: '#F2F4F7',
           strong: '#D0D5DD',
         },
         stn: {

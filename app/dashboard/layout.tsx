@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useRouter } from 'next/navigation';
+import { NotificationPermissionGuard } from '@/components/platform/NotificationPermissionGuard';
 
 export default function DashboardLayout({
   children,
@@ -29,5 +30,9 @@ export default function DashboardLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <NotificationPermissionGuard>
+      {children}
+    </NotificationPermissionGuard>
+  );
 }

@@ -1,33 +1,30 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AppShell } from '@/components/AppShell';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
   title: {
     default: 'ServiceTN — Your Services, One Simple Platform',
     template: '%s | ServiceTN',
   },
-  description:
-    'Explore digital services with ServiceTN. Access booking assistance and convenient digital service experiences through one simple platform.',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
     apple: '/favicon.ico',
   },
-  openGraph: {
-    title: 'ServiceTN — Your Services, One Simple Platform',
-    description:
-      'Explore digital services with ServiceTN. Access booking assistance and convenient digital service experiences through one simple platform.',
-    type: 'website',
-    siteName: 'ServiceTN — Powered by NIJA',
-    images: [
-      {
-        url: '/logo.png',
-        width: 866,
-        height: 288,
-        alt: 'ServiceTN — Powered by NIJA',
-      },
-    ],
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'none',
+      'max-snippet': -1,
+    },
   },
 };
 
@@ -39,6 +36,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="antialiased">
       <head>
+        <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+        <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet" />
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -49,7 +48,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[#F7F9FC] text-[#172033] font-sans selection:bg-[#C98219]/20 selection:text-[#7A4A12]">
-        <AppShell>{children}</AppShell>
+        <ToastProvider>
+          <AppShell>{children}</AppShell>
+        </ToastProvider>
       </body>
     </html>
   );

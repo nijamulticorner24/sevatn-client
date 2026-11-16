@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import {
@@ -26,6 +26,7 @@ import {
   Clock,
   ExternalLink,
   Share2,
+  ChevronRight,
 } from 'lucide-react';
 import { MetricBlock } from '@/components/MetricBlock';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
@@ -43,20 +44,36 @@ const TN_DISTRICTS = [
   'Viluppuram', 'Virudhunagar'
 ];
 
-export default function PartnerCentresPage() {
+function PartnerCentresContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialDistributorId = searchParams.get('distributorId') || 'ALL';
+
   const [centres, setCentres] = useState<any[]>([]);
+  const [distributors, setDistributors] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterDistributor, setFilterDistributor] = useState(initialDistributorId);
   const [loading, setLoading] = useState(true);
 
   // Selected Centre Detail Modal State
   const [selectedCentre, setSelectedCentre] = useState<any | null>(null);
 
+  useEffect(() => {
+    api.getPartnerDistributors()
+      .then((data) => setDistributors(data || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const qDist = searchParams.get('distributorId');
+    if (qDist) setFilterDistributor(qDist);
+  }, [searchParams]);
+
   const loadData = () => {
     setLoading(true);
-    api.getPartnerCentres(1, filterDistrict, filterStatus, searchQuery)
+    api.getPartnerCentres(1, filterDistrict, filterStatus, searchQuery, filterDistributor)
       .then((cData) => {
         if (cData?.centres) setCentres(cData.centres);
         setLoading(false);
@@ -76,7 +93,7 @@ export default function PartnerCentresPage() {
 
   useEffect(() => {
     loadData();
-  }, [filterDistrict, filterStatus, searchQuery]);
+  }, [filterDistrict, filterStatus, searchQuery, filterDistributor]);
 
   const totalCentres = centres.length;
   const activeCentres = centres.filter((c) => c.status === 'ACTIVE').length;
@@ -143,21 +160,38 @@ export default function PartnerCentresPage() {
 
       {/* Filter and Search Bar Card */}
       <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle space-y-4">
-        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
           {/* Search Input */}
-          <div className="relative flex-1">
+          <div className="relative">
             <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-[#98A2B3]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by centre name, code, operator name, or phone..."
+              placeholder="Search by centre name, code, operator..."
               className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-10 pr-3.5 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
             />
           </div>
 
+          {/* Distributor Filter */}
+          <div>
+            <select
+              value={filterDistributor}
+              onChange={(e) => setFilterDistributor(e.target.value)}
+              className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs sm:text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
+            >
+              <option value="ALL">All Network Centres</option>
+              <option value="DIRECT">Direct / Legacy Only</option>
+              {distributors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} ({d.distributorCode})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* District Selector */}
-          <div className="w-full md:w-56">
+          <div>
             <select
               value={filterDistrict}
               onChange={(e) => setFilterDistrict(e.target.value)}
@@ -173,7 +207,7 @@ export default function PartnerCentresPage() {
           </div>
 
           {/* Status Filter Dropdown */}
-          <div className="w-full md:w-44">
+          <div>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -212,6 +246,7 @@ export default function PartnerCentresPage() {
               <thead className="bg-[#F8FAFC] text-[#667085] font-semibold border-b border-[#E6EAF0]">
                 <tr>
                   <th className="py-3 px-4">Centre Name & Code</th>
+                  <th className="py-3 px-4">Distributor</th>
                   <th className="py-3 px-4">Operator Contact</th>
                   <th className="py-3 px-4">District / Taluk</th>
                   <th className="py-3 px-4">5 KM Geofence</th>
@@ -231,6 +266,27 @@ export default function PartnerCentresPage() {
                         <span className="block text-[11px] font-mono font-normal text-[#8F5A0D]">
                           {c.centreCode || 'TN-CTR-001'}
                         </span>
+                      </td>
+
+                      {/* Distributor */}
+                      <td className="py-3 px-4">
+                        {c.distributor ? (
+                          <Link
+                            href={`/partner/distributors/${c.distributor.id}`}
+                            className="group inline-flex items-center gap-1.5 hover:underline"
+                          >
+                            <span className="font-semibold text-[#172033] text-xs group-hover:text-[#175CD3]">
+                              {c.distributor.name}
+                            </span>
+                            <span className="font-mono text-[10px] font-bold text-[#175CD3] bg-[#EFF8FF] px-1.5 py-0.5 rounded border border-[#B2DDFF]">
+                              {c.distributor.distributorCode}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="text-[11px] font-medium text-[#667085] bg-[#F8FAFC] px-2 py-0.5 rounded border border-[#E6EAF0]">
+                            Direct / Legacy
+                          </span>
+                        )}
                       </td>
 
                       {/* Operator Contact */}
@@ -258,13 +314,13 @@ export default function PartnerCentresPage() {
                       <td className="py-3 px-4">
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#198754] bg-[#EAF7EE] px-2 py-0.5 rounded border border-[#C3E6CB]">
                           <MapPin className="h-3 w-3" />
-                          5 KM Active
+                          Validated
                         </span>
                       </td>
 
                       {/* Registration Date */}
-                      <td className="py-3 px-4 text-[#667085] font-mono text-[11px]">
-                        {c.user?.registrationDate ? formatDate(c.user.registrationDate) : 'Active'}
+                      <td className="py-3 px-4 text-[#667085]">
+                        {formatDate(c.createdAt)}
                       </td>
 
                       {/* Status */}
@@ -273,16 +329,10 @@ export default function PartnerCentresPage() {
                           className={`rounded px-2 py-0.5 text-[10px] font-bold border ${
                             isActive
                               ? 'bg-[#EAF7EE] text-[#198754] border-[#C3E6CB]'
-                              : c.status === 'PENDING_VERIFICATION'
-                              ? 'bg-[#FEF7E6] text-[#8F5A0D] border-[#F9DE9B]'
-                              : 'bg-[#FDECEC] text-[#C2413B] border-[#F5C6CB]'
+                              : 'bg-[#FEF7E6] text-[#8F5A0D] border-[#F9DE9B]'
                           }`}
                         >
-                          {isActive
-                            ? 'ACTIVE'
-                            : c.status === 'PENDING_VERIFICATION'
-                            ? 'PENDING GPS'
-                            : 'SUSPENDED'}
+                          {c.status}
                         </span>
                       </td>
 
@@ -290,9 +340,9 @@ export default function PartnerCentresPage() {
                       <td className="py-3 px-4 text-right">
                         <button
                           onClick={() => setSelectedCentre(c)}
-                          className="font-bold text-[#C98219] hover:underline inline-flex items-center gap-1"
+                          className="text-xs font-semibold text-[#C98219] hover:underline"
                         >
-                          <span>Details</span>
+                          Details
                         </button>
                       </td>
                     </tr>
@@ -304,81 +354,83 @@ export default function PartnerCentresPage() {
         )}
       </div>
 
-      {/* Centre Details & 5 KM Location Modal */}
+      {/* Selected Centre Modal */}
       {selectedCentre && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#101828]/50 backdrop-blur-[2px]">
-          <div className="relative w-full max-w-lg rounded-[12px] bg-white p-6 shadow-elevated border border-[#E6EAF0] space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E6EAF0]">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-[#C98219]" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-[12px] bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3">
+              <div>
                 <h3 className="text-base font-bold text-[#172033]">
                   {selectedCentre.centreName}
                 </h3>
+                <span className="font-mono text-xs text-[#8F5A0D]">
+                  {selectedCentre.centreCode}
+                </span>
               </div>
               <button
                 onClick={() => setSelectedCentre(null)}
-                className="text-[#98A2B3] hover:text-[#172033] p-1"
+                className="text-[#667085] hover:text-[#172033]"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-[#F8FAFC] rounded-[8px] border border-[#E6EAF0]">
-                  <span className="text-[#667085] block">Centre Code</span>
-                  <span className="font-mono font-bold text-[#172033] mt-0.5 block">
-                    {selectedCentre.centreCode}
-                  </span>
-                </div>
-                <div className="p-3 bg-[#F8FAFC] rounded-[8px] border border-[#E6EAF0]">
-                  <span className="text-[#667085] block">Operator Name</span>
-                  <span className="font-bold text-[#172033] mt-0.5 block">
-                    {selectedCentre.user?.name || 'Operator'}
-                  </span>
-                </div>
+            <div className="space-y-3 text-xs text-[#475467]">
+              <div className="grid grid-cols-2 gap-2 border-b border-[#F0F3F7] pb-2">
+                <span className="text-[#667085]">Distributor:</span>
+                <span className="font-semibold text-[#172033]">
+                  {selectedCentre.distributor ? `${selectedCentre.distributor.name} (${selectedCentre.distributor.distributorCode})` : 'Direct / Legacy'}
+                </span>
               </div>
-
-              <div className="p-3 bg-[#F8FAFC] rounded-[8px] border border-[#E6EAF0] space-y-1">
-                <span className="text-[#667085] block">Contact Details</span>
-                <p className="font-semibold text-[#172033]">
-                  Phone: <span className="font-mono">{selectedCentre.user?.mobile || '—'}</span>
-                </p>
-                {selectedCentre.user?.email && (
-                  <p className="text-[#667085]">Email: {selectedCentre.user.email}</p>
-                )}
+              <div className="grid grid-cols-2 gap-2 border-b border-[#F0F3F7] pb-2">
+                <span className="text-[#667085]">Operator Name:</span>
+                <span className="font-semibold text-[#172033]">{selectedCentre.user?.name || '—'}</span>
               </div>
-
-              <div className="p-3 bg-[#F8FAFC] rounded-[8px] border border-[#E6EAF0] space-y-1">
-                <span className="text-[#667085] block">Registered Address & Jurisdiction</span>
-                <p className="font-semibold text-[#172033]">{selectedCentre.address || 'Registered Centre'}</p>
-                <p className="text-[#667085]">
-                  {selectedCentre.district}, {selectedCentre.taluk}
-                </p>
+              <div className="grid grid-cols-2 gap-2 border-b border-[#F0F3F7] pb-2">
+                <span className="text-[#667085]">Mobile Number:</span>
+                <span className="font-semibold text-[#172033]">{selectedCentre.user?.mobile || '—'}</span>
               </div>
-
-              <div className="p-3 bg-[#FEF7E6] rounded-[8px] border border-[#F9DE9B] text-[#8F5A0D]">
-                <p className="font-bold flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-[#C98219]" />
-                  5 KM Tamper-Resistant Geofence
-                </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed">
-                  GPS coordinates validated for registered eSevai operations and authorized regional service delivery.
-                </p>
+              <div className="grid grid-cols-2 gap-2 border-b border-[#F0F3F7] pb-2">
+                <span className="text-[#667085]">Email Address:</span>
+                <span className="font-semibold text-[#172033]">{selectedCentre.user?.email || '—'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 border-b border-[#F0F3F7] pb-2">
+                <span className="text-[#667085]">District / Taluk:</span>
+                <span className="font-semibold text-[#172033]">{selectedCentre.district} / {selectedCentre.taluk}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 border-b border-[#F0F3F7] pb-2">
+                <span className="text-[#667085]">Address:</span>
+                <span className="text-[#172033]">{selectedCentre.address || '—'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 border-b border-[#F0F3F7] pb-2">
+                <span className="text-[#667085]">Status:</span>
+                <span className="font-bold text-[#172033]">{selectedCentre.status}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-[#667085]">Onboarded Date:</span>
+                <span className="text-[#667085]">{formatDate(selectedCentre.createdAt)}</span>
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="flex justify-end pt-3 border-t border-[#E6EAF0]">
               <button
                 onClick={() => setSelectedCentre(null)}
-                className="rounded-[7px] bg-[#C98219] px-5 py-2 text-xs font-bold text-white hover:bg-[#B57414] shadow-subtle transition-colors"
+                className="rounded-[8px] bg-[#172033] px-4 py-2 text-xs font-semibold text-white hover:bg-black"
               >
-                Close Details
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function PartnerCentresPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton rows={4} />}>
+      <PartnerCentresContent />
+    </Suspense>
   );
 }

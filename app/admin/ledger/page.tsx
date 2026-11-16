@@ -531,7 +531,7 @@ export default function FinancialLedgerPage() {
   const totalPendingOnboardings = pendingCentresList.length + pendingPartnersList.length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
       {/* Toast Notification */}
       {toastMessage && (
         <div
