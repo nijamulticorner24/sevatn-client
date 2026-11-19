@@ -229,7 +229,7 @@ export default function RefundPolicyPage() {
                     <strong>Pending Requests:</strong> Requests that have not yet been accepted by an operator or dispatched to government endpoints may be cancelled for a full wallet credit.
                   </li>
                   <li>
-                    <strong>Statutory Government Fees:</strong> Government application and eSevai statutory fees remitted directly to state portals cannot be refunded once an application has been lodged and acknowledged by the official portal.
+                    <strong>Statutory Government Fees:</strong> Government application and statutory fees remitted directly to state portals cannot be refunded once an application has been lodged and acknowledged by the official portal.
                   </li>
                   <li>
                     <strong>Application Rejections:</strong> Where an application is rejected by the government authority due to citizen document deficiencies, incorrect identity proofs, or eligibility disqualifications, platform processing fees are non-refundable.

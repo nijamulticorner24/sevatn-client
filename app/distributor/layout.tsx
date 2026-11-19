@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { NotificationPermissionGuard } from '@/components/platform/NotificationPermissionGuard';
+import { LocationPermissionGuard } from '@/components/platform/LocationPermissionGuard';
 
 export default function DistributorLayout({
   children,
@@ -20,7 +21,8 @@ export default function DistributorLayout({
       return;
     }
     if (user.role !== 'DISTRIBUTOR' && user.role !== 'SUPER_ADMIN') {
-      router.push('/dashboard');
+      const dest = user.role === 'PARTNER' ? '/partner' : '/dashboard';
+      router.push(dest);
       return;
     }
     setLoading(false);
@@ -36,7 +38,9 @@ export default function DistributorLayout({
 
   return (
     <NotificationPermissionGuard>
-      {children}
+      <LocationPermissionGuard>
+        {children}
+      </LocationPermissionGuard>
     </NotificationPermissionGuard>
   );
 }

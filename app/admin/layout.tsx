@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useRouter } from 'next/navigation';
 import { NotificationPermissionGuard } from '@/components/platform/NotificationPermissionGuard';
+import { LocationPermissionGuard } from '@/components/platform/LocationPermissionGuard';
 
 export default function AdminLayout({
   children,
@@ -20,7 +21,8 @@ export default function AdminLayout({
       return;
     }
     if (u.role !== 'SUPER_ADMIN') {
-      router.push('/dashboard');
+      const dest = u.role === 'PARTNER' ? '/partner' : u.role === 'DISTRIBUTOR' ? '/distributor' : '/dashboard';
+      router.push(dest);
       return;
     }
     setLoading(false);
@@ -36,7 +38,9 @@ export default function AdminLayout({
 
   return (
     <NotificationPermissionGuard allowSuperAdminBypass={true}>
-      {children}
+      <LocationPermissionGuard allowSuperAdminBypass={true}>
+        {children}
+      </LocationPermissionGuard>
     </NotificationPermissionGuard>
   );
 }

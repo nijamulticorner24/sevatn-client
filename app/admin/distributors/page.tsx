@@ -251,8 +251,21 @@ export default function AdminDistributorsPage() {
                     </td>
 
                     {/* Status */}
-                    <td className="py-3.5 px-4">
-                      {d.status === 'ACTIVE' ? (
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      {!d.feePaid && d.paymentReference ? (
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B] flex items-center gap-1">
+                            <Clock className="h-2.5 w-2.5 text-[#C98219]" />
+                            FEE PENDING APPROVAL
+                          </span>
+                          <a
+                            href="/admin/ledger?tab=REGISTRATIONS"
+                            className="text-[10px] text-[#175CD3] hover:underline font-semibold"
+                          >
+                            Verify in Ledger →
+                          </a>
+                        </div>
+                      ) : d.status === 'ACTIVE' ? (
                         <span className="rounded bg-[#EAF7EE] px-2 py-0.5 text-[10px] font-bold text-[#198754] border border-[#C3E6CB]">
                           ACTIVE
                         </span>

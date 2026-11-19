@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatINR, formatDate } from '@/lib/utils';
 import {
@@ -250,6 +251,8 @@ function RevenueAnalysisChart({ bookings, wallet }: { bookings: any[]; wallet: a
 
 // ─── Platform Home Page ────────────────────────────────────────────────────────
 export default function SevaTNPlatformHomePage() {
+  const router = useRouter();
+  const [roleChecked, setRoleChecked] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
@@ -265,7 +268,29 @@ export default function SevaTNPlatformHomePage() {
 
   useEffect(() => {
     const u = api.getUser();
+    if (!u) {
+      router.replace('/auth/login');
+      return;
+    }
+
+    // Strict Role-Based Dashboard Dispatching:
+    // If user is not CENTRE, redirect immediately to their specialized role dashboard
+    if (u.role === 'SUPER_ADMIN') {
+      router.replace('/admin');
+      return;
+    }
+    if (u.role === 'PARTNER') {
+      router.replace('/partner');
+      return;
+    }
+    if (u.role === 'DISTRIBUTOR') {
+      router.replace('/distributor');
+      return;
+    }
+
+    // Role is confirmed CENTRE: load Centre dashboard data
     setUser(u);
+    setRoleChecked(true);
 
     Promise.all([
       api.getMe().catch(() => null),
@@ -282,7 +307,7 @@ export default function SevaTNPlatformHomePage() {
       // Check GPS Location
       checkGPSLocation(profileData?.registeredLocation || profileData?.centre);
     });
-  }, []);
+  }, [router]);
 
   const checkGPSLocation = (registeredLoc?: any) => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
@@ -352,7 +377,7 @@ export default function SevaTNPlatformHomePage() {
     (b) => b.status === 'SUCCESS' || b.status === 'COMPLETED' || b.status === 'BOOKING_CONFIRMED' || b.officialReference,
   ).length;
 
-  if (loading) {
+  if (!roleChecked || loading) {
     return (
       <div className="space-y-6">
         <div className="h-28 rounded-[12px] border border-[#E2E8F0] bg-white animate-pulse" />
@@ -381,7 +406,7 @@ export default function SevaTNPlatformHomePage() {
               {getTimeGreeting()}, {user?.name || 'Operator'}
             </h1>
             <p className="text-xs sm:text-sm text-[#64748B] mt-1 max-w-xl">
-              <span className="font-semibold text-[#0F172A]">{centre?.centreName || 'Tamil Nadu eSevai Centre'}</span> • {centre?.district || 'Tamil Nadu'} ({centre?.taluk || 'Local Service Area'})
+              <span className="font-semibold text-[#0F172A]">{centre?.centreName || 'Tamil Nadu Booking Centre'}</span> • {centre?.district || 'Tamil Nadu'} ({centre?.taluk || 'Local Service Area'})
             </p>
           </div>
 
@@ -398,7 +423,7 @@ export default function SevaTNPlatformHomePage() {
             <div className="flex items-center justify-between text-xs border-t border-[#E2E8F0] pt-2">
               <span className="text-[#64748B] font-medium">Platform License:</span>
               <span className="font-mono font-bold text-[#15803D]">
-                {user?.expiryDate ? formatDate(user.expiryDate) : 'Active License'}
+                {user?.expiryDate ? formatDate(user.expiryDate) : 'Active License (365 Days)'}
               </span>
             </div>
           </div>

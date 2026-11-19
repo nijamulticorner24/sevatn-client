@@ -36,6 +36,7 @@ export default function AdminPricingConfigPage() {
   const [feeConfig, setFeeConfig] = useState<any>({
     serviceFee: 100,
     registrationFee: 249,
+    distributorFee: 399,
     franchiseFee: 599,
     partnerMinWithdrawal: 100,
   });
@@ -73,6 +74,7 @@ export default function AdminPricingConfigPage() {
         setFeeConfig({
           serviceFee: Number(systemRes.serviceFee ?? 100),
           registrationFee: Number(systemRes.registrationFee ?? 249),
+          distributorFee: Number(systemRes.distributorFee ?? 399),
           franchiseFee: Number(systemRes.franchiseFee ?? 599),
           partnerMinWithdrawal: Number(systemRes.partnerMinWithdrawal ?? 100),
         });
@@ -134,6 +136,7 @@ export default function AdminPricingConfigPage() {
       await api.updateSystemConfig({
         serviceFee: Number(feeConfig.serviceFee),
         registrationFee: Number(feeConfig.registrationFee),
+        distributorFee: Number(feeConfig.distributorFee),
         franchiseFee: Number(feeConfig.franchiseFee),
         partnerMinWithdrawal: Number(feeConfig.partnerMinWithdrawal),
       });
@@ -349,26 +352,32 @@ export default function AdminPricingConfigPage() {
         </div>
 
         {/* Fee Architecture Quick Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5">
             <span className="text-[11px] font-semibold text-[#667085]">Booking Service Fee</span>
             <div className="text-2xl font-black text-[#172033] mt-1">{formatINR(feeConfig.serviceFee || 100)}</div>
             <p className="text-[10.5px] text-[#667085] mt-1">Debited from centre wallet</p>
           </div>
 
-          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-4">
+          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5">
             <span className="text-[11px] font-semibold text-[#667085]">Centre Onboarding Fee</span>
             <div className="text-2xl font-black text-[#175CD3] mt-1">{formatINR(feeConfig.registrationFee || 249)}</div>
             <p className="text-[10.5px] text-[#667085] mt-1">One-time centre license</p>
           </div>
 
-          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-4">
+          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5">
+            <span className="text-[11px] font-semibold text-[#667085]">Distributor License Fee</span>
+            <div className="text-2xl font-black text-[#7F56D9] mt-1">{formatINR(feeConfig.distributorFee || 399)}</div>
+            <p className="text-[10.5px] text-[#667085] mt-1">One-time distributor network</p>
+          </div>
+
+          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5">
             <span className="text-[11px] font-semibold text-[#667085]">Franchise License Fee</span>
             <div className="text-2xl font-black text-[#C98219] mt-1">{formatINR(feeConfig.franchiseFee || 599)}</div>
             <p className="text-[10.5px] text-[#667085] mt-1">One-time partner onboarding</p>
           </div>
 
-          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-4">
+          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5">
             <span className="text-[11px] font-semibold text-[#667085]">Partner Min Withdrawal</span>
             <div className="text-2xl font-black text-[#198754] mt-1">{formatINR(feeConfig.partnerMinWithdrawal || 100)}</div>
             <p className="text-[10.5px] text-[#667085] mt-1">Minimum payout threshold</p>
@@ -376,7 +385,7 @@ export default function AdminPricingConfigPage() {
         </div>
 
         {/* Input Fields for Platform Fees */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
               Service Fee per Booking (₹) *
@@ -410,7 +419,25 @@ export default function AdminPricingConfigPage() {
                 required
               />
             </div>
-            <p className="text-[11px] text-[#667085] mt-1">One-time registration for eSevai / CSC centres (Default: ₹249).</p>
+            <p className="text-[11px] text-[#667085] mt-1">One-time registration for Booking / CSC centres (Default: ₹249).</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#172033] mb-1.5">
+              Distributor License Fee (₹) *
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <input
+                type="number"
+                min="0"
+                value={feeConfig.distributorFee}
+                onChange={(e) => setFeeConfig({ ...feeConfig, distributorFee: Number(e.target.value) })}
+                className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-xs font-mono font-bold text-[#172033] focus:border-[#7F56D9] focus:outline-none"
+                required
+              />
+            </div>
+            <p className="text-[11px] text-[#667085] mt-1">One-time authorized distributor network license (Default: ₹399).</p>
           </div>
 
           <div>

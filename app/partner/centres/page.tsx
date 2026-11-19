@@ -112,7 +112,7 @@ function PartnerCentresContent() {
             My Network Centres
           </h1>
           <p className="text-xs sm:text-sm text-[#667085] mt-1">
-            Manage, audit, and monitor all authorized eSevai centres onboarded under your partner code.
+            Manage, audit, and monitor all authorized booking centres onboarded under your partner code.
           </p>
         </div>
 

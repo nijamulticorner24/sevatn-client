@@ -32,17 +32,12 @@ import {
   KeyRound,
 } from 'lucide-react';
 
-const COMMISSION_SLABS = [
-  { slab: 'SLAB_10', label: '10% Slab', percentage: 10, desc: '10% of Service Fee per Booking' },
-  { slab: 'SLAB_15', label: '15% Slab', percentage: 15, desc: '15% of Service Fee per Booking' },
-  { slab: 'CUSTOM', label: 'Custom %', percentage: 0, desc: 'Custom percentage rate' },
-];
-
 export default function AdminPartnersPage() {
   const [partners, setPartners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
   const [systemServiceFee, setSystemServiceFee] = useState(100);
+  const [systemBaseTicketPrice, setSystemBaseTicketPrice] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING_APPROVAL' | 'PENDING_PAYMENT' | 'SUSPENDED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,8 +56,7 @@ export default function AdminPartnersPage() {
   const [mobile, setMobile] = useState('');
   const [district, setDistrict] = useState('Chennai');
   const [taluk, setTaluk] = useState('Guindy');
-  const [commissionSlab, setCommissionSlab] = useState('SLAB_10');
-  const [commissionPercentage, setCommissionPercentage] = useState('10');
+  const [baseTicketPrice, setBaseTicketPrice] = useState('');
   const [creating, setCreating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -74,8 +68,7 @@ export default function AdminPartnersPage() {
   const [editDistrict, setEditDistrict] = useState('');
   const [editTaluk, setEditTaluk] = useState('');
   const [editStatus, setEditStatus] = useState<string>('ACTIVE');
-  const [editCommissionSlab, setEditCommissionSlab] = useState('SLAB_10');
-  const [editCommissionPercentage, setEditCommissionPercentage] = useState('10');
+  const [editBaseTicketPrice, setEditBaseTicketPrice] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editErrorMsg, setEditErrorMsg] = useState<string | null>(null);
@@ -115,11 +108,17 @@ export default function AdminPartnersPage() {
   }, []);
 
   const loadPartners = () => {
-    api.getPartners()
-      .then((res: any) => {
+    Promise.all([
+      api.getPartners(),
+      api.getAdminPricingConfig().catch(() => null),
+    ])
+      .then(([res, cfg]: any) => {
         setPartners(res.partners || []);
         if (res.systemServiceFee) {
           setSystemServiceFee(Number(res.systemServiceFee));
+        }
+        if (cfg?.baseTicketPrice) {
+          setSystemBaseTicketPrice(Number(cfg.baseTicketPrice));
         }
         setLoading(false);
       })
@@ -147,42 +146,17 @@ export default function AdminPartnersPage() {
     }
   };
 
-  const handleSlabChange = (selectedSlab: string, isEdit = false) => {
-    if (selectedSlab === 'CUSTOM') {
-      if (isEdit) {
-        setEditCommissionSlab('CUSTOM');
-      } else {
-        setCommissionSlab('CUSTOM');
-      }
-      return;
-    }
-    const found = COMMISSION_SLABS.find((s) => s.slab === selectedSlab) || COMMISSION_SLABS[0];
-    if (isEdit) {
-      setEditCommissionSlab(found.slab);
-      setEditCommissionPercentage(found.percentage.toString());
-    } else {
-      setCommissionSlab(found.slab);
-      setCommissionPercentage(found.percentage.toString());
-    }
-  };
-
   const handleCreatePartner = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     setErrorMsg(null);
 
-    const pct = parseFloat(commissionPercentage);
-    if (isNaN(pct) || pct < 0 || pct > 100) {
-      setErrorMsg('Please enter a valid commission percentage between 0% and 100%.');
+    const basePriceNum = baseTicketPrice.trim() !== '' ? parseFloat(baseTicketPrice) : undefined;
+    if (basePriceNum !== undefined && (isNaN(basePriceNum) || basePriceNum < 0)) {
+      setErrorMsg('Base ticket price must be a valid non-negative number.');
       setCreating(false);
       return;
     }
-    const rate = (systemServiceFee * pct) / 100;
-    const slabLabel = commissionSlab === 'SLAB_10'
-      ? 'SLAB_10'
-      : commissionSlab === 'SLAB_15'
-        ? 'SLAB_15'
-        : `CUSTOM (${pct}%)`;
 
     try {
       const res = await api.createPartner({
@@ -191,9 +165,7 @@ export default function AdminPartnersPage() {
         mobile,
         district,
         taluk,
-        commissionPercentage: pct,
-        commissionRate: rate,
-        commissionSlab: slabLabel,
+        baseTicketPrice: basePriceNum,
       });
 
       setShowCreateModal(false);
@@ -201,8 +173,9 @@ export default function AdminPartnersPage() {
       setName('');
       setEmail('');
       setMobile('');
-      setCommissionSlab('SLAB_10');
-      setCommissionPercentage('10');
+      setDistrict('');
+      setTaluk('');
+      setBaseTicketPrice('');
       loadPartners();
       showToast(`Partner franchise created for ${res.partner?.name || 'Partner'}`);
     } catch (err: any) {
@@ -220,20 +193,9 @@ export default function AdminPartnersPage() {
     setEditDistrict(p.district || '');
     setEditTaluk(p.taluk || '');
     setEditStatus(p.status || 'ACTIVE');
-    const rawPct = p.commissionPercentage !== undefined && p.commissionPercentage !== null
-      ? Number(p.commissionPercentage)
-      : (p.commissionRate ? Number(((Number(p.commissionRate) / systemServiceFee) * 100).toFixed(1)) : 10);
-
-    if (rawPct === 10) {
-      setEditCommissionSlab('SLAB_10');
-      setEditCommissionPercentage('10');
-    } else if (rawPct === 15) {
-      setEditCommissionSlab('SLAB_15');
-      setEditCommissionPercentage('15');
-    } else {
-      setEditCommissionSlab('CUSTOM');
-      setEditCommissionPercentage(rawPct.toString());
-    }
+    setEditBaseTicketPrice(
+      p.baseTicketPrice !== undefined && p.baseTicketPrice !== null ? p.baseTicketPrice.toString() : ''
+    );
     setEditPassword('');
     setEditErrorMsg(null);
   };
@@ -244,18 +206,12 @@ export default function AdminPartnersPage() {
     setSavingEdit(true);
     setEditErrorMsg(null);
 
-    const pct = parseFloat(editCommissionPercentage);
-    if (isNaN(pct) || pct < 0 || pct > 100) {
-      setEditErrorMsg('Please enter a valid commission percentage between 0% and 100%.');
+    const basePriceNum = editBaseTicketPrice.trim() !== '' ? parseFloat(editBaseTicketPrice) : null;
+    if (basePriceNum !== null && (isNaN(basePriceNum) || basePriceNum < 0)) {
+      setEditErrorMsg('Base ticket price must be a valid non-negative number.');
       setSavingEdit(false);
       return;
     }
-    const rate = (systemServiceFee * pct) / 100;
-    const slabLabel = editCommissionSlab === 'SLAB_10'
-      ? 'SLAB_10'
-      : editCommissionSlab === 'SLAB_15'
-        ? 'SLAB_15'
-        : `CUSTOM (${pct}%)`;
 
     try {
       await api.updatePartner(editingPartner.id, {
@@ -265,9 +221,7 @@ export default function AdminPartnersPage() {
         district: editDistrict,
         taluk: editTaluk,
         status: editStatus,
-        commissionPercentage: pct,
-        commissionRate: rate,
-        commissionSlab: slabLabel,
+        baseTicketPrice: basePriceNum,
         password: editPassword.trim() || undefined,
       });
 
@@ -614,27 +568,27 @@ export default function AdminPartnersPage() {
                     )}
                   </div>
 
-                  {/* Commission Slab Box (% based on Service Fee) */}
+                  {/* Dynamic Base Ticket Price Box */}
                   <div className="mt-3 rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3 text-xs flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
-                        <Percent className="h-4 w-4" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+                        <Coins className="h-4 w-4" />
                       </div>
                       <div>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[#667085] block">
-                          Franchise Commission ({p.commissionPercentage ?? 20}%)
+                          Base Ticket Price
                         </span>
-                        <span className="font-mono text-xs font-bold text-[#8F5A0D]">
-                          {p.commissionSlab || `${p.commissionPercentage ?? 20}%`} SLAB
+                        <span className="font-mono text-xs font-bold text-[#172033]">
+                          {p.baseTicketPrice ? 'Custom Partner Rate' : 'Global Default Rate'}
                         </span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-extrabold text-[#027A48]">
-                        ₹{Number(p.commissionRate ?? ((systemServiceFee * (p.commissionPercentage ?? 20)) / 100)).toFixed(2)}
+                      <span className="text-sm font-extrabold text-[#175CD3]">
+                        ₹{Number(p.baseTicketPrice ?? systemBaseTicketPrice).toFixed(2)}
                       </span>
                       <span className="text-[10px] text-[#667085] block">
-                        {p.commissionPercentage ?? 20}% of ₹{systemServiceFee.toFixed(2)} Fee
+                        {p.baseTicketPrice ? 'Dynamic Override' : `Default (₹${systemBaseTicketPrice.toFixed(2)})`}
                       </span>
                     </div>
                   </div>
@@ -807,12 +761,6 @@ export default function AdminPartnersPage() {
                 <span className="text-[#8F5A0D] font-medium">Franchise Fee:</span>
                 <span className="font-bold text-[#172033]">₹599.00 (Pending Payment)</span>
               </div>
-              <div className="flex justify-between border-t border-[#F9DE9B]/60 pt-1.5">
-                <span className="text-[#8F5A0D] font-medium">Commission Slab & Cut:</span>
-                <span className="font-bold text-[#027A48]">
-                  {createdPartnerData.partner?.commissionSlab || commissionSlab} ({Number(createdPartnerData.partner?.commissionPercentage ?? commissionPercentage)}% • ₹{Number(createdPartnerData.partner?.commissionRate ?? ((systemServiceFee * (parseFloat(commissionPercentage) || 20)) / 100)).toFixed(2)} / pass)
-                </span>
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -868,7 +816,7 @@ export default function AdminPartnersPage() {
       {/* Create Partner Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/50 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in overflow-y-auto">
-          <div className="w-full max-w-4xl rounded-[14px] border border-[#E6EAF0] bg-white p-6 sm:p-7 shadow-modal flex flex-col max-h-[92vh] my-auto animate-in zoom-in-95">
+          <div className="w-full max-w-lg rounded-[14px] border border-[#E6EAF0] bg-white p-6 sm:p-7 shadow-modal flex flex-col max-h-[92vh] my-auto animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3.5 mb-4 shrink-0">
               <div className="flex items-center gap-3">
@@ -901,181 +849,106 @@ export default function AdminPartnersPage() {
               </div>
             )}
 
-            {/* Scrollable Form Body with 2-Column Responsive Grid */}
+            {/* Scrollable Form Body */}
             <form onSubmit={handleCreatePartner} className="flex-1 flex flex-col min-h-0">
               <div className="flex-1 overflow-y-auto pr-1.5 -mr-1.5 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-                  {/* Left Column: Basic Details */}
-                  <div className="space-y-3.5">
-                    <div className="flex items-center justify-between border-b border-[#F0F3F8] pb-1.5">
-                      <span className="text-xs font-bold text-[#475467] uppercase tracking-wider">
-                        Franchise Details
-                      </span>
-                    </div>
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-[#F0F3F8] pb-1.5">
+                    <span className="text-xs font-bold text-[#475467] uppercase tracking-wider">
+                      Franchise Details
+                    </span>
+                  </div>
 
+                  <div>
+                    <label className="block text-xs font-bold text-[#172033] mb-1">
+                      Partner / Agency Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. NIJA Digital Services Thanjavur"
+                      className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#172033] mb-1">
+                      Official Email *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="partner@nija.in"
+                      className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#172033] mb-1">
+                      Mobile Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      pattern="[6-9][0-9]{9}"
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value)}
+                      placeholder="9443199999"
+                      className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Partner / Agency Name *
-                      </label>
+                      <label className="block text-xs font-bold text-[#172033] mb-1">District</label>
                       <input
                         type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. NIJA Digital Services Thanjavur"
+                        value={district}
+                        onChange={(e) => setDistrict(e.target.value)}
+                        placeholder="e.g. Thanjavur / Chennai"
                         className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
                       />
                     </div>
-
                     <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Official Email *
-                      </label>
+                      <label className="block text-xs font-bold text-[#172033] mb-1">Taluk</label>
                       <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="partner@nija.in"
+                        type="text"
+                        value={taluk}
+                        onChange={(e) => setTaluk(e.target.value)}
+                        placeholder="e.g. Kumbakonam / Guindy"
                         className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Mobile Number *
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        pattern="[6-9][0-9]{9}"
-                        value={mobile}
-                        onChange={(e) => setMobile(e.target.value)}
-                        placeholder="9443199999"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-[#172033] mb-1">District</label>
-                        <input
-                          type="text"
-                          value={district}
-                          onChange={(e) => setDistrict(e.target.value)}
-                          placeholder="e.g. Thanjavur / Chennai"
-                          className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-[#172033] mb-1">Taluk</label>
-                        <input
-                          type="text"
-                          value={taluk}
-                          onChange={(e) => setTaluk(e.target.value)}
-                          placeholder="e.g. Kumbakonam / Guindy"
-                          className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] p-2.5 text-[11.5px] text-[#8F5A0D] flex items-center justify-between font-medium">
-                      <span>Franchise Fee: <strong>₹599.00</strong></span>
-                      <span>Initial Status: <strong>Pending Payment</strong></span>
                     </div>
                   </div>
 
-                  {/* Right Column: Commission & Revenue Slab */}
-                  <div className="space-y-3.5">
-                    <div className="flex items-center justify-between border-b border-[#F0F3F8] pb-1.5">
-                      <span className="text-xs font-bold text-[#475467] uppercase tracking-wider">
-                        Commission Structure
-                      </span>
-                      <span className="text-[11px] font-mono text-[#027A48] bg-[#ECFDF3] border border-[#A6F4C5] px-2 py-0.5 rounded font-bold">
-                        {parseFloat(commissionPercentage) || 0}% Share
-                      </span>
+                  <div>
+                    <label className="block text-xs font-bold text-[#172033] mb-1">
+                      Dynamic Base Ticket Price (₹) <span className="text-[#667085] font-normal">(Optional Override)</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-xs text-[#667085] font-bold">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={baseTicketPrice}
+                        onChange={(e) => setBaseTicketPrice(e.target.value)}
+                        placeholder={`Leave blank to use default (₹${systemBaseTicketPrice.toFixed(2)})`}
+                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
+                      />
                     </div>
+                    <p className="text-[10.5px] text-[#667085] mt-1">
+                      Custom base rate for centres under this partner (Default: ₹{systemBaseTicketPrice.toFixed(2)}).
+                    </p>
+                  </div>
 
-                    <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5 space-y-3">
-                      {/* Service Fee Base Indicator */}
-                      <div className="rounded-[6px] bg-white border border-[#E6EAF0] p-2.5 flex items-center justify-between text-xs">
-                        <span className="text-[#667085] flex items-center gap-1.5 font-medium">
-                          <Coins className="h-3.5 w-3.5 text-[#C98219]" />
-                          Service Fee per Booking:
-                        </span>
-                        <span className="font-mono font-bold text-xs text-[#172033]">₹{systemServiceFee.toFixed(2)}</span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        {COMMISSION_SLABS.map((s) => (
-                          <button
-                            type="button"
-                            key={s.slab}
-                            onClick={() => handleSlabChange(s.slab, false)}
-                            className={`p-2.5 rounded-[8px] border text-left transition-all cursor-pointer ${
-                              commissionSlab === s.slab
-                                ? 'border-[#C98219] bg-[#FEF7E6] text-[#8F5A0D] shadow-xs ring-2 ring-[#C98219]'
-                                : 'border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F8FAFC]'
-                            }`}
-                          >
-                            <div className="text-xs font-bold text-[#172033] flex items-center justify-between">
-                              <span>{s.label}</span>
-                              {commissionSlab === s.slab && (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-[#C98219]" />
-                              )}
-                            </div>
-                            <div className="text-[11px] text-[#667085] mt-1 font-medium">
-                              {s.slab === 'CUSTOM'
-                                ? 'Tailored %'
-                                : `₹${((systemServiceFee * s.percentage) / 100).toFixed(2)} / pass`}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Custom Percentage Input Field */}
-                      {commissionSlab === 'CUSTOM' && (
-                        <div className="rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] p-3 animate-in fade-in space-y-1.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <label className="text-xs font-bold text-[#8F5A0D] flex items-center gap-1.5">
-                              <Percent className="h-3.5 w-3.5 text-[#C98219]" />
-                              <span>Custom Commission Percentage *</span>
-                            </label>
-                            <div className="relative w-28">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.5"
-                                required
-                                value={commissionPercentage}
-                                onChange={(e) => setCommissionPercentage(e.target.value)}
-                                placeholder="e.g. 12"
-                                className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-1.5 text-sm font-bold text-[#172033] focus:border-[#C98219] focus:outline-none pr-8 text-right"
-                              />
-                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#667085]">%</span>
-                            </div>
-                          </div>
-                          <p className="text-[10px] text-[#A66E14]">
-                            Enter any custom rate between 0% and 100% (e.g. 5%, 8%, 12%, 18%, 20%, 25%).
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="rounded-[6px] bg-[#ECFDF3] border border-[#A6F4C5] p-2.5 text-[11.5px] text-[#027A48] flex items-center justify-between font-semibold">
-                        <span>Partner Earns Per Pass:</span>
-                        <span className="font-mono font-bold text-sm">
-                          ₹{(((systemServiceFee * (parseFloat(commissionPercentage) || 0)) / 100)).toFixed(2)}
-                          <span className="text-[10px] font-normal text-[#027A48] ml-1">
-                            ({parseFloat(commissionPercentage) || 0}%)
-                          </span>
-                        </span>
-                      </div>
-
-                      <p className="text-[10.5px] text-[#667085] leading-relaxed">
-                        💡 Percentage slab: Partner receives this cut of the ₹{systemServiceFee.toFixed(2)} booking fee whenever a Virtual-Q pass is completed by their registered centres.
-                      </p>
-                    </div>
+                  <div className="rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] p-2.5 text-[11.5px] text-[#8F5A0D] flex items-center justify-between font-medium">
+                    <span>Franchise Fee: <strong>₹599.00</strong></span>
+                    <span>Initial Status: <strong>Pending Payment</strong></span>
                   </div>
                 </div>
               </div>
@@ -1120,10 +993,10 @@ export default function AdminPartnersPage() {
                   <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-xs font-bold text-[#8F5A0D] border border-[#F9DE9B] font-mono">
                     {editingPartner.partnerCode}
                   </span>
-                  <h3 className="text-base sm:text-lg font-bold text-[#172033]">Edit Partner Details & Slab</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-[#172033]">Edit Partner Details & Base Ticket Price</h3>
                 </div>
                 <p className="text-xs text-[#667085] mt-0.5">
-                  Update regional jurisdiction, active status, or configured commission slab.
+                  Update regional jurisdiction, active status, or configured dynamic base ticket price.
                 </p>
               </div>
               <button
@@ -1250,95 +1123,92 @@ export default function AdminPartnersPage() {
                     )}
                   </div>
 
-                  {/* Right Column: Commission Slab & Revenue Details */}
+                  {/* Right Column: Dynamic Base Ticket Price & Pricing Architecture */}
                   <div className="space-y-3.5">
                     <div className="flex items-center justify-between border-b border-[#F0F3F8] pb-1.5">
                       <span className="text-xs font-bold text-[#475467] uppercase tracking-wider">
-                        Commission Structure
+                        Dynamic Base Pricing
                       </span>
-                      <span className="text-[11px] font-mono text-[#027A48] bg-[#ECFDF3] border border-[#A6F4C5] px-2 py-0.5 rounded font-bold">
-                        {editCommissionPercentage}% Share
+                      <span className="text-[11px] font-mono text-[#175CD3] bg-[#EFF8FF] border border-[#B2DDFF] px-2 py-0.5 rounded font-bold">
+                        ₹{editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)} Base Rate
                       </span>
                     </div>
 
                     <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5 space-y-3">
-                      {/* Service Fee Base Indicator */}
+                      {/* Global Default Reference */}
                       <div className="rounded-[6px] bg-white border border-[#E6EAF0] p-2.5 flex items-center justify-between text-xs">
                         <span className="text-[#667085] flex items-center gap-1.5 font-medium">
                           <Coins className="h-3.5 w-3.5 text-[#C98219]" />
-                          Current Service Fee per Booking:
+                          Global Default Base Rate:
                         </span>
-                        <span className="font-mono font-bold text-xs text-[#172033]">₹{systemServiceFee.toFixed(2)}</span>
+                        <span className="font-mono font-bold text-xs text-[#172033]">₹{systemBaseTicketPrice.toFixed(2)}</span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
-                        {COMMISSION_SLABS.map((s) => (
+                      {/* Dynamic Base Ticket Price Input */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-[#172033]">
+                          Partner Dynamic Base Ticket Price (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={editBaseTicketPrice}
+                            onChange={(e) => setEditBaseTicketPrice(e.target.value)}
+                            placeholder={`Leave blank to inherit default (₹${systemBaseTicketPrice.toFixed(2)})`}
+                            className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-sm font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
+                          />
+                        </div>
+                        <p className="text-[11px] text-[#667085]">
+                          Set a dynamic base price specifically for this franchise. Centres and distributors under this partner calculate booking fees starting from this rate.
+                        </p>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[11px] font-semibold text-[#475467]">Quick Presets</span>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[10, 12, 15, 20].map((price) => (
+                            <button
+                              key={price}
+                              type="button"
+                              onClick={() => setEditBaseTicketPrice(price.toString())}
+                              className={`py-1.5 px-2 rounded-[6px] border text-xs font-bold transition-all cursor-pointer ${
+                                editBaseTicketPrice === price.toString()
+                                  ? 'border-[#175CD3] bg-[#EFF8FF] text-[#175CD3] ring-1 ring-[#175CD3]'
+                                  : 'border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F8FAFC]'
+                              }`}
+                            >
+                              ₹{price}
+                            </button>
+                          ))}
+                        </div>
+                        {editBaseTicketPrice.trim() !== '' && (
                           <button
                             type="button"
-                            key={s.slab}
-                            onClick={() => handleSlabChange(s.slab, true)}
-                            className={`p-2.5 rounded-[8px] border text-left transition-all cursor-pointer ${
-                              editCommissionSlab === s.slab
-                                ? 'border-[#C98219] bg-[#FEF7E6] text-[#8F5A0D] shadow-sm ring-2 ring-[#C98219]'
-                                : 'border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F8FAFC]'
-                            }`}
+                            onClick={() => setEditBaseTicketPrice('')}
+                            className="text-[11px] text-[#C98219] hover:underline font-semibold block pt-1 cursor-pointer"
                           >
-                            <div className="text-xs font-bold text-[#172033] flex items-center justify-between">
-                              <span>{s.label}</span>
-                              {editCommissionSlab === s.slab && (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-[#C98219]" />
-                              )}
-                            </div>
-                            <div className="text-[11px] text-[#667085] mt-1 font-medium">
-                              {s.slab === 'CUSTOM'
-                                ? 'Tailored %'
-                                : `₹${((systemServiceFee * s.percentage) / 100).toFixed(2)} / pass`}
-                            </div>
+                            Reset to Default (₹{systemBaseTicketPrice.toFixed(2)})
                           </button>
-                        ))}
+                        )}
                       </div>
 
-                      {/* Custom Percentage Input Field for Edit */}
-                      {editCommissionSlab === 'CUSTOM' && (
-                        <div className="rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] p-3 animate-in fade-in space-y-1.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <label className="text-xs font-bold text-[#8F5A0D] flex items-center gap-1.5">
-                              <Percent className="h-3.5 w-3.5 text-[#C98219]" />
-                              <span>Custom Commission Percentage *</span>
-                            </label>
-                            <div className="relative w-28">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.5"
-                                required
-                                value={editCommissionPercentage}
-                                onChange={(e) => setEditCommissionPercentage(e.target.value)}
-                                placeholder="e.g. 12"
-                                className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-1.5 text-sm font-bold text-[#172033] focus:border-[#C98219] focus:outline-none pr-8 text-right"
-                              />
-                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#667085]">%</span>
-                            </div>
-                          </div>
-                          <p className="text-[10px] text-[#A66E14]">
-                            Enter any tailored rate between 0% and 100% (e.g. 5%, 8%, 12%, 18%, 20%, 25%).
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="rounded-[6px] bg-[#ECFDF3] border border-[#A6F4C5] p-2.5 text-[11.5px] text-[#027A48] flex items-center justify-between font-semibold">
-                        <span>Partner Earns Per Pass:</span>
+                      {/* Rate Preview Indicator */}
+                      <div className="rounded-[6px] bg-[#EFF8FF] border border-[#B2DDFF] p-2.5 text-[11.5px] text-[#175CD3] flex items-center justify-between font-semibold">
+                        <span>Active Partner Base Rate:</span>
                         <span className="font-mono font-bold text-sm">
-                          ₹{(((systemServiceFee * (parseFloat(editCommissionPercentage) || 0)) / 100)).toFixed(2)}
-                          <span className="text-[10px] font-normal text-[#027A48] ml-1">
-                            ({parseFloat(editCommissionPercentage) || 0}%)
+                          ₹{editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)}
+                          <span className="text-[10px] font-normal text-[#175CD3] ml-1">
+                            ({editBaseTicketPrice.trim() !== '' ? 'Custom Override' : 'System Default'})
                           </span>
                         </span>
                       </div>
 
                       <p className="text-[10.5px] text-[#667085] leading-relaxed">
-                        💡 Percentage slab: When centres registered under {editName || 'this partner'} execute a booking, ₹{(((systemServiceFee * (parseFloat(editCommissionPercentage) || 0)) / 100)).toFixed(2)} is credited directly to the partner balance.
+                        💡 All bookings submitted by centres affiliated with {editName || 'this partner'} start at this base price before any partner and distributor ticket markups are applied.
                       </p>
                     </div>
                   </div>
@@ -1367,7 +1237,7 @@ export default function AdminPartnersPage() {
                   ) : (
                     <>
                       <Save className="h-3.5 w-3.5" />
-                      <span>Save Partner & Slab</span>
+                      <span>Save Partner Details</span>
                     </>
                   )}
                 </button>

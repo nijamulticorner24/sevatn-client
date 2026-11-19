@@ -33,6 +33,8 @@ import {
   FileText,
   RotateCcw,
   Upload,
+  Plus,
+  Send,
 } from 'lucide-react';
 
 interface LedgerOverviewData {
@@ -92,6 +94,8 @@ interface LedgerOverviewData {
     pendingCentresAmount: number;
     pendingPartnersCount?: number;
     pendingPartnersAmount?: number;
+    pendingDistributorsCount?: number;
+    pendingDistributorsAmount?: number;
     pendingPayoutsCount: number;
     pendingPayoutsAmount: number;
     pendingRefundsCount: number;
@@ -99,7 +103,9 @@ interface LedgerOverviewData {
     recentWaitingTopups: any[];
     pendingCentres: any[];
     pendingPartners?: any[];
+    pendingDistributors?: any[];
     approvedPartnersRecent?: any[];
+    approvedDistributorsRecent?: any[];
     approvedCentresRecent?: any[];
   };
 }
@@ -210,31 +216,51 @@ export default function FinancialLedgerPage() {
     fileName?: string;
     centreName?: string;
     partnerName?: string;
+    distributorName?: string;
     contact?: string;
     jurisdiction?: string;
     date: string;
-    type: 'TOPUP' | 'CENTRE_FEE' | 'PARTNER_FEE';
+    type: 'TOPUP' | 'CENTRE_FEE' | 'PARTNER_FEE' | 'DISTRIBUTOR_FEE';
     targetId: string;
   } | null>(null);
 
   const [rejectingTarget, setRejectingTarget] = useState<{
     id: string;
-    type: 'TOPUP' | 'CENTRE_FEE' | 'PARTNER_FEE';
+    type: 'TOPUP' | 'CENTRE_FEE' | 'PARTNER_FEE' | 'DISTRIBUTOR_FEE';
     title: string;
   } | null>(null);
   const [rejectReason, setRejectReason] = useState<string>('');
   const [processingAction, setProcessingAction] = useState<string | null>(null);
 
   // Onboarding Sub-Tab & Filter State
-  const [onboardingSubTab, setOnboardingSubTab] = useState<'ALL' | 'PARTNERS' | 'CENTRES' | 'HISTORY'>('ALL');
+  const [onboardingSubTab, setOnboardingSubTab] = useState<'ALL' | 'PARTNERS' | 'DISTRIBUTORS' | 'CENTRES' | 'HISTORY'>('ALL');
   const [onboardingSearch, setOnboardingSearch] = useState<string>('');
 
   const [selectedTxDetail, setSelectedTxDetail] = useState<TransactionItem | null>(null);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [sendingTelegramAlert, setSendingTelegramAlert] = useState(false);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToastMessage({ type, message });
     setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const handleSendTelegramAlert = async () => {
+    try {
+      setSendingTelegramAlert(true);
+      const res: any = await api.notifyLedgerPendingTelegram();
+      if (res?.success) {
+        showToast('success', 'Pending items summary dispatched to Telegram bot!');
+      } else if (res?.skipped) {
+        showToast('error', res?.reason || 'Telegram bot is disabled in /admin/config');
+      } else {
+        showToast('error', res?.message || 'Failed to dispatch Telegram alert');
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Error dispatching Telegram alert');
+    } finally {
+      setSendingTelegramAlert(false);
+    }
   };
 
   const loadOverview = async () => {
@@ -320,6 +346,10 @@ export default function FinancialLedgerPage() {
 
   useEffect(() => {
     loadOverview();
+    const interval = setInterval(() => {
+      loadOverview();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -428,6 +458,9 @@ export default function FinancialLedgerPage() {
       } else if (rejectingTarget.type === 'PARTNER_FEE') {
         await api.rejectLedgerPartnerFee(rejectingTarget.id, rejectReason || undefined);
         showToast('success', 'Partner franchise fee rejected.');
+      } else if (rejectingTarget.type === 'DISTRIBUTOR_FEE') {
+        await api.rejectLedgerDistributorFee(rejectingTarget.id, rejectReason || undefined);
+        showToast('success', 'Distributor license fee rejected.');
       }
       setRejectingTarget(null);
       setRejectReason('');
@@ -435,6 +468,20 @@ export default function FinancialLedgerPage() {
       await Promise.all([loadOverview(), loadTransactions(pagination.page)]);
     } catch (err: any) {
       showToast('error', err.message || 'Failed to reject transaction');
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleApproveDistributorFee = async (distributorId: string) => {
+    setProcessingAction(distributorId);
+    try {
+      await api.verifyLedgerDistributorFee(distributorId);
+      showToast('success', 'Distributor license verified and distributor account activated!');
+      if (selectedProof?.targetId === distributorId) setSelectedProof(null);
+      await Promise.all([loadOverview(), loadTransactions(pagination.page)]);
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to verify distributor license');
     } finally {
       setProcessingAction(null);
     }
@@ -526,9 +573,11 @@ export default function FinancialLedgerPage() {
 
   const pendingCentresList = overview?.waitingActionItems?.pendingCentres || [];
   const pendingPartnersList = overview?.waitingActionItems?.pendingPartners || [];
+  const pendingDistributorsList = overview?.waitingActionItems?.pendingDistributors || [];
   const approvedPartnersRecent = overview?.waitingActionItems?.approvedPartnersRecent || [];
+  const approvedDistributorsRecent = overview?.waitingActionItems?.approvedDistributorsRecent || [];
   const approvedCentresRecent = overview?.waitingActionItems?.approvedCentresRecent || [];
-  const totalPendingOnboardings = pendingCentresList.length + pendingPartnersList.length;
+  const totalPendingOnboardings = pendingCentresList.length + pendingPartnersList.length + pendingDistributorsList.length;
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
@@ -583,6 +632,16 @@ export default function FinancialLedgerPage() {
           >
             <Download className="h-3.5 w-3.5 text-[#667085]" />
             <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={handleSendTelegramAlert}
+            disabled={sendingTelegramAlert || (overview?.summary?.totalWaitingItemsCount || 0) === 0}
+            className="flex items-center gap-1.5 h-9 px-3.5 rounded-[7px] border border-[#0088cc]/30 bg-[#0088cc]/5 text-xs font-semibold text-[#0088cc] hover:bg-[#0088cc]/10 transition-all shadow-subtle disabled:opacity-40"
+            title="Push instant alert of pending items to Telegram"
+          >
+            <Send className={cn('h-3.5 w-3.5', sendingTelegramAlert && 'animate-pulse')} />
+            <span>{sendingTelegramAlert ? 'Notifying...' : 'Telegram Alert'}</span>
           </button>
 
           <button
@@ -663,18 +722,30 @@ export default function FinancialLedgerPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setActiveTab(totalPendingOnboardings > 0 ? 'REGISTRATIONS' : 'PENDING')}
-            className="flex items-center gap-1.5 h-9 px-4 rounded-[7px] bg-[#C98219] hover:bg-[#B37316] text-white text-xs font-bold transition-all shadow-sm shrink-0"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>Review Waiting Payments</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleSendTelegramAlert}
+              disabled={sendingTelegramAlert}
+              className="flex items-center gap-1.5 h-9 px-3.5 rounded-[7px] bg-[#0088cc]/10 hover:bg-[#0088cc]/20 border border-[#0088cc]/30 text-[#0088cc] text-xs font-bold transition-all shadow-sm shrink-0 disabled:opacity-50"
+              title="Push pending items summary to Telegram Bot"
+            >
+              <Send className={cn('h-3.5 w-3.5', sendingTelegramAlert && 'animate-pulse')} />
+              <span>{sendingTelegramAlert ? 'Notifying...' : 'Notify Telegram'}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab(totalPendingOnboardings > 0 ? 'REGISTRATIONS' : 'PENDING')}
+              className="flex items-center gap-1.5 h-9 px-4 rounded-[7px] bg-[#C98219] hover:bg-[#B37316] text-white text-xs font-bold transition-all shadow-sm shrink-0"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Review Waiting Payments</span>
+            </button>
+          </div>
         </div>
       )}
 
       {/* KPI Cards: Total Collections & Core Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Metric 1: Total Collections */}
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -736,26 +807,6 @@ export default function FinancialLedgerPage() {
             </div>
             <p className="text-[11px] text-[#667085] mt-1">
               Top-up & onboarding proofs awaiting review
-            </p>
-          </div>
-        </div>
-
-        {/* Metric 4: Active Escrow Holdings */}
-        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-wider text-[#667085] uppercase">
-              Active Escrow Holdings
-            </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-blue-50 text-blue-600">
-              <Lock className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-mono font-bold text-blue-800">
-              {loadingOverview ? '—' : formatCurrency(overview?.summary?.networkHoldings?.totalAvailableBalance || 0)}
-            </div>
-            <p className="text-[11px] text-[#667085] mt-1">
-              Available in centre wallets + {formatCurrency(overview?.summary?.networkHoldings?.totalReservedBalance || 0)} in queue holds
             </p>
           </div>
         </div>
@@ -1202,6 +1253,24 @@ export default function FinancialLedgerPage() {
                 </button>
 
                 <button
+                  onClick={() => setOnboardingSubTab('DISTRIBUTORS')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-[6px] text-xs font-semibold transition-all flex items-center gap-1.5',
+                    onboardingSubTab === 'DISTRIBUTORS'
+                      ? 'bg-purple-700 text-white shadow-xs'
+                      : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100',
+                  )}
+                >
+                  <Building2 className="h-3 w-3 text-purple-600" />
+                  <span>Distributor License</span>
+                  {pendingDistributorsList.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-purple-500 text-white">
+                      {pendingDistributorsList.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
                   onClick={() => setOnboardingSubTab('CENTRES')}
                   className={cn(
                     'px-3 py-1.5 rounded-[6px] text-xs font-semibold transition-all flex items-center gap-1.5',
@@ -1231,7 +1300,7 @@ export default function FinancialLedgerPage() {
                   <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                   <span>Verified History</span>
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900">
-                    {approvedPartnersRecent.length + approvedCentresRecent.length}
+                    {approvedPartnersRecent.length + approvedDistributorsRecent.length + approvedCentresRecent.length}
                   </span>
                 </button>
               </div>
@@ -1318,6 +1387,41 @@ export default function FinancialLedgerPage() {
                         </tr>
                       ))}
 
+                      {approvedDistributorsRecent.map((distributor: any) => (
+                        <tr key={distributor.id} className="hover:bg-[#F9FAFB] transition-colors">
+                          <td className="py-3 px-4 font-mono text-[#475467] whitespace-nowrap">
+                            <div>{distributor.updatedAt ? formatDate(distributor.updatedAt) : 'Active'}</div>
+                            <div className="text-[10px] text-[#98A2B3]">{distributor.updatedAt ? formatTime(distributor.updatedAt) : ''}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold bg-purple-50 text-purple-900 border border-purple-200">
+                              <Building2 className="h-3 w-3 text-purple-600" />
+                              Distributor License
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-[#172033]">{distributor.distributorName}</div>
+                            <div className="text-[11px] font-mono text-purple-800 font-semibold">{distributor.distributorCode}</div>
+                          </td>
+                          <td className="py-3 px-4 text-[#475467]">
+                            {distributor.district ? `${distributor.district}${distributor.taluk ? ` / ${distributor.taluk}` : ''}` : '—'}
+                          </td>
+                          <td className="py-3 px-4 text-[#475467]">
+                            <div className="text-[11px] font-mono">{distributor.user?.mobile || '—'}</div>
+                            <div className="text-[10.5px] text-[#667085]">{distributor.user?.email || '—'}</div>
+                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-emerald-700">
+                            {formatCurrency(distributor.distributorFee || 399)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                              Active & Fee Paid
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+
                       {approvedCentresRecent.map((centre: any) => (
                         <tr key={centre.id} className="hover:bg-[#F9FAFB] transition-colors">
                           <td className="py-3 px-4 font-mono text-[#475467] whitespace-nowrap">
@@ -1359,6 +1463,7 @@ export default function FinancialLedgerPage() {
                 /* PENDING ONBOARDING ROWS (PARTNERS & CENTRES) */
                 (() => {
                   const showPartners = onboardingSubTab === 'ALL' || onboardingSubTab === 'PARTNERS';
+                  const showDistributors = onboardingSubTab === 'ALL' || onboardingSubTab === 'DISTRIBUTORS';
                   const showCentres = onboardingSubTab === 'ALL' || onboardingSubTab === 'CENTRES';
 
                   const displayedPartners = showPartners
@@ -1373,6 +1478,23 @@ export default function FinancialLedgerPage() {
                           p.paymentReference?.toLowerCase().includes(s) ||
                           p.user?.email?.toLowerCase().includes(s) ||
                           p.user?.mobile?.toLowerCase().includes(s)
+                        );
+                      })
+                    : [];
+
+                  const displayedDistributors = showDistributors
+                    ? pendingDistributorsList.filter((d: any) => {
+                        if (!onboardingSearch.trim()) return true;
+                        const s = onboardingSearch.toLowerCase();
+                        return (
+                          d.distributorName?.toLowerCase().includes(s) ||
+                          d.applicantName?.toLowerCase().includes(s) ||
+                          d.distributorCode?.toLowerCase().includes(s) ||
+                          d.district?.toLowerCase().includes(s) ||
+                          d.taluk?.toLowerCase().includes(s) ||
+                          d.paymentReference?.toLowerCase().includes(s) ||
+                          d.user?.email?.toLowerCase().includes(s) ||
+                          d.user?.mobile?.toLowerCase().includes(s)
                         );
                       })
                     : [];
@@ -1393,7 +1515,7 @@ export default function FinancialLedgerPage() {
                       })
                     : [];
 
-                  const hasAny = displayedPartners.length > 0 || displayedCentres.length > 0;
+                  const hasAny = displayedPartners.length > 0 || displayedDistributors.length > 0 || displayedCentres.length > 0;
 
                   if (!hasAny) {
                     return (
@@ -1403,7 +1525,7 @@ export default function FinancialLedgerPage() {
                         <p className="text-xs text-[#667085] mt-1 max-w-sm mx-auto">
                           {onboardingSearch
                             ? 'No onboarding submissions match your search query.'
-                            : 'There are currently no partner franchise or centre registrations awaiting payment verification. All registered accounts are active.'}
+                            : 'There are currently no partner franchise, distributor license, or centre registrations awaiting payment verification. All registered accounts are active.'}
                         </p>
                       </div>
                     );
@@ -1539,6 +1661,126 @@ export default function FinancialLedgerPage() {
                                 >
                                   <Check className="h-3.5 w-3.5" />
                                   <span>{processingAction === partner.id ? 'Activating...' : 'Verify & Approve'}</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* DISTRIBUTOR LICENSE ROWS */}
+                        {displayedDistributors.map((distributor: any) => (
+                          <tr key={`distributor-${distributor.id}`} className="hover:bg-purple-50/30 transition-colors bg-white">
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-[11px] font-bold bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs">
+                                <Building2 className="h-3 w-3 text-purple-700" />
+                                <span>Distributor License</span>
+                              </span>
+                              <div className="text-[11px] font-mono text-purple-900 font-bold mt-1">
+                                {distributor.distributorCode}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-[#475467] font-mono whitespace-nowrap">
+                              <div>{formatDate(distributor.createdAt)}</div>
+                              <div className="text-[10px] text-[#98A2B3]">{formatTime(distributor.createdAt)}</div>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <div className="font-bold text-[#172033] text-[13px]">{distributor.distributorName}</div>
+                              <div className="text-[10.5px] text-purple-800 font-semibold mt-0.5">Applicant: {distributor.applicantName || '—'}</div>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-[#475467]">
+                              <div className="font-medium text-[#172033]">
+                                {distributor.district ? `${distributor.district}${distributor.taluk ? ` / ${distributor.taluk}` : ''}` : '—'}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-[#475467]">
+                              <div className="font-mono text-[#172033] font-semibold">{distributor.user?.mobile || '—'}</div>
+                              <div className="text-[11px] text-[#667085]">{distributor.user?.email || '—'}</div>
+                            </td>
+
+                            <td className="py-3.5 px-4 font-mono font-bold text-purple-900 text-sm whitespace-nowrap">
+                              <div className="bg-purple-50 border border-purple-200 px-2 py-1 rounded text-center">
+                                {formatCurrency(distributor.distributorFee || 399)}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4 font-mono font-semibold text-[#172033]">
+                              {distributor.paymentReference ? (
+                                <div className="flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded border border-[#E6EAF0]">
+                                  <span className="truncate max-w-[140px]" title={distributor.paymentReference}>
+                                    {distributor.paymentReference}
+                                  </span>
+                                  <button
+                                    onClick={() => copyToClipboard(distributor.paymentReference, 'Reference / UTR')}
+                                    title="Copy Reference"
+                                    className="text-[#98A2B3] hover:text-[#172033]"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[#98A2B3] italic">No Reference</span>
+                              )}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              {distributor.paymentProofUrl ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <img
+                                    src={distributor.paymentProofUrl}
+                                    alt="Proof thumbnail"
+                                    className="h-9 w-9 rounded object-cover border border-purple-200 shadow-2xs"
+                                  />
+                                  <button
+                                    onClick={() =>
+                                      setSelectedProof({
+                                        targetId: distributor.id,
+                                        title: `Distributor License Payment Proof - ${distributor.distributorName}`,
+                                        amount: Number(distributor.distributorFee || 399),
+                                        reference: distributor.paymentReference,
+                                        receiptUrl: distributor.paymentProofUrl,
+                                        distributorName: distributor.distributorName,
+                                        contact: `${distributor.user?.email || ''} | ${distributor.user?.mobile || ''}`,
+                                        jurisdiction: `${distributor.district || ''} ${distributor.taluk ? `/ ${distributor.taluk}` : ''}`,
+                                        date: distributor.createdAt,
+                                        type: 'DISTRIBUTOR_FEE',
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-50 text-purple-900 border border-purple-300 text-xs font-semibold hover:bg-purple-100 transition-colors"
+                                  >
+                                    <Eye className="h-3.5 w-3.5 text-purple-700" />
+                                    <span>Proof</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-[#98A2B3] italic">No Receipt Uploaded</span>
+                              )}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() =>
+                                    setRejectingTarget({
+                                      id: distributor.id,
+                                      type: 'DISTRIBUTOR_FEE',
+                                      title: `Distributor ${distributor.distributorName} (${distributor.distributorCode})`,
+                                    })
+                                  }
+                                  className="px-2.5 py-1.5 rounded-[6px] border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold transition-colors"
+                                >
+                                  Reject
+                                </button>
+                                <button
+                                  onClick={() => handleApproveDistributorFee(distributor.id)}
+                                  disabled={processingAction === distributor.id}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[6px] bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                  <span>{processingAction === distributor.id ? 'Activating...' : 'Verify & Approve'}</span>
                                 </button>
                               </div>
                             </td>
@@ -1864,7 +2106,7 @@ export default function FinancialLedgerPage() {
                     <Building2 className="h-3.5 w-3.5 text-amber-700" />
                   </div>
                   <span className="text-xs text-amber-950 font-medium">
-                    You have <strong className="text-amber-900 font-bold">{totalPendingOnboardings}</strong> onboarding fee verification(s) waiting for approval ({pendingPartnersList.length} Partner franchise, {pendingCentresList.length} Centre registration).
+                    You have <strong className="text-amber-900 font-bold">{totalPendingOnboardings}</strong> onboarding fee verification(s) waiting for approval ({pendingPartnersList.length} Partner franchise, {pendingDistributorsList.length} Distributor license, {pendingCentresList.length} Centre registration).
                   </span>
                 </div>
                 <button
@@ -1965,13 +2207,15 @@ export default function FinancialLedgerPage() {
                               tx.type === 'RESERVE' && 'bg-amber-50 text-amber-800 border border-amber-200',
                               tx.type === 'RELEASE' && 'bg-neutral-100 text-neutral-700 border border-neutral-300',
                               tx.type === 'REFUND' && 'bg-purple-50 text-purple-800 border border-purple-200',
+                              tx.type === 'ADJUSTMENT' && (Number(tx.amount) >= 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'),
                             )}
                           >
                             {tx.type === 'TOPUP' && <Wallet className="h-3 w-3" />}
                             {tx.type === 'CAPTURE' && <CheckCircle2 className="h-3 w-3" />}
                             {tx.type === 'RESERVE' && <Lock className="h-3 w-3" />}
                             {tx.type === 'RELEASE' && <ArrowDownLeft className="h-3 w-3" />}
-                            {tx.type}
+                            {tx.type === 'ADJUSTMENT' && (Number(tx.amount) >= 0 ? <Plus className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />)}
+                            {tx.type === 'ADJUSTMENT' ? (Number(tx.amount) >= 0 ? 'ADMIN CREDIT' : 'ADMIN DEBIT') : tx.type}
                           </span>
                         </td>
 
@@ -2002,10 +2246,11 @@ export default function FinancialLedgerPage() {
                               tx.type === 'CAPTURE' && 'text-[#172033]',
                               tx.type === 'RESERVE' && 'text-amber-800',
                               tx.type === 'RELEASE' && 'text-[#667085]',
+                              tx.type === 'ADJUSTMENT' && (Number(tx.amount) >= 0 ? 'text-emerald-700' : 'text-rose-700'),
                             )}
                           >
-                            {tx.type === 'TOPUP' ? '+' : ''}
-                            {formatCurrency(tx.amount)}
+                            {(tx.type === 'TOPUP' || (tx.type === 'ADJUSTMENT' && Number(tx.amount) > 0)) ? '+' : ''}
+                            {formatCurrency(Math.abs(Number(tx.amount || 0)))}
                           </span>
                         </td>
 
@@ -2155,6 +2400,11 @@ export default function FinancialLedgerPage() {
                       Partner: <span className="font-semibold text-[#172033]">{selectedProof.partnerName}</span>{' '}
                       {selectedProof.contact && <span className="text-[#667085]">({selectedProof.contact})</span>}
                     </>
+                  ) : selectedProof.type === 'DISTRIBUTOR_FEE' ? (
+                    <>
+                      Distributor: <span className="font-semibold text-[#172033]">{selectedProof.distributorName}</span>{' '}
+                      {selectedProof.contact && <span className="text-[#667085]">({selectedProof.contact})</span>}
+                    </>
                   ) : (
                     <>
                       Centre: <span className="font-semibold text-[#172033]">{selectedProof.centreName}</span>
@@ -2193,7 +2443,7 @@ export default function FinancialLedgerPage() {
                 </div>
                 <div>
                   <span className="text-[#667085]">
-                    {selectedProof.type === 'PARTNER_FEE' ? 'Jurisdiction:' : 'Receipt Filename:'}
+                    {(selectedProof.type === 'PARTNER_FEE' || selectedProof.type === 'DISTRIBUTOR_FEE') ? 'Jurisdiction:' : 'Receipt Filename:'}
                   </span>
                   <p className="text-[#475467] truncate" title={selectedProof.jurisdiction || selectedProof.fileName}>
                     {selectedProof.jurisdiction || selectedProof.fileName || 'Payment Receipt Proof'}
@@ -2278,6 +2528,31 @@ export default function FinancialLedgerPage() {
                   </>
                 )}
 
+                {selectedProof.type === 'DISTRIBUTOR_FEE' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setRejectingTarget({
+                          id: selectedProof.targetId,
+                          type: 'DISTRIBUTOR_FEE',
+                          title: `Distributor ${selectedProof.distributorName || ''} (${selectedProof.reference || ''})`,
+                        });
+                      }}
+                      className="px-3 py-2 rounded-[7px] border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100"
+                    >
+                      Reject Application
+                    </button>
+                    <button
+                      onClick={() => handleApproveDistributorFee(selectedProof.targetId)}
+                      disabled={processingAction === selectedProof.targetId}
+                      className="px-4 py-2 rounded-[7px] bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>{processingAction === selectedProof.targetId ? 'Activating...' : 'Verify Fee & Activate Distributor'}</span>
+                    </button>
+                  </>
+                )}
+
                 {selectedProof.type === 'PARTNER_FEE' && (
                   <>
                     <button
@@ -2318,6 +2593,8 @@ export default function FinancialLedgerPage() {
                 <h3 className="text-sm font-bold text-red-900">
                   {rejectingTarget.type === 'PARTNER_FEE'
                     ? 'Reject Partner Franchise Payment'
+                    : rejectingTarget.type === 'DISTRIBUTOR_FEE'
+                    ? 'Reject Distributor License Payment'
                     : rejectingTarget.type === 'CENTRE_FEE'
                     ? 'Reject Centre Registration Payment'
                     : 'Reject Top-up Payment'}

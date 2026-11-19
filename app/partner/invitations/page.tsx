@@ -112,11 +112,7 @@ export default function PartnerInvitationsPage() {
   const [distributors, setDistributors] = useState<any[]>([]);
   const [filterType, setFilterType] = useState<'ALL' | 'DIRECT' | 'DISTRIBUTOR'>('ALL');
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
-
-  // Tab mode in the Onboarding Hub card
-  const [onboardMode, setOnboardMode] = useState<'DIRECT' | 'LINK'>('DIRECT');
 
   // Direct Create Account Modal & Credentials Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -143,14 +139,7 @@ export default function PartnerInvitationsPage() {
     distributorId: '',
   });
 
-  // 30-Min Link Form State
-  const [shopName, setShopName] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [email, setEmail] = useState('');
-  const [district, setDistrict] = useState('Madurai');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successInvite, setSuccessInvite] = useState<any | null>(null);
-
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [liveToast, setLiveToast] = useState<{ title: string; message: string } | null>(null);
 
@@ -161,7 +150,7 @@ export default function PartnerInvitationsPage() {
     console.log('⚡ [Live Event] Partner Centre Activated:', data);
     setLiveToast({
       title: 'Centre Activated in Real-Time!',
-      message: `${data.centreName || 'eSevai Centre'} (${data.centreCode || 'TN-CTR'}) is now live in your partner network.`,
+      message: `${data.centreName || 'Booking Centre'} (${data.centreCode || 'TN-CTR'}) is now live in your partner network.`,
     });
     loadInvitations();
     setTimeout(() => setLiveToast(null), 8000);
@@ -260,45 +249,6 @@ export default function PartnerInvitationsPage() {
     }
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setSuccessInvite(null);
-
-    if (!shopName.trim()) {
-      setErrorMsg('Please enter Shop / Centre Name');
-      return;
-    }
-    if (!mobile.trim() || mobile.length < 10) {
-      setErrorMsg('Please enter a valid 10-digit mobile number');
-      return;
-    }
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setErrorMsg('Please enter a valid email address');
-      return;
-    }
-
-    setGenerating(true);
-    try {
-      const res = await api.createPartnerInvitation({
-        shopName: shopName.trim(),
-        mobile: mobile.trim(),
-        email: email.trim().toLowerCase(),
-        district: district.trim() || undefined,
-        expiresInMinutes: 30, // 30-minute validity
-      });
-
-      setSuccessInvite(res.invitation);
-      setShopName('');
-      setMobile('');
-      setEmail('');
-      loadInvitations();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to generate invitation link');
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   const handleRegenerate = async (id: string) => {
     setRegeneratingId(id);
@@ -326,14 +276,14 @@ export default function PartnerInvitationsPage() {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const fullUrl = `${origin}/service/register/${token}`;
     const text = encodeURIComponent(
-      `வணக்கம் ${shop || 'Operator'},\n\nSevaTN — TicketAssist pilgrim booking centre registration link (Valid for 30 minutes):\n${fullUrl}\n\nPlease complete your registration within 30 minutes to activate your eSevai centre.`,
+      `வணக்கம் ${shop || 'Operator'},\n\nSevaTN — TicketAssist pilgrim booking centre registration link (Valid for 30 minutes):\n${fullUrl}\n\nPlease complete your registration within 30 minutes to activate your centre.`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
   const copyCredentials = () => {
     if (!credentialsData) return;
-    const text = `SevaTN — eSevai Centre Account Provisioned\n\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nOperator Name: ${credentialsData.ownerName}\nLogin Email: ${credentialsData.email}\nMobile: ${credentialsData.mobile}\nTemporary Password: ${credentialsData.temporaryPassword}\n\nStation Direct Login Portal URL:\n${credentialsData.portalUrl}\n\nPlease visit your direct portal URL and change your temporary password upon initial sign in.`;
+    const text = `SevaTN — Booking Centre Account Provisioned\n\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nOperator Name: ${credentialsData.ownerName}\nLogin Email: ${credentialsData.email}\nMobile: ${credentialsData.mobile}\nTemporary Password: ${credentialsData.temporaryPassword}\n\nStation Direct Login Portal URL:\n${credentialsData.portalUrl}\n\nPlease visit your direct portal URL and change your temporary password upon initial sign in.`;
     navigator.clipboard.writeText(text);
     setCopiedCreds(true);
     setTimeout(() => setCopiedCreds(false), 2500);
@@ -351,7 +301,7 @@ export default function PartnerInvitationsPage() {
     const rawMobile = credentialsData.mobile?.replace(/\D/g, '') || '';
     const phone = rawMobile.length === 10 ? `91${rawMobile}` : rawMobile;
     const text = encodeURIComponent(
-      `வணக்கம் ${credentialsData.ownerName || 'Operator'},\n\nYour SevaTN eSevai Centre account has been created & activated!\n\n🏢 Centre: ${credentialsData.centreName} (${credentialsData.centreCode})\n👤 Operator: ${credentialsData.ownerName}\n✉️ Email: ${credentialsData.email}\n🔑 Temporary Password: ${credentialsData.temporaryPassword}\n\n🔗 Direct Station Login URL:\n${credentialsData.portalUrl}\n\nPlease visit your direct portal link and log in to begin booking pilgrim tickets.`
+      `வணக்கம் ${credentialsData.ownerName || 'Operator'},\n\nYour SevaTN Booking Centre account has been created & activated!\n\n🏢 Centre: ${credentialsData.centreName} (${credentialsData.centreCode})\n👤 Operator: ${credentialsData.ownerName}\n✉️ Email: ${credentialsData.email}\n🔑 Temporary Password: ${credentialsData.temporaryPassword}\n\n🔗 Direct Station Login URL:\n${credentialsData.portalUrl}\n\nPlease visit your direct portal link and log in to begin booking pilgrim tickets.`
     );
     window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${text}`, '_blank');
   };
@@ -394,7 +344,7 @@ export default function PartnerInvitationsPage() {
             <span>Partner Network Management</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#172033]">
-            Onboard New eSevai Centres
+            Onboard New Booking Centres
           </h1>
           <p className="text-xs sm:text-sm text-[#667085] mt-1">
             Provision centres directly with instant activation or generate secure 30-minute self-registration links.
@@ -460,7 +410,7 @@ export default function PartnerInvitationsPage() {
         <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FEF7E6] p-4 shadow-subtle flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-[#8F5A0D] uppercase tracking-wider">
-              Active Pending Links (&lt;30m)
+              Active Pending Links
             </span>
             <div className="text-2xl font-extrabold text-[#8F5A0D] mt-0.5">
               {loading ? '—' : activePendingCount}
@@ -472,48 +422,22 @@ export default function PartnerInvitationsPage() {
         </div>
       </div>
 
-      {/* Onboarding Mode Selector Hub */}
+      {/* Direct Provisioning Centre Account Hub */}
       <div className="rounded-[10px] border border-[#E6EAF0] bg-white shadow-subtle overflow-hidden">
-        {/* Tab Headers */}
-        <div className="flex border-b border-[#E6EAF0] bg-[#F8FAFC]">
-          <button
-            onClick={() => setOnboardMode('DIRECT')}
-            className={`flex-1 py-3.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
-              onboardMode === 'DIRECT'
-                ? 'border-[#C98219] bg-white text-[#C98219]'
-                : 'border-transparent text-[#667085] hover:text-[#172033]'
-            }`}
-          >
-            <UserPlus className="h-4 w-4" />
-            <span>Direct Create Centre Account (Instant Activation)</span>
-          </button>
-          <button
-            onClick={() => setOnboardMode('LINK')}
-            className={`flex-1 py-3.5 px-4 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
-              onboardMode === 'LINK'
-                ? 'border-[#C98219] bg-white text-[#C98219]'
-                : 'border-transparent text-[#667085] hover:text-[#172033]'
-            }`}
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>Generate 30-Minute Self-Registration Link</span>
-          </button>
+        {/* Card Header */}
+        <div className="p-5 border-b border-[#E6EAF0] bg-[#F8FAFC]">
+          <h2 className="text-base font-bold text-[#172033] flex items-center gap-2">
+            <Building2 className="h-4.5 w-4.5 text-[#C98219]" />
+            Direct Provisioning: Create New Centre Account
+          </h2>
+          <p className="text-xs text-[#667085] mt-1">
+            Instantly provision the centre with an operator account, generated credentials, and station portal URL.
+          </p>
         </div>
 
-        {/* Tab 1: Direct Create Centre Form */}
-        {onboardMode === 'DIRECT' && (
-          <div className="p-6 sm:p-7">
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-[#172033] flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-[#C98219]" />
-                Direct Provisioning: Create New Centre Account
-              </h2>
-              <p className="text-xs text-[#667085] mt-1">
-                Instantly provision the centre with an operator account, generated credentials, and station portal URL.
-              </p>
-            </div>
-
-            <form onSubmit={handleDirectCreate} className="space-y-5">
+        {/* Direct Create Centre Form */}
+        <div className="p-6 sm:p-7">
+          <form onSubmit={handleDirectCreate} className="space-y-5">
               {directError && (
                 <div className="rounded-[7px] border border-[#F5C6CB] bg-[#FDECEC] p-3 text-xs text-[#C2413B] flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -537,7 +461,7 @@ export default function PartnerInvitationsPage() {
                       required
                       value={createForm.centreName}
                       onChange={(e) => setCreateForm({ ...createForm, centreName: e.target.value })}
-                      placeholder="e.g. Sri Murugan eSevai Maiyam"
+                      placeholder="e.g. Sri Murugan Online Centre"
                       className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
                     />
                   </div>
@@ -595,34 +519,6 @@ export default function PartnerInvitationsPage() {
                       />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2">
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Shop Street Address
-                      </label>
-                      <input
-                        type="text"
-                        value={createForm.address}
-                        onChange={(e) => setCreateForm({ ...createForm, address: e.target.value })}
-                        placeholder="Door / Street name"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Pincode
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={createForm.pincode}
-                        onChange={(e) => setCreateForm({ ...createForm, pincode: e.target.value.replace(/\D/g, '') })}
-                        placeholder="625001"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none font-mono"
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 {/* Column 2: Operator & Access */}
@@ -675,35 +571,6 @@ export default function PartnerInvitationsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Station Code (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={createForm.centreCode}
-                        onChange={(e) => setCreateForm({ ...createForm, centreCode: e.target.value.toUpperCase() })}
-                        placeholder="Auto (e.g. TN-CTR-042)"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Validity Days
-                      </label>
-                      <select
-                        value={createForm.validityDays}
-                        onChange={(e) => setCreateForm({ ...createForm, validityDays: parseInt(e.target.value, 10) })}
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs sm:text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
-                      >
-                        <option value={365}>365 Days (1 Year License)</option>
-                        <option value={180}>180 Days (6 Months)</option>
-                        <option value={90}>90 Days (Quarterly)</option>
-                        <option value={30}>30 Days (Trial)</option>
-                      </select>
-                    </div>
-                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-[#172033] mb-1">
@@ -747,119 +614,7 @@ export default function PartnerInvitationsPage() {
               </div>
             </form>
           </div>
-        )}
-
-        {/* Tab 2: 30-Minute Self-Registration Link */}
-        {onboardMode === 'LINK' && (
-          <div className="p-6 sm:p-7">
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-[#172033] flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[#C98219]" />
-                Generate 30-Minute Centre Registration Link
-              </h2>
-              <p className="text-xs text-[#667085] mt-1">
-                Share a one-time registration link with centre operators to allow self-onboarding.
-              </p>
-            </div>
-
-            <form onSubmit={handleGenerate} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
-                    Shop / Centre Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={shopName}
-                    onChange={(e) => setShopName(e.target.value)}
-                    placeholder="e.g. Murugan eSevai Centre"
-                    className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
-                    Mobile Number *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    maxLength={10}
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-                    placeholder="9876543210"
-                    className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="centre@gmail.com"
-                    className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#172033] mb-1">
-                    District
-                  </label>
-                  <select
-                    value={district}
-                    onChange={(e) => setDistrict(e.target.value)}
-                    className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2.5 text-xs sm:text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
-                  >
-                    {TN_DISTRICTS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {errorMsg && (
-                <div className="rounded-[7px] border border-[#F5C6CB] bg-[#FDECEC] p-3 text-xs text-[#C2413B] flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
-                <div className="text-[11.5px] text-[#667085] flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-[#C98219]" />
-                  <span>Security Rule: Each link is single-use and automatically expires in <strong>30 minutes</strong>.</span>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={generating}
-                  className="rounded-[7px] bg-[#C98219] px-6 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-[#B57414] shadow-subtle transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Generating Link...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      <span>Generate Onboarding Link</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
+        </div>
 
       {/* Freshly Generated Link Banner */}
       {successInvite && (
@@ -1009,7 +764,7 @@ export default function PartnerInvitationsPage() {
                       <td className="py-3 px-4 font-bold text-[#172033]">
                         <div className="flex items-center gap-1.5">
                           {isActivated && <CheckCircle2 className="h-4 w-4 text-[#198754] shrink-0" />}
-                          <span>{meta.shopName || inv.activatedCentre?.centreName || 'eSevai Registration Link'}</span>
+                          <span>{meta.shopName || inv.activatedCentre?.centreName || 'Centre Registration Link'}</span>
                         </div>
                         <span className="block text-[11px] font-normal text-[#667085]">
                           Created {formatDate(inv.createdAt)}
@@ -1196,7 +951,7 @@ export default function PartnerInvitationsPage() {
                       required
                       value={createForm.centreName}
                       onChange={(e) => setCreateForm({ ...createForm, centreName: e.target.value })}
-                      placeholder="e.g. Sri Murugan eSevai Maiyam"
+                      placeholder="e.g. Sri Murugan Online Centre"
                       className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
                     />
                   </div>
@@ -1248,34 +1003,6 @@ export default function PartnerInvitationsPage() {
                         onChange={(e) => setCreateForm({ ...createForm, taluk: e.target.value })}
                         placeholder="e.g. Madurai South"
                         className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2">
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Shop Street Address
-                      </label>
-                      <input
-                        type="text"
-                        value={createForm.address}
-                        onChange={(e) => setCreateForm({ ...createForm, address: e.target.value })}
-                        placeholder="Door / Street name"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Pincode
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={createForm.pincode}
-                        onChange={(e) => setCreateForm({ ...createForm, pincode: e.target.value.replace(/\D/g, '') })}
-                        placeholder="625001"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none font-mono"
                       />
                     </div>
                   </div>
@@ -1331,35 +1058,6 @@ export default function PartnerInvitationsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Station Code (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={createForm.centreCode}
-                        onChange={(e) => setCreateForm({ ...createForm, centreCode: e.target.value.toUpperCase() })}
-                        placeholder="Auto (e.g. TN-CTR-042)"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Validity Days
-                      </label>
-                      <select
-                        value={createForm.validityDays}
-                        onChange={(e) => setCreateForm({ ...createForm, validityDays: parseInt(e.target.value, 10) })}
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs sm:text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
-                      >
-                        <option value={365}>365 Days (1 Year License)</option>
-                        <option value={180}>180 Days (6 Months)</option>
-                        <option value={90}>90 Days (Quarterly)</option>
-                        <option value={30}>30 Days (Trial)</option>
-                      </select>
-                    </div>
-                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-[#172033] mb-1">

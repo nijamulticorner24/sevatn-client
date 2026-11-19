@@ -29,6 +29,7 @@ import {
 
 export default function AdminPayoutsPage() {
   const [payouts, setPayouts] = useState<any[]>([]);
+  const [recipientType, setRecipientType] = useState<'PARTNER' | 'DISTRIBUTOR'>('PARTNER');
   const [loading, setLoading] = useState(true);
   const [minWithdrawal, setMinWithdrawal] = useState<number>(100);
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -51,20 +52,22 @@ export default function AdminPayoutsPage() {
 
   useLiveEvent('admin:payout_requested', (data: any) => {
     console.log('⚡ [Live Event] Admin received new Payout Request:', data);
-    setSuccessToast(`🔔 New UPI Payout Request from ${data.partnerName || 'Partner'} for ${formatINR(data.amount)}`);
+    setSuccessToast(`🔔 New UPI Payout Request from ${data.distributorName || data.partnerName || 'Network Member'} for ${formatINR(data.amount)}`);
     loadPayouts();
     setTimeout(() => setSuccessToast(null), 8000);
   });
 
   useEffect(() => {
     loadPayouts();
-  }, [statusFilter]);
+  }, [statusFilter, recipientType]);
 
   const loadPayouts = async () => {
     setLoading(true);
     try {
       const [res, cfg] = await Promise.allSettled([
-        api.getAdminPayouts(statusFilter),
+        recipientType === 'DISTRIBUTOR'
+          ? api.getAdminDistributorPayouts(statusFilter)
+          : api.getAdminPayouts(statusFilter),
         api.getSystemConfig(),
       ]);
 
@@ -109,11 +112,19 @@ export default function AdminPayoutsPage() {
 
     setSettling(true);
     try {
-      await api.settlePartnerPayout(selectedPayout.id, {
-        paymentReference: paymentReference.trim(),
-        screenshotUrl: screenshotUrl || undefined,
-        adminNotes: adminNotes.trim() || undefined,
-      });
+      if (recipientType === 'DISTRIBUTOR') {
+        await api.settleDistributorPayout(selectedPayout.id, {
+          paymentReference: paymentReference.trim(),
+          screenshotUrl: screenshotUrl || undefined,
+          adminNotes: adminNotes.trim() || undefined,
+        });
+      } else {
+        await api.settlePartnerPayout(selectedPayout.id, {
+          paymentReference: paymentReference.trim(),
+          screenshotUrl: screenshotUrl || undefined,
+          adminNotes: adminNotes.trim() || undefined,
+        });
+      }
 
       setSelectedPayout(null);
       setPaymentReference('');
@@ -133,10 +144,13 @@ export default function AdminPayoutsPage() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      p.partnerName?.toLowerCase().includes(q) ||
-      p.partnerCode?.toLowerCase().includes(q) ||
-      p.upiId?.toLowerCase().includes(q) ||
-      p.paymentReference?.toLowerCase().includes(q)
+      (p.partnerName && p.partnerName.toLowerCase().includes(q)) ||
+      (p.distributorName && p.distributorName.toLowerCase().includes(q)) ||
+      (p.partnerCode && p.partnerCode.toLowerCase().includes(q)) ||
+      (p.distributorCode && p.distributorCode.toLowerCase().includes(q)) ||
+      (p.upiId && p.upiId.toLowerCase().includes(q)) ||
+      (p.paymentReference && p.paymentReference.toLowerCase().includes(q)) ||
+      (p.accountHolder && p.accountHolder.toLowerCase().includes(q))
     );
   });
 
@@ -258,6 +272,34 @@ export default function AdminPayoutsPage() {
         </div>
       </div>
 
+      {/* Recipient Network Switcher: Partner vs Distributor */}
+      <div className="flex items-center gap-2 border-b border-[#E6EAF0] pb-3">
+        <button
+          type="button"
+          onClick={() => setRecipientType('PARTNER')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-[8px] text-xs font-bold transition-all ${
+            recipientType === 'PARTNER'
+              ? 'bg-[#C98219] text-white shadow-subtle'
+              : 'bg-white text-[#475467] border border-[#E6EAF0] hover:bg-[#F8FAFC]'
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          <span>Partner Franchise Payouts</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setRecipientType('DISTRIBUTOR')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-[8px] text-xs font-bold transition-all ${
+            recipientType === 'DISTRIBUTOR'
+              ? 'bg-[#C98219] text-white shadow-subtle'
+              : 'bg-white text-[#475467] border border-[#E6EAF0] hover:bg-[#F8FAFC]'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          <span>Distributor Markup Payouts</span>
+        </button>
+      </div>
+
       {/* Filter and Search Bar */}
       <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 max-w-md">
@@ -267,7 +309,7 @@ export default function AdminPayoutsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by partner name, code, UPI ID, or UTR..."
+              placeholder={`Search by ${recipientType === 'DISTRIBUTOR' ? 'distributor' : 'partner'} name, code, UPI ID, or UTR...`}
               className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-9 pr-3.5 py-2 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
             />
           </div>
@@ -295,15 +337,15 @@ export default function AdminPayoutsPage() {
         {filteredPayouts.length === 0 ? (
           <div className="p-8 text-center text-xs text-[#667085]">
             <DollarSign className="mx-auto h-8 w-8 text-[#98A2B3] mb-2 opacity-50" />
-            <p className="font-bold text-[#172033]">No Payout Requests Found</p>
-            <p className="mt-0.5">Partner withdrawal requests will appear here in real time via WebSocket.</p>
+            <p className="font-bold text-[#172033]">No {recipientType === 'DISTRIBUTOR' ? 'Distributor' : 'Partner'} Payout Requests Found</p>
+            <p className="mt-0.5">{recipientType === 'DISTRIBUTOR' ? 'Distributor markup' : 'Partner franchise'} withdrawal requests will appear here in real time via WebSocket.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#F8FAFC] text-[#667085] font-semibold border-b border-[#E6EAF0]">
                 <tr>
-                  <th className="py-3 px-4">Partner Franchise</th>
+                  <th className="py-3 px-4">{recipientType === 'DISTRIBUTOR' ? 'Distributor Account' : 'Partner Franchise'}</th>
                   <th className="py-3 px-4">Amount Requested</th>
                   <th className="py-3 px-4">Destination UPI ID</th>
                   <th className="py-3 px-4">Requested Date</th>
@@ -324,11 +366,13 @@ export default function AdminPayoutsPage() {
                         isPending ? 'bg-[#FEFDF9] hover:bg-[#FDF9ED]' : 'hover:bg-[#FAFBFD]'
                       }`}
                     >
-                      {/* Partner */}
+                      {/* Recipient */}
                       <td className="py-3 px-4 font-bold text-[#172033]">
-                        <p className="text-sm">{p.partnerName || 'Franchise Partner'}</p>
+                        <p className="text-sm">
+                          {p.distributorName || p.partnerName || (recipientType === 'DISTRIBUTOR' ? 'Distributor Account' : 'Franchise Partner')}
+                        </p>
                         <span className="font-mono text-[11px] text-[#8F5A0D] font-semibold">
-                          {p.partnerCode || 'PT-001'} • {p.partnerMobile || '—'}
+                          {(p.distributorCode || p.partnerCode || 'ID')} • {(p.distributorMobile || p.partnerMobile || '—')}
                         </span>
                       </td>
 
@@ -439,7 +483,9 @@ export default function AdminPayoutsPage() {
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#172033]">Settle Partner Payout</h3>
+                  <h3 className="text-base font-bold text-[#172033]">
+                    Settle {recipientType === 'DISTRIBUTOR' ? 'Distributor' : 'Partner'} Payout
+                  </h3>
                   <p className="text-xs text-[#667085]">
                     Transfer funds via UPI & upload bank transaction screenshot
                   </p>
@@ -463,9 +509,11 @@ export default function AdminPayoutsPage() {
             {/* Payout Details Card */}
             <div className="rounded-[8px] border border-[#F9DE9B] bg-[#FEF7E6] p-4 space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-[#8F5A0D] font-medium">Partner Franchise:</span>
+                <span className="text-[#8F5A0D] font-medium">
+                  {recipientType === 'DISTRIBUTOR' ? 'Distributor Account:' : 'Partner Franchise:'}
+                </span>
                 <span className="font-bold text-[#172033] text-sm">
-                  {selectedPayout.partnerName} ({selectedPayout.partnerCode})
+                  {selectedPayout.distributorName || selectedPayout.partnerName} ({selectedPayout.distributorCode || selectedPayout.partnerCode})
                 </span>
               </div>
               <div className="flex justify-between items-center">

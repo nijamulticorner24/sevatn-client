@@ -33,7 +33,7 @@ export default function WalletPage() {
   const [serviceFee, setServiceFee] = useState<number>(100);
   const [paymentConfig, setPaymentConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [topupAmount, setTopupAmount] = useState(1000);
+  const [topupAmount, setTopupAmount] = useState(100);
   const [isTopupModalOpen, setIsTopupModalOpen] = useState(false);
   const [topupMethod, setTopupMethod] = useState<'ONLINE' | 'OFFLINE_QR'>('OFFLINE_QR');
   const [paymentRef, setPaymentRef] = useState('');
@@ -224,42 +224,85 @@ export default function WalletPage() {
     }
   };
 
-  const getTxTypeBadge = (type: string) => {
-    switch (type) {
+  const isCreditTx = (tx: any) => {
+    if (tx.type === 'TOPUP' || tx.type === 'RELEASE' || tx.type === 'REFUND' || tx.type === 'CREDIT') {
+      return true;
+    }
+    if (tx.type === 'CAPTURE' || tx.type === 'RESERVE' || tx.type === 'DEBIT') {
+      return false;
+    }
+    if (tx.type === 'ADJUSTMENT') {
+      if (
+        tx.metadata?.action === 'CREDIT' ||
+        (tx.reference && tx.reference.toUpperCase().includes('CREDIT')) ||
+        Number(tx.amount) > 0
+      ) {
+        return true;
+      }
+      return false;
+    }
+    return Number(tx.amount) > 0;
+  };
+
+  const getTxTypeBadge = (tx: any) => {
+    const isCredit = isCreditTx(tx);
+    switch (tx.type) {
       case 'TOPUP':
         return (
-          <span className="inline-flex items-center rounded-full bg-[#EAF7EE] px-2 py-0.5 text-[11px] font-semibold text-[#198754] border border-[#C3E6CB]">
-            TOP-UP
+          <span className="inline-flex items-center rounded-full bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-bold text-[#198754] border border-[#C3E6CB]">
+            + TOP-UP
+          </span>
+        );
+      case 'CREDIT':
+        return (
+          <span className="inline-flex items-center rounded-full bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-bold text-[#198754] border border-[#C3E6CB]">
+            + CREDIT
+          </span>
+        );
+      case 'RELEASE':
+        return (
+          <span className="inline-flex items-center rounded-full bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-bold text-[#198754] border border-[#C3E6CB]">
+            + RELEASE
+          </span>
+        );
+      case 'REFUND':
+        return (
+          <span className="inline-flex items-center rounded-full bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-bold text-[#198754] border border-[#C3E6CB]">
+            + REFUND
+          </span>
+        );
+      case 'ADJUSTMENT':
+        return isCredit ? (
+          <span className="inline-flex items-center rounded-full bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-bold text-[#198754] border border-[#C3E6CB]">
+            + CREDIT
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-[#FDECEC] px-2.5 py-0.5 text-[11px] font-bold text-[#C2413B] border border-[#F8C4C2]">
+            - DEBIT
           </span>
         );
       case 'RESERVE':
         return (
-          <span className="inline-flex items-center rounded-full bg-[#FEF7E6] px-2 py-0.5 text-[11px] font-semibold text-[#B7791F] border border-[#FCE0A6]">
+          <span className="inline-flex items-center rounded-full bg-[#FEF7E6] px-2.5 py-0.5 text-[11px] font-bold text-[#B7791F] border border-[#FCE0A6]">
             HOLD
           </span>
         );
       case 'CAPTURE':
         return (
-          <span className="inline-flex items-center rounded-full bg-[#EDF4FC] px-2 py-0.5 text-[11px] font-semibold text-[#3568A8] border border-[#BEE5EB]">
-            CAPTURED
+          <span className="inline-flex items-center rounded-full bg-[#FDECEC] px-2.5 py-0.5 text-[11px] font-bold text-[#C2413B] border border-[#F8C4C2]">
+            - CAPTURE
           </span>
         );
-      case 'RELEASE':
+      case 'DEBIT':
         return (
-          <span className="inline-flex items-center rounded-full bg-[#F0F3F8] px-2 py-0.5 text-[11px] font-semibold text-[#475467] border border-[#D0D5DD]">
-            RELEASED
-          </span>
-        );
-      case 'REFUND':
-        return (
-          <span className="inline-flex items-center rounded-full bg-[#FDECEC] px-2 py-0.5 text-[11px] font-semibold text-[#C2413B] border border-[#F5C6CB]">
-            REFUND
+          <span className="inline-flex items-center rounded-full bg-[#FDECEC] px-2.5 py-0.5 text-[11px] font-bold text-[#C2413B] border border-[#F8C4C2]">
+            - DEBIT
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center rounded-full bg-[#F2F4F7] px-2 py-0.5 text-[11px] font-medium text-[#344054]">
-            {type}
+          <span className="inline-flex items-center rounded-full bg-[#F2F4F7] px-2.5 py-0.5 text-[11px] font-medium text-[#344054]">
+            {tx.type}
           </span>
         );
     }
@@ -335,6 +378,7 @@ export default function WalletPage() {
             onClick={() => {
               setFormError(null);
               setReceiptError(null);
+              setTopupAmount(100);
               setIsTopupModalOpen(true);
             }}
             className={`flex items-center gap-2 rounded-[7px] px-4 py-2 text-[13px] font-bold text-white transition-colors shadow-subtle ${
@@ -445,7 +489,8 @@ export default function WalletPage() {
               </thead>
               <tbody>
                 {transactions.map((tx) => {
-                  const isPositive = tx.type === 'TOPUP' || tx.type === 'RELEASE';
+                  const isPositive = isCreditTx(tx);
+                  const displayAmount = Math.abs(Number(tx.amount || 0));
                   return (
                     <tr key={tx.id}>
                       <td className="text-[#667085] text-[12px]">
@@ -454,10 +499,13 @@ export default function WalletPage() {
                       </td>
                       <td className="font-medium text-[#172033]">
                         {tx.type === 'TOPUP' && 'Wallet Top-up'}
+                        {tx.type === 'CREDIT' && 'Manual Admin Credit'}
                         {tx.type === 'RESERVE' && 'Booking Reservation Hold'}
                         {tx.type === 'CAPTURE' && 'Verified Booking Fee Capture'}
+                        {tx.type === 'DEBIT' && 'Manual Admin Debit'}
                         {tx.type === 'RELEASE' && 'Unreserved Hold Released'}
                         {tx.type === 'REFUND' && 'Surplus Wallet Payout'}
+                        {tx.type === 'ADJUSTMENT' && (isPositive ? 'Admin Balance Credit' : 'Admin Balance Deduction')}
                         <span className="block text-[11px] text-[#667085] font-mono">
                           {tx.reference || '—'}
                         </span>
@@ -465,13 +513,17 @@ export default function WalletPage() {
                       <td className="font-mono text-[#344054] text-[12px]">
                         {tx.booking?.bookingCode || '—'}
                       </td>
-                      <td>{getTxTypeBadge(tx.type)}</td>
-                      <td
-                        className={`text-right font-bold tabular-nums text-[13.5px] ${
-                          isPositive ? 'text-[#198754]' : 'text-[#172033]'
-                        }`}
-                      >
-                        {isPositive ? '+' : '-'} {formatINR(tx.amount)}
+                      <td>{getTxTypeBadge(tx)}</td>
+                      <td className="text-right tabular-nums text-[13.5px]">
+                        <span
+                          className={`inline-block font-bold px-2.5 py-0.5 rounded-[5px] border ${
+                            isPositive
+                              ? 'bg-[#EAF7EE] text-[#198754] border-[#C3E6CB]'
+                              : 'bg-[#FEF3F2] text-[#D92D20] border-[#FDA29B]'
+                          }`}
+                        >
+                          {isPositive ? '+' : '-'} {formatINR(displayAmount)}
+                        </span>
                       </td>
                       <td>{getStatusBadge(tx.status)}</td>
                     </tr>
@@ -595,11 +647,16 @@ export default function WalletPage() {
               {anyPaymentEnabled && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#344054] mb-1.5">
-                      Select Pre-Set Amount
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[500, 1000, 2000, 5000].map((amt) => (
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[12px] font-semibold text-[#344054]">
+                        Select Pre-Set Amount
+                      </label>
+                      <span className="text-[10.5px] font-bold text-[#8F5A0D] bg-[#FEF7E6] px-1.5 py-0.5 rounded border border-[#F9DE9B]">
+                        Min ₹100
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                      {[100, 500, 1000, 2000, 5000].map((amt) => (
                         <button
                           key={amt}
                           type="button"
@@ -607,7 +664,7 @@ export default function WalletPage() {
                             setTopupAmount(amt);
                             setFormError(null);
                           }}
-                          className={`rounded-[7px] border py-1.5 sm:py-2 text-[12.5px] font-bold tabular-nums transition-colors ${
+                          className={`rounded-[7px] border py-1.5 sm:py-2 text-[12px] sm:text-[12.5px] font-bold tabular-nums transition-colors cursor-pointer ${
                             topupAmount === amt
                               ? 'border-[#C98219] bg-[#FDF7ED] text-[#7A4A12] ring-1 ring-[#C98219]'
                               : 'border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F8FAFC]'
@@ -620,20 +677,40 @@ export default function WalletPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#344054] mb-1.5">
-                      Custom Top-up Amount (INR)
-                    </label>
-                    <input
-                      type="number"
-                      min={100}
-                      step={100}
-                      value={topupAmount}
-                      onChange={(e) => {
-                        setTopupAmount(Number(e.target.value));
-                        setFormError(null);
-                      }}
-                      className="w-full px-3.5 py-1.5 sm:py-2 text-[13px] font-bold tabular-nums rounded-[7px] border border-[#D0D5DD] focus:border-[#C98219] focus:outline-none"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[12px] font-semibold text-[#344054]">
+                        Custom Top-up Amount (INR)
+                      </label>
+                      <span className="text-[11px] text-[#667085]">Default: ₹100</span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 sm:top-2.5 text-xs text-[#667085] font-bold">₹</span>
+                      <input
+                        type="number"
+                        min={100}
+                        step={50}
+                        value={topupAmount}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setTopupAmount(val);
+                          if (val < 100) {
+                            setFormError('Topup amount must be at least ₹100.');
+                          } else {
+                            setFormError(null);
+                          }
+                        }}
+                        className={`w-full pl-7 pr-3 py-1.5 sm:py-2 text-[13px] font-bold tabular-nums rounded-[7px] border focus:outline-none ${
+                          topupAmount < 100
+                            ? 'border-[#FDA29B] bg-[#FEF3F2] text-[#B42318] focus:border-[#F04438]'
+                            : 'border-[#D0D5DD] focus:border-[#C98219]'
+                        }`}
+                      />
+                    </div>
+                    {topupAmount < 100 && (
+                      <p className="text-[11px] text-[#D92D20] mt-1 font-medium">
+                        Minimum top-up amount is ₹100.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

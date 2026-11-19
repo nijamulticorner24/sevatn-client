@@ -103,6 +103,10 @@ export default function CentreUniqueLoginPage() {
         router.push('/admin');
       } else if (res.user.role === 'PARTNER') {
         router.push('/partner');
+      } else if (res.user.role === 'DISTRIBUTOR') {
+        router.push('/distributor');
+      } else if (res.user.role === 'CENTRE') {
+        router.push('/dashboard');
       } else {
         router.push('/dashboard');
       }
@@ -379,7 +383,7 @@ export default function CentreUniqueLoginPage() {
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
                     <span>TLS 256-Bit Encrypted Session</span>
                   </div>
-                  <div>Tamil Nadu SevaTN E-Governance Network</div>
+                  <div>Tamil Nadu SevaTN Platform</div>
                 </div>
               </div>
             </div>

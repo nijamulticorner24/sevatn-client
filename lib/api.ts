@@ -124,7 +124,7 @@ class ApiClient {
     return this.getLocationCoordinates();
   }
 
-  logout() {
+  clearAuth() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('ta_auth_token');
       localStorage.removeItem('ta_user');
@@ -135,6 +135,12 @@ class ApiClient {
       localStorage.removeItem('stn_current_lat');
       localStorage.removeItem('stn_current_lon');
       localStorage.removeItem('stn_current_acc');
+    }
+  }
+
+  logout() {
+    this.clearAuth();
+    if (typeof window !== 'undefined') {
       window.location.href = '/auth/login';
     }
   }
@@ -259,6 +265,13 @@ class ApiClient {
     return this.request('/auth/verify-registration-payment', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async uploadProof(image: string, folder?: string): Promise<{ url: string }> {
+    return this.request('/auth/upload-proof', {
+      method: 'POST',
+      body: JSON.stringify({ image, folder }),
     });
   }
 
@@ -564,6 +577,12 @@ class ApiClient {
     return this.request('/admin/ledger/overview');
   }
 
+  async notifyLedgerPendingTelegram() {
+    return this.request('/admin/ledger/notify-pending-telegram', {
+      method: 'POST',
+    });
+  }
+
   async getLedgerTransactions(params: {
     page?: number;
     limit?: number;
@@ -626,6 +645,19 @@ class ApiClient {
     });
   }
 
+  async verifyLedgerDistributorFee(distributorId: string) {
+    return this.request(`/admin/ledger/distributor-fee/${distributorId}/verify`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectLedgerDistributorFee(distributorId: string, reason?: string) {
+    return this.request(`/admin/ledger/distributor-fee/${distributorId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
   // Centres Management APIs
   async getCentres(page = 1, district?: string, status?: string, search?: string) {
     let q = `?page=${page}`;
@@ -670,8 +702,15 @@ class ApiClient {
   }
 
   async reissueCentreActivation(id: string) {
-    return this.request(`/admin/centres/${id}/reissue-activation`, {
+    return this.request(`/centres/${id}/reissue-activation`, {
       method: 'POST',
+    });
+  }
+
+  async adjustCentreWallet(id: string, data: { amount: number; action: 'CREDIT' | 'DEBIT'; reason?: string }) {
+    return this.request(`/admin/centres/${id}/wallet-adjust`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 
@@ -742,10 +781,21 @@ class ApiClient {
     return this.request('/config/payment');
   }
 
+  async getPublicConfig() {
+    return this.request('/config/public');
+  }
+
   async updateSystemConfig(config: any) {
     return this.request('/admin/config', {
       method: 'PUT',
       body: JSON.stringify(config),
+    });
+  }
+
+  async testTelegramNotification(data?: { botToken?: string; chatId?: string }) {
+    return this.request('/admin/config/telegram-test', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
     });
   }
 
@@ -786,6 +836,31 @@ class ApiClient {
 
   async settlePartnerPayout(payoutId: string, data: { paymentReference: string; screenshotUrl?: string; adminNotes?: string }) {
     return this.request(`/admin/partners/payouts/${payoutId}/settle`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Distributor Payouts & Earnings APIs
+  async getDistributorPayouts() {
+    return this.request('/distributor/payouts');
+  }
+
+  async requestDistributorPayout(data: { amount: number; upiId: string; accountHolder?: string; notes?: string }) {
+    return this.request('/distributor/payouts/request', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getAdminDistributorPayouts(status?: string) {
+    let q = '';
+    if (status && status !== 'ALL') q = `?status=${status}`;
+    return this.request(`/admin/distributors/payouts/all${q}`);
+  }
+
+  async settleDistributorPayout(payoutId: string, data: { paymentReference: string; screenshotUrl?: string; adminNotes?: string }) {
+    return this.request(`/admin/distributors/payouts/${payoutId}/settle`, {
       method: 'POST',
       body: JSON.stringify(data),
     });

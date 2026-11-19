@@ -505,19 +505,24 @@ export default function NewBookingPage() {
 
   const activeAccount = savedAccounts.find((a) => a.id === selectedAccountId);
   const currentUser = api.getUser();
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
   const selectedRouteObj = OFFICIAL_ROUTES.find((r) => r.id === route) || OFFICIAL_ROUTES[0];
   const availableBalance = wallet ? Number(wallet.availableBalance ?? wallet.balance ?? 0) : null;
   const totalServiceFee = serviceFee * pilgrimCount;
-  const isInsufficientInitialBalance = !isSuperAdmin && availableBalance !== null && availableBalance < serviceFee;
-  const isInsufficientBalance = !isSuperAdmin && availableBalance !== null && pilgrimCount > 0 && availableBalance < totalServiceFee;
+  const isInsufficientInitialBalance = availableBalance !== null && availableBalance < serviceFee;
+  const isInsufficientBalance = availableBalance !== null && pilgrimCount > 0 && availableBalance < totalServiceFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // 0. Validate pilgrim count limit (1 to 10)
+    // 0. Verify role is strictly CENTRE
+    if (!currentUser || currentUser.role !== 'CENTRE') {
+      setError('Booking creation is strictly restricted to authorized Centre operators.');
+      return;
+    }
+
+    // 0a. Validate pilgrim count limit (1 to 10)
     const parsedPilgrims = parseInt(pilgrimCountInput, 10);
     if (isNaN(parsedPilgrims) || parsedPilgrims < 1 || pilgrimCount < 1) {
       setError('Please select at least 1 pilgrim (1 to 10).');
@@ -528,8 +533,8 @@ export default function NewBookingPage() {
       return;
     }
 
-    // 0b. Validate minimum wallet balance requirement (exempt for Super Admin)
-    if (!isSuperAdmin && availableBalance !== null && availableBalance < totalServiceFee) {
+    // 0b. Validate minimum wallet balance requirement
+    if (availableBalance !== null && availableBalance < totalServiceFee) {
       setError(`Insufficient wallet balance. You need at least ₹${totalServiceFee} (₹${serviceFee} × ${pilgrimCount} pilgrim${pilgrimCount > 1 ? 's' : ''}) to request this service. Please recharge your wallet.`);
       return;
     }
@@ -661,7 +666,7 @@ export default function NewBookingPage() {
       // 6. Show "Booking request submitted" only when backend confirms request was successfully queued
       setSuccessMsg('Booking request submitted');
       setTimeout(() => {
-        router.push(isSuperAdmin ? '/admin/bookings' : '/dashboard/bookings');
+        router.push('/dashboard/bookings');
       }, 700);
     } catch (err: any) {
       setError(err.message || 'Failed to create booking. Please verify your balance and account details.');
@@ -669,6 +674,41 @@ export default function NewBookingPage() {
       setLoading(false);
     }
   };
+
+  // Role Guard: Exclusively Centre operators can access booking creation
+  if (currentUser && currentUser.role !== 'CENTRE') {
+    const roleRedirect =
+      currentUser.role === 'SUPER_ADMIN' ? '/admin/dashboard' :
+      currentUser.role === 'PARTNER' ? '/partner/dashboard' :
+      currentUser.role === 'DISTRIBUTOR' ? '/distributor/dashboard' : '/dashboard';
+
+    return (
+      <div className="w-full max-w-[620px] mx-auto py-16 px-4 animate-in fade-in duration-200">
+        <div className="rounded-[12px] border border-amber-200 bg-white p-7 sm:p-9 shadow-card text-center space-y-4">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-700 border border-amber-200 shadow-subtle">
+            <Lock className="h-7 w-7" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-[#172033]">
+              Booking Creation Restricted to Centres Only
+            </h2>
+            <p className="text-xs text-[#667085] max-w-md mx-auto leading-relaxed">
+              Direct Sabarimala Q-Coupon booking operations are strictly restricted to verified <strong className="text-[#172033]">Centre Operators</strong> with active geo-verified premises. Other roles ({currentUser.role.replace('_', ' ')}) cannot initiate bookings directly.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href={roleRedirect}
+              className="inline-flex items-center justify-center gap-2 rounded-[8px] bg-[#C98219] hover:bg-[#B57414] px-5 py-2.5 text-xs font-bold text-white transition-all shadow-subtle hover:shadow"
+            >
+              <span>Return to {currentUser.role.replace('_', ' ')} Dashboard</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (walletLoading || (locationLoading && isWithinRadius === null)) {
     return (
@@ -816,22 +856,16 @@ export default function NewBookingPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E6EAF0]">
         <div>
           <Link
-            href={isSuperAdmin ? "/admin/bookings" : "/dashboard/bookings"}
+            href="/dashboard/bookings"
             className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#667085] hover:text-[#C98219] transition-colors mb-1"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            <span>{isSuperAdmin ? "Back to Central Queue" : "Back to Bookings"}</span>
+            <span>Back to Bookings</span>
           </Link>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-[20px] sm:text-[22px] font-extrabold text-[#172033] tracking-tight">
               Create Booking Request
             </h1>
-            {isSuperAdmin && (
-              <span className="rounded bg-[#FEF7E6] px-2.5 py-0.5 text-[11px] font-bold text-[#8F5A0D] border border-[#F9DE9B] flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-[#C98219]" />
-                Super Admin Mode
-              </span>
-            )}
             {locationCoords && (
               <span className="rounded bg-[#EAF7EE] px-2.5 py-0.5 text-[11px] font-bold text-[#155724] border border-[#C3E6CB] flex items-center gap-1.5" title={`GPS: ${locationCoords.latitude.toFixed(4)}, ${locationCoords.longitude.toFixed(4)}`}>
                 <span className="h-2 w-2 rounded-full bg-[#198754] inline-block animate-pulse" />
@@ -846,7 +880,7 @@ export default function NewBookingPage() {
 
         <div className="flex items-center gap-2">
           <Link
-            href={isSuperAdmin ? "/admin/bookings" : "/dashboard/bookings"}
+            href="/dashboard/bookings"
             className="rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-1.5 text-[12px] font-semibold text-[#344054] hover:bg-[#F9FAFB] transition-colors"
           >
             Cancel

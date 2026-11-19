@@ -24,8 +24,18 @@ import {
   Globe,
   Share2,
   AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+
+function generateTempPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'TA@';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 const TN_DISTRICTS = [
   'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
@@ -57,14 +67,14 @@ export default function DistributorCentresPage() {
     name: '',
     mobile: '',
     email: '',
+    temporaryPassword: generateTempPassword(),
     district: 'Chennai',
     taluk: '',
     address: '',
     pincode: '',
-    centreCode: '',
-    validityDays: 365,
     status: 'ACTIVE',
   });
+  const [reissuingId, setReissuingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCentres();
@@ -81,6 +91,32 @@ export default function DistributorCentresPage() {
     }
   };
 
+  const handleReissueActivation = async (centre: any) => {
+    setReissuingId(centre.id);
+    try {
+      const res = await api.reissueCentreActivation(centre.id);
+      const code = res.centreCode || centre.centreCode;
+      const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/c/${code}` : `/c/${code}`;
+
+      setCredentialsData({
+        centreName: res.centreName || centre.centreName,
+        centreCode: code,
+        ownerName: res.ownerName || centre.user?.name,
+        email: res.operatorEmail || centre.user?.email,
+        mobile: res.mobile || centre.user?.mobile,
+        temporaryPassword: res.temporaryPassword,
+        portalUrl,
+      });
+
+      setIsCredsModalOpen(true);
+      loadCentres();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reissue temporary password');
+    } finally {
+      setReissuingId(null);
+    }
+  };
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -92,12 +128,11 @@ export default function DistributorCentresPage() {
         name: createForm.name.trim(),
         mobile: createForm.mobile.trim(),
         email: createForm.email.toLowerCase().trim(),
+        temporaryPassword: createForm.temporaryPassword.trim() || undefined,
         district: createForm.district.trim(),
         taluk: createForm.taluk.trim(),
         address: createForm.address.trim() || undefined,
         pincode: createForm.pincode.trim() || undefined,
-        centreCode: createForm.centreCode.trim() || undefined,
-        validityDays: createForm.validityDays,
         status: createForm.status,
       };
 
@@ -113,7 +148,7 @@ export default function DistributorCentresPage() {
         ownerName: res.user.name,
         email: res.user.email,
         mobile: res.user.mobile,
-        temporaryPassword: res.temporaryPassword,
+        temporaryPassword: res.temporaryPassword || createForm.temporaryPassword,
         portalUrl,
       });
 
@@ -123,12 +158,11 @@ export default function DistributorCentresPage() {
         name: '',
         mobile: '',
         email: '',
+        temporaryPassword: generateTempPassword(),
         district: 'Chennai',
         taluk: '',
         address: '',
         pincode: '',
-        centreCode: '',
-        validityDays: 365,
         status: 'ACTIVE',
       });
       loadCentres();
@@ -141,7 +175,7 @@ export default function DistributorCentresPage() {
 
   const copyCredentials = () => {
     if (!credentialsData) return;
-    const text = `SevaTN — eSevai Centre Account Provisioned\n\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nOperator Name: ${credentialsData.ownerName}\nLogin Email: ${credentialsData.email}\nMobile: ${credentialsData.mobile}\nTemporary Password: ${credentialsData.temporaryPassword}\n\nStation Direct Login Portal URL:\n${credentialsData.portalUrl}\n\nPlease visit your direct portal URL and change your temporary password upon initial sign in.`;
+    const text = `SevaTN — Booking Centre Account Provisioned\n\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nOperator Name: ${credentialsData.ownerName}\nLogin Email: ${credentialsData.email}\nMobile: ${credentialsData.mobile}\nTemporary Password: ${credentialsData.temporaryPassword}\n\nStation Direct Login Portal URL:\n${credentialsData.portalUrl}\n\nPlease visit your direct portal URL and change your temporary password upon initial sign in.`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -159,7 +193,7 @@ export default function DistributorCentresPage() {
     const rawMobile = credentialsData.mobile?.replace(/\D/g, '') || '';
     const phone = rawMobile.length === 10 ? `91${rawMobile}` : rawMobile;
     const text = encodeURIComponent(
-      `வணக்கம் ${credentialsData.ownerName},\n\nஉங்கள் SevaTN eSevai Centre கணக்கு வெற்றிகரமாக உருவாக்கப்பட்டுள்ளது.\n\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nLogin Email: ${credentialsData.email}\nTemporary Password: ${credentialsData.temporaryPassword}\n\nDirect Login Portal URL:\n${credentialsData.portalUrl}\n\nமுதல் முறை லாகின் செய்ய இந்த Portal URL-ஐப் பயன்படுத்தவும்.`,
+      `வணக்கம் ${credentialsData.ownerName},\n\nஉங்கள் SevaTN Booking Centre கணக்கு வெற்றிகரமாக உருவாக்கப்பட்டுள்ளது.\n\nCentre Name: ${credentialsData.centreName}\nCentre Code: ${credentialsData.centreCode}\nLogin Email: ${credentialsData.email}\nTemporary Password: ${credentialsData.temporaryPassword}\n\nDirect Login Portal URL:\n${credentialsData.portalUrl}\n\nமுதல் முறை லாகின் செய்ய இந்த Portal URL-ஐப் பயன்படுத்தவும்.`,
     );
     window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${text}`, '_blank');
   };
@@ -199,20 +233,13 @@ export default function DistributorCentresPage() {
           </p>
         </div>
 
-        {/* Dual Actions: Instant Account Creation & 30-Min Link */}
+        {/* Primary Action: Instant Account Creation */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <Link
-            href="/distributor/invitations"
-            className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#E6EAF0] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#344054] hover:bg-[#F8FAFC] transition-all shadow-2xs"
-          >
-            <Sparkles className="h-4 w-4 text-[#C98219]" />
-            <span>Generate 30-Min Link</span>
-          </Link>
-
           <button
             type="button"
             onClick={() => {
               setActionError(null);
+              setCreateForm((prev) => ({ ...prev, temporaryPassword: generateTempPassword() }));
               setIsCreateModalOpen(true);
             }}
             className="inline-flex items-center gap-2 rounded-[8px] bg-[#C98219] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#A86B14] transition-all shadow-subtle cursor-pointer"
@@ -244,7 +271,11 @@ export default function DistributorCentresPage() {
             <p className="mt-1">Create your first centre account or issue an onboarding invitation.</p>
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => {
+                setActionError(null);
+                setCreateForm((prev) => ({ ...prev, temporaryPassword: generateTempPassword() }));
+                setIsCreateModalOpen(true);
+              }}
               className="mt-3 inline-flex items-center gap-1.5 rounded-[7px] bg-[#C98219] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#A86B14]"
             >
               <Plus className="h-4 w-4" />
@@ -262,6 +293,7 @@ export default function DistributorCentresPage() {
                   <th className="py-3 px-4">Direct Station URL</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Registered Date</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E6EAF0]">
@@ -310,9 +342,31 @@ export default function DistributorCentresPage() {
                           {c.status}
                         </span>
                       )}
+                      {c.user?.mustChangePassword && (
+                        <span className="flex items-center gap-1 mt-1 text-[9.5px] text-[#8F5A0D] font-semibold">
+                          <KeyRound className="h-2.5 w-2.5" />
+                          <span>First Login Pending</span>
+                        </span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-[#667085] whitespace-nowrap">
                       {formatDate(c.createdAt)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleReissueActivation(c)}
+                        disabled={reissuingId === c.id}
+                        className="inline-flex items-center gap-1 rounded-[6px] border border-[#E6EAF0] bg-white px-2.5 py-1 text-[11px] font-bold text-[#344054] hover:text-[#C98219] hover:border-[#C98219] hover:bg-[#FEF7E6] shadow-xs transition-colors disabled:opacity-50"
+                        title="Reissue / Show Temporary Activation Password"
+                      >
+                        {reissuingId === c.id ? (
+                          <RefreshCw className="h-3 w-3 animate-spin text-[#C98219]" />
+                        ) : (
+                          <KeyRound className="h-3 w-3 text-[#C98219]" />
+                        )}
+                        <span>Temp Password</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -377,7 +431,7 @@ export default function DistributorCentresPage() {
                       required
                       value={createForm.centreName}
                       onChange={(e) => setCreateForm({ ...createForm, centreName: e.target.value })}
-                      placeholder="e.g. Sri Murugan eSevai & CSC Centre"
+                      placeholder="e.g. Sri Murugan CSC & Online Centre"
                       className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
                     />
                   </div>
@@ -490,40 +544,43 @@ export default function DistributorCentresPage() {
                         required
                         value={createForm.email}
                         onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                        placeholder="muthu.esevai@gmail.com"
+                        placeholder="muthu.centre@gmail.com"
                         className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block font-semibold text-[#344054] mb-1">
-                        Custom Centre Code
+                  <div className="pt-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-semibold text-[#344054]">
+                        Temporary Activation Password <span className="text-red-500">*</span>
                       </label>
+                      <button
+                        type="button"
+                        onClick={() => setCreateForm({ ...createForm, temporaryPassword: generateTempPassword() })}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#C98219] hover:underline"
+                        title="Generate a new temporary password"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        <span>Regenerate</span>
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-[#C98219]">
+                        <KeyRound className="h-4 w-4" />
+                      </div>
                       <input
                         type="text"
-                        value={createForm.centreCode}
-                        onChange={(e) => setCreateForm({ ...createForm, centreCode: e.target.value })}
-                        placeholder="Auto (e.g. TN-CHE-001)"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs font-mono text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
+                        required
+                        value={createForm.temporaryPassword}
+                        onChange={(e) => setCreateForm({ ...createForm, temporaryPassword: e.target.value })}
+                        placeholder="e.g. TA@8K9L2M"
+                        className="w-full rounded-[7px] border border-[#D0D5DD] pl-8 pr-3 py-2 text-xs font-mono font-bold text-[#172033] bg-[#FEF7E6]/40 focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219] tracking-wider"
                       />
                     </div>
-
-                    <div>
-                      <label className="block font-semibold text-[#344054] mb-1">
-                        Validity Cycle
-                      </label>
-                      <select
-                        value={createForm.validityDays}
-                        onChange={(e) => setCreateForm({ ...createForm, validityDays: parseInt(e.target.value) })}
-                        className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219]"
-                      >
-                        <option value={365}>365 Days (1 Year)</option>
-                        <option value={90}>90 Days (Quarterly)</option>
-                        <option value={30}>30 Days (Monthly)</option>
-                      </select>
-                    </div>
+                    <p className="text-[10.5px] text-[#667085] mt-1">
+                      Auto-generated password provided to the centre operator for first-time sign in.
+                    </p>
                   </div>
                 </div>
               </div>

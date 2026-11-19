@@ -68,7 +68,7 @@ export const ComingSoon: React.FC<ComingSoonProps> = ({
     {
       title: 'Pilot Testing & Centre Rollout',
       status: 'upcoming',
-      desc: 'Phased enablement across verified eSevai centres in Tamil Nadu.',
+      desc: 'Phased enablement across verified booking centres in Tamil Nadu.',
     },
   ],
 }) => {

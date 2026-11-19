@@ -463,7 +463,7 @@ export default function PartnerInvitationRegisterPage() {
                 Centre & Operator Details
               </h2>
               <p className="text-xs text-[#667085] mt-0.5">
-                Register your Tamil Nadu eSevai / CSC centre under this authorized partner.
+                Register your Tamil Nadu CSC / Citizen Booking Centre under this authorized partner.
               </p>
             </div>
 
@@ -487,7 +487,7 @@ export default function PartnerInvitationRegisterPage() {
                   required
                   value={centreName}
                   onChange={(e) => setCentreName(e.target.value)}
-                  placeholder="e.g. Sri Murugan eSevai Kendra"
+                  placeholder="e.g. Sri Murugan Online Kendra"
                   className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#172033] placeholder-[#98A2B3] focus:border-[#C98219] focus:outline-none"
                 />
               </div>
@@ -656,7 +656,7 @@ export default function PartnerInvitationRegisterPage() {
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-[#172033] flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-[#C98219]" />
-                    {centreName || 'eSevai Centre'}
+                    {centreName || 'Booking Centre'}
                   </h2>
                   <p className="text-xs text-[#667085]">
                     Operator: <strong>{name}</strong> • {mobile} • {district}

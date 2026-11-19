@@ -202,7 +202,7 @@ export default function PartnerProfilePage() {
             Official Franchise Agreement &amp; Terms
           </p>
           <p className="text-[#8F5A0D] mt-1 leading-relaxed">
-            As an Authorized Partner enrolled on the <strong>{partner?.commissionSlab || 'STANDARD'}</strong> slab, you receive a franchise commission of <strong>{partner?.commissionPercentage || 20}%</strong> (currently ₹{Number(partner?.commissionRate || 20).toFixed(2)} based on the booking service fee) for every Virtual-Q Darshan booking executed by eSevai centres in your network. Settlements are processed directly to your registered bank account.
+            As an Authorized Partner enrolled on the <strong>{partner?.commissionSlab || 'STANDARD'}</strong> slab, you receive a franchise commission of <strong>{partner?.commissionPercentage || 20}%</strong> (currently ₹{Number(partner?.commissionRate || 20).toFixed(2)} based on the booking service fee) for every Virtual-Q Darshan booking executed by booking centres in your network. Settlements are processed directly to your registered bank account.
           </p>
         </div>
       </div>

@@ -115,7 +115,7 @@ export default function TermsAndConditionsPage() {
                   By accessing or registering for an account on SevaTN, including applying as an authorized franchise partner, operating an accredited centre, utilizing TicketAssist automated assistance, or submitting queries through Instant Service, you agree to be legally bound by these Terms & Conditions (&ldquo;Terms&rdquo;).
                 </p>
                 <p>
-                  If you are entering into these Terms on behalf of a business, common service centre (CSC), eSevai centre, or internet café, you represent and warrant that you possess full authority to bind that entity to these Terms. If you do not agree to these Terms in their entirety, you must not access or use the Platform.
+                  If you are entering into these Terms on behalf of a business, common service centre (CSC), digital service centre, or internet café, you represent and warrant that you possess full authority to bind that entity to these Terms. If you do not agree to these Terms in their entirety, you must not access or use the Platform.
                 </p>
               </section>
 
@@ -130,7 +130,7 @@ export default function TermsAndConditionsPage() {
                     <strong>&ldquo;SevaTN Platform&rdquo;</strong> refers to the digital portals, worker PC orchestration services, APIs, and management software developed and operated by YUKTRON.
                   </li>
                   <li>
-                    <strong>&ldquo;Centre Operator&rdquo;</strong> refers to an individual, proprietor, or enterprise that manages an accredited local computer centre or eSevai kiosk with an active SevaTN account.
+                    <strong>&ldquo;Centre Operator&rdquo;</strong> refers to an individual, proprietor, or enterprise that manages an accredited local computer centre or citizen service kiosk with an active SevaTN account.
                   </li>
                   <li>
                     <strong>&ldquo;Franchise Partner&rdquo;</strong> refers to an authorized district or regional network administrator designated to onboard, monitor, and coordinate affiliated Centre Operators.
@@ -157,7 +157,7 @@ export default function TermsAndConditionsPage() {
                   <h2 className="text-xl font-bold text-[#171717]">Eligibility and Authorized Registration</h2>
                 </div>
                 <p>
-                  SevaTN is intended exclusively for legitimate commercial, eSevai, and computer service operations. To be eligible for an account:
+                  SevaTN is intended exclusively for legitimate commercial, online booking, and computer service operations. To be eligible for an account:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                   <li>You must be at least 18 years of age and legally competent to enter into contracts under Indian law.</li>
@@ -262,7 +262,7 @@ export default function TermsAndConditionsPage() {
                   <h2 className="text-xl font-bold text-[#171717]">Instant Service Terms</h2>
                 </div>
                 <p>
-                  The Instant Service module facilitates assisted submission of public eSevai queries, verification requests, and citizen application filings.
+                  The Instant Service module facilitates assisted submission of public online queries, verification requests, and citizen application filings.
                 </p>
                 <p>
                   Centre Operators warrant that all citizen information, certificates, identification documents, and application parameters submitted via Instant Service are obtained with the explicit informed consent of the respective citizen. Statutory government filing fees remitted directly to state portals are non-refundable once an application is acknowledged by the official portal.

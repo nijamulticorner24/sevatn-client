@@ -72,7 +72,11 @@ export default function DistributorOverviewPage() {
                 {distributor?.status || 'ACTIVE'}
               </span>
             </div>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 border-t border-[#E6EAF0] pt-1.5">
+              <span className="text-[#667085]">Network License:</span>
+              <span className="font-bold text-[#7F56D9]">Authorized Distributor</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-[#E6EAF0] pt-1.5">
               <span className="text-[#667085]">Commission Slab:</span>
               <span className="font-bold text-[#172033]">{distributor?.commissionSlab || 'STANDARD'}</span>
             </div>
@@ -81,7 +85,7 @@ export default function DistributorOverviewPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#667085]">
@@ -98,24 +102,6 @@ export default function DistributorOverviewPage() {
             className="mt-3 text-xs font-bold text-[#C98219] hover:underline flex items-center gap-1"
           >
             <span>View All Centres</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-
-        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between text-xs text-[#667085]">
-              <span>Active Onboard Links</span>
-              <Sparkles className="h-4 w-4 text-[#175CD3]" />
-            </div>
-            <div className="text-2xl font-black text-[#172033] mt-2">{metrics?.pendingInvites || 0}</div>
-            <span className="text-[11px] text-[#667085] mt-1">30-Minute Single Use</span>
-          </div>
-          <Link
-            href="/distributor/invitations"
-            className="mt-3 text-xs font-bold text-[#175CD3] hover:underline flex items-center gap-1"
-          >
-            <span>Generate New Link</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -151,6 +137,28 @@ export default function DistributorOverviewPage() {
             3-Level Guaranteed Rate
           </div>
         </div>
+      </div>
+
+      {/* Earnings & Settlement Quick Action */}
+      <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FEF7E6] p-5 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-white text-[#C98219] border border-[#F9DE9B] shadow-sm">
+            <DollarSign className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-[#8F5A0D]">Distributor Markup Earnings & Settlement</h3>
+            <p className="text-xs text-[#8F5A0D]/80 mt-0.5">
+              Accumulate +{formatINR(distributorMarkup)} per confirmed ticket across your network centres and request direct UPI payouts.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/distributor/payouts"
+          className="inline-flex items-center justify-center gap-2 rounded-[7px] bg-[#C98219] hover:bg-[#B57414] px-5 py-2.5 text-xs font-bold text-white shadow-subtle transition-all shrink-0"
+        >
+          <span>View Earnings & Withdraw Funds</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
       {/* THREE-LEVEL PRICING FORMULA BREAKDOWN */}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatINR, cn } from '@/lib/utils';
+import { HeaderMarqueeBar } from '@/components/HeaderMarqueeBar';
 import {
   LayoutDashboard,
   CalendarCheck2,
@@ -46,6 +47,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [marquee, setMarquee] = useState<{
+    enabled: boolean;
+    text: string;
+    bgColor: string;
+    speed: number;
+  } | null>(null);
 
   // Check if we are on public landing, auth, partner onboarding, legal, or centre registration pages
   const isPublicRoute =
@@ -59,6 +66,24 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     pathname === '/contact' ||
     pathname === '/terms-and-conditions' ||
     pathname === '/refund-policy';
+
+  useEffect(() => {
+    // Fetch public announcement marquee settings
+    api.getPublicConfig()
+      .then((cfg: any) => {
+        if (cfg && cfg.headerMarqueeEnabled && cfg.headerMarqueeText?.trim()) {
+          setMarquee({
+            enabled: true,
+            text: cfg.headerMarqueeText.trim(),
+            bgColor: cfg.headerMarqueeBgColor || 'DEFAULT',
+            speed: Number(cfg.headerMarqueeSpeed || 30),
+          });
+        } else {
+          setMarquee(null);
+        }
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   useEffect(() => {
     const u = api.getUser();
@@ -93,7 +118,18 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   }, [pathname, isPublicRoute]);
 
   if (isPublicRoute) {
-    return <div className="min-h-screen bg-[#F7F9FC]">{children}</div>;
+    return (
+      <div className="min-h-screen bg-[#F7F9FC]">
+        {marquee && marquee.enabled && (
+          <HeaderMarqueeBar
+            text={marquee.text}
+            bgColor={marquee.bgColor}
+            speed={marquee.speed}
+          />
+        )}
+        {children}
+      </div>
+    );
   }
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -114,7 +150,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     {
       group: 'OPERATIONS',
       items: [
-        { name: 'Create Booking', href: '/dashboard/bookings/new', icon: CirclePlus },
         { name: 'Central Queue', href: '/admin/bookings', icon: ListOrdered },
         { name: 'Worker PC Fleet', href: '/admin/fleet', icon: MonitorDot, badge: 'Live' },
       ],
@@ -187,13 +222,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       group: 'NETWORK',
       items: [
         { name: 'Centres', href: '/distributor/centres', icon: Building2 },
-        { name: 'Invitations', href: '/distributor/invitations', icon: UserPlus },
       ],
     },
     {
       group: 'FINANCE',
       items: [
         { name: 'Ticket Markup', href: '/distributor/markup', icon: DollarSign },
+        { name: 'Earnings & Payouts', href: '/distributor/payouts', icon: BadgeDollarSign },
       ],
     },
     {
@@ -254,6 +289,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#F7F9FC]">
+      {/* Site Header Top Marquee Announcement Bar */}
+      {marquee && marquee.enabled && (
+        <HeaderMarqueeBar
+          text={marquee.text}
+          bgColor={marquee.bgColor}
+          speed={marquee.speed}
+        />
+      )}
+
       {/* Global Clean Top Bar */}
       <header className="h-[60px] shrink-0 bg-white border-b border-[#E6EAF0] px-4 sm:px-6 flex items-center justify-between shadow-subtle z-40">
         {/* Left: Brand / Mobile Toggle */}
@@ -624,36 +668,61 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           <span>Home</span>
         </Link>
         <Link
-          href={isAdmin ? '/admin/bookings' : isPartner ? '/partner/centres' : '/dashboard/bookings'}
+          href={
+            isAdmin
+              ? '/admin/bookings'
+              : isPartner
+              ? '/partner/centres'
+              : isDistributor
+              ? '/distributor/centres'
+              : '/dashboard/bookings'
+          }
           className={cn(
             'flex flex-col items-center gap-1 text-[11px] font-medium py-1',
-            pathname.startsWith('/admin/bookings') || pathname.startsWith('/partner/centres') || pathname.startsWith('/dashboard/bookings')
+            pathname.startsWith('/admin/bookings') ||
+              pathname.startsWith('/partner/centres') ||
+              pathname.startsWith('/distributor/centres') ||
+              pathname.startsWith('/dashboard/bookings')
               ? 'text-[#C98219] font-bold'
               : 'text-[#667085]',
           )}
         >
           <CalendarCheck2 className="h-4 w-4" />
-          <span>{isAdmin ? 'Queue' : isPartner ? 'Centres' : 'Bookings'}</span>
+          <span>{isAdmin ? 'Queue' : isPartner || isDistributor ? 'Centres' : 'Bookings'}</span>
         </Link>
-        {!isAdmin && !isPartner && (
+        {user?.role === 'CENTRE' && (
           <Link
             href="/dashboard/bookings/new"
             className="flex flex-col items-center gap-1 text-[11px] font-bold text-white bg-[#C98219] p-2 rounded-full shadow-subtle -mt-4 hover:bg-[#B57414]"
+            title="Create New Booking"
           >
             <CirclePlus className="h-5 w-5" />
           </Link>
         )}
         <Link
-          href={isAdmin ? '/admin/ledger' : isPartner ? '/partner/ledger' : '/dashboard/wallet'}
+          href={
+            isAdmin
+              ? '/admin/ledger'
+              : isPartner
+              ? '/partner/payouts'
+              : isDistributor
+              ? '/distributor/payouts'
+              : '/dashboard/wallet'
+          }
           className={cn(
             'flex flex-col items-center gap-1 text-[11px] font-medium py-1',
-            pathname.startsWith('/admin/ledger') || pathname.startsWith('/partner/ledger') || pathname.startsWith('/dashboard/wallet')
+            pathname.startsWith('/admin/ledger') ||
+              pathname.startsWith('/partner/payouts') ||
+              pathname.startsWith('/partner/ledger') ||
+              pathname.startsWith('/distributor/payouts') ||
+              pathname.startsWith('/distributor/markup') ||
+              pathname.startsWith('/dashboard/wallet')
               ? 'text-[#C98219] font-bold'
               : 'text-[#667085]',
           )}
         >
           <Wallet className="h-4 w-4" />
-          <span>{isAdmin || isPartner ? 'Ledger' : 'Wallet'}</span>
+          <span>{isAdmin ? 'Ledger' : isPartner || isDistributor ? 'Payouts' : 'Wallet'}</span>
         </Link>
         <button
           onClick={() => setMobileDrawerOpen(true)}

@@ -114,9 +114,18 @@ export default function PartnerMarkupPage() {
       {/* Pricing Breakdown Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle">
-          <span className="text-[11px] font-semibold text-[#667085]">Base Ticket Price</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-[#667085]">Base Ticket Price</span>
+            {data?.isCustomRate && (
+              <span className="rounded bg-[#EFF8FF] px-1.5 py-0.5 text-[10px] font-bold text-[#175CD3] border border-[#B2DDFF]">
+                Custom Partner Rate
+              </span>
+            )}
+          </div>
           <div className="text-2xl font-black text-[#172033] mt-1">{formatINR(baseTicket)}</div>
-          <span className="text-[10.5px] text-[#667085]">Set by Super Admin</span>
+          <span className="text-[10.5px] text-[#667085]">
+            {data?.isCustomRate ? 'Configured by Admin in /admin/partners' : 'Standard Base Rate'}
+          </span>
         </div>
 
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle">
@@ -146,7 +155,12 @@ export default function PartnerMarkupPage() {
             Final Ticket Price = Base Ticket Price + Partner Markup + Distributor Markup
           </p>
           <div className="text-[#667085] pt-2 border-t border-[#F0F3F7] grid grid-cols-1 sm:grid-cols-4 gap-2">
-            <div>Base Price: <strong className="text-[#172033]">₹{baseTicket}</strong></div>
+            <div>
+              Base Price: <strong className="text-[#172033]">₹{baseTicket}</strong>
+              {data?.isCustomRate && (
+                <span className="block text-[10px] text-[#175CD3] font-sans font-bold">Custom Partner Rate</span>
+              )}
+            </div>
             <div>Partner Markup: <strong className="text-[#C98219]">+₹{currentMarkup}</strong></div>
             <div>Distributor Markup: <strong className="text-[#175CD3]">+₹0 to ₹2</strong> (Independent)</div>
             <div>Final Ticket: <strong className="text-[#198754]">₹{baseTicket + currentMarkup} – ₹{baseTicket + currentMarkup + 2}</strong></div>

@@ -24,10 +24,24 @@ import {
   Percent,
   Power,
   ChevronRight,
+  KeyRound,
+  Copy,
+  ExternalLink,
+  Send,
 } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
+
+const TN_DISTRICTS = [
+  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
+  'Dindigul', 'Erode', 'Kallakurichi', 'Kanchipuram', 'Kanyakumari', 'Karur',
+  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 'Nilgiris',
+  'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 'Salem', 'Sivaganga',
+  'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi', 'Tiruchirappalli', 'Tirunelveli',
+  'Tirupathur', 'Tiruppur', 'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore',
+  'Viluppuram', 'Virudhunagar'
+];
 
 export default function PartnerDistributorsPage() {
   const toast = useToast();
@@ -53,14 +67,19 @@ export default function PartnerDistributorsPage() {
     businessName: '',
     mobile: '',
     email: '',
-    district: '',
+    district: 'Chennai',
     taluk: '',
     address: '',
     commissionSlab: 'STANDARD',
     commissionPercentage: 10,
     markup: 1,
-    password: '',
   });
+
+  // Generated Credentials Modal State
+  const [isCredsModalOpen, setIsCredsModalOpen] = useState(false);
+  const [credentialsData, setCredentialsData] = useState<any>(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
+  const [copiedPortalUrl, setCopiedPortalUrl] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -85,6 +104,41 @@ export default function PartnerDistributorsPage() {
     }
   };
 
+  const copyCredentials = () => {
+    if (!credentialsData) return;
+    const text = `🎉 SEVATN DISTRIBUTOR ACCESS CREDENTIALS\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Distributor Name: ${credentialsData.distributorName}\n` +
+      (credentialsData.businessName ? `Business Name   : ${credentialsData.businessName}\n` : '') +
+      `Distributor Code: ${credentialsData.distributorCode}\n` +
+      `Portal Login URL: ${credentialsData.portalUrl}\n` +
+      `Username / Mobile: ${credentialsData.mobile}\n` +
+      `Temporary Password: ${credentialsData.temporaryPassword}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Please login and change your password immediately upon first access.`;
+    navigator.clipboard.writeText(text);
+    setCopiedCreds(true);
+    setTimeout(() => setCopiedCreds(false), 3000);
+  };
+
+  const copyPortalUrlOnly = () => {
+    if (!credentialsData) return;
+    navigator.clipboard.writeText(credentialsData.portalUrl);
+    setCopiedPortalUrl(true);
+    setTimeout(() => setCopiedPortalUrl(false), 2000);
+  };
+
+  const shareCredentialsViaWhatsApp = () => {
+    if (!credentialsData) return;
+    const text = `🎉 *SEVATN DISTRIBUTOR ACCESS CREDENTIALS*\n` +
+      `Distributor: *${credentialsData.distributorName}* (${credentialsData.distributorCode})\n` +
+      `Portal: ${credentialsData.portalUrl}\n` +
+      `Mobile / Username: *${credentialsData.mobile}*\n` +
+      `Temporary Password: *${credentialsData.temporaryPassword}*\n\n` +
+      `_Please login and change your password upon first access._`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -92,26 +146,47 @@ export default function PartnerDistributorsPage() {
     setSuccessMsg(null);
 
     try {
-      await api.createPartnerDistributor({
-        ...formData,
+      const res: any = await api.createPartnerDistributor({
+        name: formData.name.trim(),
+        businessName: formData.businessName.trim() || undefined,
+        mobile: formData.mobile.trim(),
+        email: formData.email.trim() || undefined,
+        district: formData.district.trim() || undefined,
+        taluk: formData.taluk.trim() || undefined,
+        address: formData.address.trim() || undefined,
+        commissionSlab: formData.commissionSlab,
         commissionPercentage: Number(formData.commissionPercentage),
         markup: Number(formData.markup),
       });
 
-      setSuccessMsg('Distributor successfully created and onboarded!');
+      const cleanMobile = formData.mobile.trim();
+      const generatedPassword = res?.credentials?.temporaryPassword || `Dist@${cleanMobile.slice(-4)}`;
+      const portalUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/login`;
+
+      setCredentialsData({
+        distributorName: res?.distributor?.name || formData.name,
+        businessName: res?.distributor?.businessName || formData.businessName,
+        distributorCode: res?.distributor?.distributorCode || 'Auto Generated',
+        email: res?.distributor?.email || formData.email || `${cleanMobile}@sevatn.online`,
+        mobile: res?.credentials?.identifier || res?.distributor?.mobile || cleanMobile,
+        temporaryPassword: generatedPassword,
+        portalUrl,
+      });
+
       setIsCreateOpen(false);
+      setIsCredsModalOpen(true);
+      setSuccessMsg('Distributor successfully created and onboarded!');
       setFormData({
         name: '',
         businessName: '',
         mobile: '',
         email: '',
-        district: '',
+        district: 'Chennai',
         taluk: '',
         address: '',
         commissionSlab: 'STANDARD',
         commissionPercentage: 10,
         markup: 1,
-        password: '',
       });
       loadDistributors();
       setTimeout(() => setSuccessMsg(null), 5000);
@@ -218,7 +293,7 @@ export default function PartnerDistributorsPage() {
             My Distributors ({distributors.length})
           </h1>
           <p className="text-xs sm:text-sm text-[#667085] mt-1">
-            Create, assign commission slabs, and manage subordinate Distributors managing your regional Centres.
+            Create, configure markup commission (₹), and manage subordinate Distributors managing your regional Centres.
           </p>
         </div>
 
@@ -328,15 +403,9 @@ export default function PartnerDistributorsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs bg-[#F8FAFC] p-3 rounded-[8px] border border-[#E6EAF0] mb-4">
+                <div className="grid grid-cols-3 gap-2 text-xs bg-[#F8FAFC] p-3 rounded-[8px] border border-[#E6EAF0] mb-4">
                   <div>
-                    <span className="text-[#667085] text-[10.5px]">Commission Slab</span>
-                    <p className="font-bold text-[#172033]">
-                      {d.commissionSlab || 'STANDARD'} ({d.commissionPercentage}%)
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[#667085] text-[10.5px]">Assigned Markup</span>
+                    <span className="text-[#667085] text-[10.5px]">Distributor Markup (₹)</span>
                     <p className="font-bold text-[#C98219]">+{formatINR(d.markup || 0)}</p>
                   </div>
                   <div>
@@ -490,14 +559,22 @@ export default function PartnerDistributorsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-[#172033] mb-1">District</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Madurai"
+                  <label className="block font-bold text-[#172033] mb-1">
+                    District <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
                     value={formData.district}
                     onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                    className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs focus:border-[#C98219] focus:outline-none"
-                  />
+                    className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs bg-white text-[#172033] focus:border-[#C98219] focus:outline-none"
+                  >
+                    <option value="">Select District</option>
+                    {TN_DISTRICTS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block font-bold text-[#172033] mb-1">Taluk</label>
@@ -511,21 +588,17 @@ export default function PartnerDistributorsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 border-t border-[#F0F3F7] pt-3">
-                <div>
-                  <label className="block font-bold text-[#172033] mb-1">Commission Slab</label>
-                  <select
-                    value={formData.commissionSlab}
-                    onChange={(e) => setFormData({ ...formData, commissionSlab: e.target.value })}
-                    className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs focus:border-[#C98219] focus:outline-none"
-                  >
-                    <option value="STANDARD">STANDARD (10%)</option>
-                    <option value="SILVER">SILVER (12%)</option>
-                    <option value="GOLD">GOLD (15%)</option>
-                  </select>
+              <div className="border-t border-[#F0F3F7] pt-3">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-[#172033]">
+                    Distributor Markup (₹) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
+                  </label>
+                  <span className="text-[11px] text-[#667085]">
+                    Max allowed: ₹2.00
+                  </span>
                 </div>
-                <div>
-                  <label className="block font-bold text-[#172033] mb-1">Distributor Markup (₹)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-xs font-bold text-[#667085]">₹</span>
                   <input
                     type="number"
                     step="0.5"
@@ -533,20 +606,20 @@ export default function PartnerDistributorsPage() {
                     max="2"
                     value={formData.markup}
                     onChange={(e) => setFormData({ ...formData, markup: parseFloat(e.target.value) || 0 })}
-                    className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs font-bold text-[#C98219] focus:border-[#C98219] focus:outline-none"
+                    className="w-full rounded-[8px] border border-[#E6EAF0] pl-7 pr-3 py-2 text-xs font-bold text-[#C98219] focus:border-[#C98219] focus:outline-none"
+                    placeholder="1.00"
                   />
                 </div>
+                <p className="text-[11px] text-[#667085] mt-1">
+                  This markup is the distributor's commission, credited automatically on every confirmed booking from their centres.
+                </p>
               </div>
 
-              <div>
-                <label className="block font-bold text-[#172033] mb-1">Initial Password (Optional)</label>
-                <input
-                  type="password"
-                  placeholder="Leave empty to auto-generate"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs focus:border-[#C98219] focus:outline-none"
-                />
+              <div className="rounded-[8px] bg-[#FEF7E6] border border-[#F9DE9B] p-3 text-xs text-[#8F5A0D] flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-[#C98219] shrink-0" />
+                <span>
+                  <strong>Auto-Generated Access Password:</strong> A secure temporary activation password will be automatically generated and displayed upon registration for the distributor to login.
+                </span>
               </div>
 
               <div className="flex justify-end gap-3 border-t border-[#E6EAF0] pt-4">
@@ -602,35 +675,31 @@ export default function PartnerDistributorsPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-[#172033] mb-1">Commission Slab</label>
-                <select
-                  value={editingDistributor.commissionSlab || 'STANDARD'}
-                  onChange={(e) =>
-                    setEditingDistributor({ ...editingDistributor, commissionSlab: e.target.value })
-                  }
-                  className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs focus:border-[#C98219] focus:outline-none"
-                >
-                  <option value="STANDARD">STANDARD (10%)</option>
-                  <option value="SILVER">SILVER (12%)</option>
-                  <option value="GOLD">GOLD (15%)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#172033] mb-1">
-                  Distributor Markup (₹) [Max: ₹{editingDistributor.maxAllowedMarkup || 2}]
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max={editingDistributor.maxAllowedMarkup || 2}
-                  value={editingDistributor.markup}
-                  onChange={(e) =>
-                    setEditingDistributor({ ...editingDistributor, markup: parseFloat(e.target.value) || 0 })
-                  }
-                  className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs font-bold text-[#C98219] focus:border-[#C98219] focus:outline-none"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-[#172033]">
+                    Distributor Markup (₹) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
+                  </label>
+                  <span className="text-[11px] text-[#667085]">
+                    Max allowed: ₹{editingDistributor.maxAllowedMarkup || 2}
+                  </span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-xs font-bold text-[#667085]">₹</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max={editingDistributor.maxAllowedMarkup || 2}
+                    value={editingDistributor.markup}
+                    onChange={(e) =>
+                      setEditingDistributor({ ...editingDistributor, markup: parseFloat(e.target.value) || 0 })
+                    }
+                    className="w-full rounded-[8px] border border-[#E6EAF0] pl-7 pr-3 py-2 text-xs font-bold text-[#C98219] focus:border-[#C98219] focus:outline-none"
+                  />
+                </div>
+                <p className="text-[11px] text-[#667085] mt-1">
+                  Distributor commission earned per confirmed booking processed by managed centres.
+                </p>
               </div>
 
               <div className="flex justify-end gap-3 border-t border-[#E6EAF0] pt-4">
@@ -679,6 +748,139 @@ export default function PartnerDistributorsPage() {
           setConfirmStatusData({ isOpen: false, distributor: null, newStatus: 'ACTIVE' })
         }
       />
+
+      {/* Generated Distributor Credentials Modal */}
+      {isCredsModalOpen && credentialsData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-[12px] bg-white shadow-xl overflow-hidden border border-[#C3E6CB]">
+            {/* Header */}
+            <div className="bg-[#EAF7EE] p-5 border-b border-[#C3E6CB] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-[#198754] p-2 text-white">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#106A3B]">Distributor Account Provisioned</h3>
+                  <p className="text-xs text-[#198754]">
+                    Temporary login credentials generated successfully
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCredsModalOpen(false)}
+                className="rounded-md p-1.5 text-[#198754] hover:bg-[#D8F3DF] transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Profile Card */}
+              <div className="rounded-[10px] border border-[#E6EAF0] bg-[#F8FAFC] p-4 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                  <span className="text-[#667085] font-medium">Distributor Name</span>
+                  <span className="font-bold text-[#172033] text-sm">{credentialsData.distributorName}</span>
+                </div>
+                {credentialsData.businessName && (
+                  <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                    <span className="text-[#667085] font-medium">Business / Agency</span>
+                    <span className="font-semibold text-[#172033]">{credentialsData.businessName}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                  <span className="text-[#667085] font-medium">Distributor Code</span>
+                  <span className="font-mono font-bold text-[#C98219] bg-[#FEF7E6] px-2 py-0.5 rounded border border-[#F9DE9B]">
+                    {credentialsData.distributorCode}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                  <span className="text-[#667085] font-medium">Login Mobile / User ID</span>
+                  <span className="font-mono font-bold text-[#172033]">{credentialsData.mobile}</span>
+                </div>
+                {credentialsData.email && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#667085] font-medium">Email</span>
+                    <span className="font-semibold text-[#172033]">{credentialsData.email}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Temporary Password Highlight Box */}
+              <div className="rounded-[10px] border-2 border-dashed border-[#C98219] bg-[#FEF7E6] p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#8F5A0D] mb-1">
+                  <KeyRound className="h-4 w-4" />
+                  <span>TEMPORARY ACTIVATION PASSWORD</span>
+                </div>
+                <div className="font-mono text-xl font-extrabold tracking-wider text-[#172033] py-1 select-all">
+                  {credentialsData.temporaryPassword || '—'}
+                </div>
+                <p className="text-[11px] text-[#8F5A0D]">
+                  The distributor will be prompted to set their permanent password upon first login.
+                </p>
+              </div>
+
+              {/* Portal Login URL */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#172033]">
+                  Distributor Direct Login Portal URL:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={credentialsData.portalUrl}
+                    className="flex-1 rounded-[7px] border border-[#D0D5DD] bg-[#F8FAFC] px-3 py-2 text-xs font-mono text-[#172033] select-all focus:outline-none"
+                  />
+                  <button
+                    onClick={copyPortalUrlOnly}
+                    className="rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs font-bold text-[#344054] hover:bg-[#F2F4F7] transition-colors flex items-center gap-1 shrink-0"
+                  >
+                    {copiedPortalUrl ? <Check className="h-3.5 w-3.5 text-[#198754]" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedPortalUrl ? 'Copied' : 'Copy URL'}</span>
+                  </button>
+                  <a
+                    href={credentialsData.portalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-[7px] bg-[#172033] p-2 text-white hover:bg-[#2A374F] transition-colors shrink-0"
+                    title="Open in new tab"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={copyCredentials}
+                    className="w-full rounded-[8px] bg-[#172033] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#2A374F] transition-colors flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    {copiedCreds ? <Check className="h-4 w-4 text-[#198754]" /> : <Copy className="h-4 w-4" />}
+                    <span>{copiedCreds ? 'Copied to Clipboard!' : 'Copy All Details'}</span>
+                  </button>
+
+                  <button
+                    onClick={shareCredentialsViaWhatsApp}
+                    className="w-full rounded-[8px] bg-[#25D366] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#1EBE5D] transition-colors flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <Send className="h-4 w-4" />
+                    <span>Share on WhatsApp</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setIsCredsModalOpen(false)}
+                  className="w-full rounded-[8px] border border-[#D0D5DD] bg-white px-4 py-2 text-xs font-semibold text-[#344054] hover:bg-[#F2F4F7] transition-colors"
+                >
+                  Done & Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

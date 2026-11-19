@@ -55,9 +55,6 @@ export default function PartnerOverviewPage() {
   }, []);
 
   const partner = profile?.partner;
-  const commissionPercentage = Number(partner?.commissionPercentage || 20);
-  const commissionRate = Number(partner?.commissionRate || 20);
-  const commissionSlab = partner?.commissionSlab || `${commissionPercentage}%`;
 
   const totalDistributors = distributors.length;
   const activeDistributors = distributors.filter((d) => d.status === 'ACTIVE').length;
@@ -67,7 +64,6 @@ export default function PartnerOverviewPage() {
 
   const actualBalance = Number(payoutsData?.availableBalance ?? 0);
   const actualTotalEarned = Number(payoutsData?.totalEarned ?? actualBalance);
-  const totalCommissionEarned = actualTotalEarned;
 
   // Group centres by distributor
   const distributorGroups: { [key: string]: { name: string; code: string; count: number; active: number } } = {};
@@ -96,7 +92,7 @@ export default function PartnerOverviewPage() {
     ...distributors.map((d) => ({
       type: 'DISTRIBUTOR',
       title: `Distributor Created: ${d.name} (${d.distributorCode})`,
-      subtitle: `Assigned slab ${d.commissionSlab || 'STANDARD'} • Markup +₹${d.markup || 0}`,
+      subtitle: `Distributor Markup +₹${d.markup || 0} / booking`,
       date: d.createdAt,
       status: d.status,
     })),
@@ -148,14 +144,68 @@ export default function PartnerOverviewPage() {
               </span>
             </div>
             <div className="flex items-center justify-between text-xs border-t border-[#E6EAF0] pt-2">
-              <span className="text-[#667085]">Configured Ticket Markup</span>
-              <span className="font-bold text-[#C98219]">+{formatINR(markupData?.currentMarkup || 0)}</span>
+              <span className="text-[#667085]">Base Ticket Price</span>
+              <span className="font-bold text-[#175CD3]">
+                {formatINR(markupData?.baseTicketPrice || 10)}
+                {markupData?.isCustomRate && <span className="text-[10px] ml-1 text-[#175CD3] font-normal">(Custom)</span>}
+              </span>
             </div>
             <div className="flex items-center justify-between text-xs border-t border-[#E6EAF0] pt-2">
-              <span className="text-[#667085]">Commission Split</span>
-              <span className="font-bold text-[#8F5A0D]">₹{commissionRate.toFixed(2)} / Pass ({commissionSlab})</span>
+              <span className="text-[#667085]">Configured Ticket Markup</span>
+              <span className="font-bold text-[#C98219]">+{formatINR(markupData?.currentMarkup || 0)} / pass</span>
+            </div>
+            <div className="flex items-center justify-between text-xs border-t border-[#E6EAF0] pt-2">
+              <span className="text-[#667085]">Total Markup Earned</span>
+              <span className="font-bold text-[#198754]">{formatINR(actualTotalEarned)}</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Markup Financial Earnings & Pricing Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="rounded-[10px] border border-[#198754]/30 bg-[#EAF7EE]/60 p-4 shadow-subtle flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#198754] uppercase tracking-wider">Total Markup Earned</span>
+            <DollarSign className="h-4 w-4 text-[#198754]" />
+          </div>
+          <p className="text-2xl font-black text-[#198754] mt-1">{formatINR(actualTotalEarned)}</p>
+          <span className="text-[11px] text-[#198754] mt-1">From network ticket markups</span>
+        </div>
+
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Available Balance</span>
+            <TrendingUp className="h-4 w-4 text-[#175CD3]" />
+          </div>
+          <p className="text-2xl font-black text-[#172033] mt-1">{formatINR(actualBalance)}</p>
+          <Link href="/partner/payouts" className="text-[11px] text-[#175CD3] font-bold hover:underline mt-1 flex items-center gap-1">
+            <span>Withdraw Earnings</span>
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FEF7E6]/70 p-4 shadow-subtle flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#8F5A0D] uppercase tracking-wider">Your Ticket Markup</span>
+            <Ticket className="h-4 w-4 text-[#C98219]" />
+          </div>
+          <p className="text-2xl font-black text-[#C98219] mt-1">+{formatINR(markupData?.currentMarkup || 0)}</p>
+          <Link href="/partner/markup" className="text-[11px] text-[#C98219] font-bold hover:underline mt-1 flex items-center gap-1">
+            <span>Per booking pass • Adjust</span>
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="rounded-[10px] border border-[#B2DDFF] bg-[#EFF8FF]/70 p-4 shadow-subtle flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#175CD3] uppercase tracking-wider">Base Ticket Price</span>
+            <ShieldCheck className="h-4 w-4 text-[#175CD3]" />
+          </div>
+          <p className="text-2xl font-black text-[#175CD3] mt-1">{formatINR(markupData?.baseTicketPrice || 10)}</p>
+          <span className="text-[11px] text-[#175CD3] mt-1 font-medium">
+            {markupData?.isCustomRate ? 'Custom Partner Rate (Admin)' : 'System Default Rate'}
+          </span>
         </div>
       </div>
 
@@ -202,11 +252,18 @@ export default function PartnerOverviewPage() {
           <span>Create Distributor</span>
         </Link>
         <Link
-          href="/partner/distributors"
+          href="/partner/markup"
           className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
         >
-          <Users className="h-4 w-4 text-[#C98219]" />
-          <span>View Distributors</span>
+          <DollarSign className="h-4 w-4 text-[#C98219]" />
+          <span>Manage Ticket Markup</span>
+        </Link>
+        <Link
+          href="/partner/payouts"
+          className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
+        >
+          <TrendingUp className="h-4 w-4 text-[#C98219]" />
+          <span>Markup Payouts</span>
         </Link>
         <Link
           href="/partner/centres"
@@ -214,13 +271,6 @@ export default function PartnerOverviewPage() {
         >
           <Building2 className="h-4 w-4 text-[#C98219]" />
           <span>View Centres</span>
-        </Link>
-        <Link
-          href="/partner/markup"
-          className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
-        >
-          <DollarSign className="h-4 w-4 text-[#C98219]" />
-          <span>Manage Ticket Markup</span>
         </Link>
       </div>
 
@@ -263,7 +313,7 @@ export default function PartnerOverviewPage() {
                       <p className="text-xs font-bold text-[#172033] truncate">{d.name}</p>
                     </div>
                     <p className="text-[11px] text-[#667085] mt-0.5">
-                      {d.centresCount || 0} Centres • Markup +₹{d.markup || 0} • Slab {d.commissionSlab || 'STANDARD'}
+                      {d.centresCount || 0} Centres • Distributor Markup +₹{d.markup || 0}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

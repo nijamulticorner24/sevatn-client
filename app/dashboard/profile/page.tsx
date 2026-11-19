@@ -208,7 +208,7 @@ export default function ProfilePage() {
           </div>
           <h1 className="text-2xl font-extrabold text-[#172033]">Centre Profile &amp; Authorization</h1>
           <p className="text-xs text-[#667085] mt-0.5">
-            Your registered eSevai centre credentials, regional partner affiliation, and 5 KM service location.
+            Your registered centre credentials, regional partner affiliation, and 5 KM service location.
           </p>
         </div>
         <span className="rounded bg-[#EAF7EE] px-3 py-1 text-xs font-bold text-[#198754] border border-[#C3E6CB] self-start sm:self-auto">
@@ -232,7 +232,7 @@ export default function ProfilePage() {
               </span>
             </div>
             <p className="text-xs text-[#667085] mt-0.5">
-              Tamil Nadu eSevai Network • {centre?.taluk ? `${centre.taluk}, ` : ''}{centre?.district || 'Tamil Nadu'}
+              Tamil Nadu Centre Network • {centre?.taluk ? `${centre.taluk}, ` : ''}{centre?.district || 'Tamil Nadu'}
             </p>
           </div>
         </div>

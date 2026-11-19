@@ -76,6 +76,10 @@ export default function LoginPage() {
         router.push('/admin');
       } else if (res.user.role === 'PARTNER') {
         router.push('/partner');
+      } else if (res.user.role === 'DISTRIBUTOR') {
+        router.push('/distributor');
+      } else if (res.user.role === 'CENTRE') {
+        router.push('/dashboard');
       } else {
         router.push('/dashboard');
       }
@@ -186,10 +190,10 @@ export default function LoginPage() {
             </div>
 
             <h2 className="text-[24px] sm:text-[28px] font-bold text-white tracking-tight leading-snug">
-              eSevai &amp; Assisted <span className="text-[#C98219]">Services Hub</span>
+              Citizen &amp; Assisted <span className="text-[#C98219]">Services Hub</span>
             </h2>
             <p className="mt-2 text-[13.5px] text-[#98A2B3] leading-relaxed">
-              Unified platform for Tamil Nadu eSevai and computer centres providing TicketAssist booking and Instant Service certificate verification.
+              Unified platform for Tamil Nadu authorized booking and computer centres providing TicketAssist booking and Instant Service certificate verification.
             </p>
 
             {/* Core Features */}

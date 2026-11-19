@@ -195,15 +195,15 @@ export default function DistributorMarkupPage() {
 
       {/* 4-Tier Interactive Pricing Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* 1. Base Ticket Price */}
+        {/* 1. Base Ticket Price (Based on Partner Base Rate) */}
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 sm:p-5 shadow-subtle flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
                 1. Base Ticket
               </span>
-              <span className="rounded-[6px] bg-[#F2F4F7] px-1.5 py-0.5 text-[10px] font-bold text-[#475467]">
-                Tier 1
+              <span className="rounded-[6px] bg-[#EFF8FF] px-1.5 py-0.5 text-[10px] font-bold text-[#175CD3] border border-[#B2DDFF]">
+                {data?.isCustomPartnerRate ? 'Partner Base' : 'Base Rate'}
               </span>
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-[#172033] mt-2">
@@ -211,8 +211,10 @@ export default function DistributorMarkupPage() {
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-[#F2F4F7] flex items-center justify-between text-[11px] text-[#667085]">
-            <span>Super Admin</span>
-            <span className="font-medium text-[#475467]">Fixed</span>
+            <span>{data?.partnerCode ? `Partner (${data.partnerCode}) Rate` : 'Partner Base Rate'}</span>
+            <span className="font-medium text-[#175CD3] font-semibold">
+              {data?.isCustomPartnerRate ? 'Custom Partner Rate' : 'Standard Base'}
+            </span>
           </div>
         </div>
 
@@ -318,7 +320,7 @@ export default function DistributorMarkupPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-[#667085]">
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-[#475467]" />
-            <span>Platform Base ({formatINR(basePrice)})</span>
+            <span>Partner Base Price ({formatINR(basePrice)})</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-[#175CD3]" />
@@ -473,7 +475,7 @@ export default function DistributorMarkupPage() {
             </div>
           </div>
           <p className="text-[11px] text-[#667085]">
-            * Revenue estimate reflects only your independent ticket markup. Commission slab earnings are calculated separately.
+            * Revenue estimate reflects your independent distributor ticket markup across all processed bookings.
           </p>
         </div>
 

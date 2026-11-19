@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
-import { formatDate } from '../../../lib/utils';
+import { formatDate, formatINR } from '../../../lib/utils';
 import {
   Building2,
   MapPin,
@@ -29,6 +29,9 @@ import {
   ExternalLink,
   Share2,
   Globe,
+  Wallet,
+  ArrowDown,
+  ArrowUp,
 } from 'lucide-react';
 import { MetricBlock } from '../../../components/MetricBlock';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -65,6 +68,14 @@ export default function AdminCentresPage() {
   const [copiedUrlCode, setCopiedUrlCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Wallet Adjustment Modal State
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [walletTargetCentre, setWalletTargetCentre] = useState<any>(null);
+  const [walletAdjustAction, setWalletAdjustAction] = useState<'CREDIT' | 'DEBIT'>('CREDIT');
+  const [walletAdjustAmount, setWalletAdjustAmount] = useState<string>('500');
+  const [walletAdjustReason, setWalletAdjustReason] = useState<string>('');
+  const [walletSubmitting, setWalletSubmitting] = useState(false);
 
   // Create Form State
   const [createForm, setCreateForm] = useState({
@@ -298,6 +309,46 @@ export default function AdminCentresPage() {
     });
   };
 
+  const openWalletAdjustModal = (centre: any) => {
+    setWalletTargetCentre(centre);
+    setWalletAdjustAction('CREDIT');
+    setWalletAdjustAmount('500');
+    setWalletAdjustReason('');
+    setIsWalletModalOpen(true);
+  };
+
+  const handleWalletAdjustSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletTargetCentre) return;
+    const amt = parseFloat(walletAdjustAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error('Please enter a valid amount greater than 0');
+      return;
+    }
+
+    const currentBal = Number(walletTargetCentre.user?.wallet?.availableBalance ?? 0);
+    if (walletAdjustAction === 'DEBIT' && amt > currentBal) {
+      toast.error(`Cannot deduct ₹${amt}: Centre only has ₹${currentBal.toFixed(2)} available.`);
+      return;
+    }
+
+    setWalletSubmitting(true);
+    try {
+      const res: any = await api.adjustCentreWallet(walletTargetCentre.id, {
+        amount: amt,
+        action: walletAdjustAction,
+        reason: walletAdjustReason.trim() || undefined,
+      });
+      toast.success(res.message || `Wallet balance successfully ${walletAdjustAction === 'CREDIT' ? 'credited' : 'deducted'}.`);
+      setIsWalletModalOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to adjust wallet balance');
+    } finally {
+      setWalletSubmitting(false);
+    }
+  };
+
   const copyCredentials = () => {
     if (!credentialsData) return;
     const portalUrl = credentialsData.portalUrl || `${window.location.origin}/c/${credentialsData.centreCode}`;
@@ -353,7 +404,7 @@ export default function AdminCentresPage() {
             </span>
           </div>
           <p className="text-xs text-secondary-500 mt-0.5">
-            Provision, authorize, and audit statewide eSevai and computer centres across Tamil Nadu
+            Provision, authorize, and audit statewide booking and computer centres across Tamil Nadu
           </p>
         </div>
 
@@ -473,6 +524,7 @@ export default function AdminCentresPage() {
                   <th className="py-2.5 px-4 font-semibold">Commercial Name & Address</th>
                   <th className="py-2.5 px-4 font-semibold">Operator Contact</th>
                   <th className="py-2.5 px-4 font-semibold">District / Taluk</th>
+                  <th className="py-2.5 px-4 font-semibold">Wallet Balance</th>
                   <th className="py-2.5 px-4 font-semibold">Status</th>
                   <th className="py-2.5 px-4 font-semibold">License Validity</th>
                   <th className="py-2.5 px-4 font-semibold text-right">Admin Actions</th>
@@ -540,6 +592,26 @@ export default function AdminCentresPage() {
                         {c.taluk && <span className="text-secondary-500 font-normal"> ({c.taluk})</span>}
                       </td>
                       <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-mono font-bold text-xs ${
+                            Number(c.user?.wallet?.availableBalance ?? 0) > 0 ? 'text-emerald-700' : 'text-neutral-600'
+                          }`}>
+                            {formatINR(c.user?.wallet?.availableBalance ?? 0)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openWalletAdjustModal(c)}
+                            className="p-1 rounded hover:bg-neutral-200/60 text-secondary-500 hover:text-brand-700 transition-colors cursor-pointer"
+                            title="Adjust Centre Wallet (Credit/Debit)"
+                          >
+                            <Wallet className="h-3.5 w-3.5 text-brand-600" />
+                          </button>
+                        </div>
+                        <span className="text-[10px] text-secondary-400 font-mono block">
+                          Ledger Active
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
                         {isActive && (
                           <span className="inline-block px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
                             ACTIVE
@@ -566,6 +638,16 @@ export default function AdminCentresPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Wallet Adjust Button */}
+                          <button
+                            onClick={() => openWalletAdjustModal(c)}
+                            className="flex h-7 px-2 items-center gap-1 rounded border border-border-default bg-white text-secondary-700 hover:text-brand-700 hover:border-brand-500 hover:bg-brand-50/40 transition-colors"
+                            title="Credit or Debit Centre Wallet"
+                          >
+                            <Wallet className="h-3.5 w-3.5 text-brand-600" />
+                            <span className="text-[11px] font-semibold">Wallet</span>
+                          </button>
+
                           {/* Edit Button */}
                           <button
                             onClick={() => openEditModal(c)}
@@ -661,7 +743,7 @@ export default function AdminCentresPage() {
                       required
                       value={createForm.centreName}
                       onChange={(e) => setCreateForm({ ...createForm, centreName: e.target.value })}
-                      placeholder="e.g. Sri Murugan eSevai & CSC Centre"
+                      placeholder="e.g. Sri Murugan CSC & Online Service Centre"
                       className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219] transition-all"
                     />
                   </div>
@@ -807,7 +889,7 @@ export default function AdminCentresPage() {
                           required
                           value={createForm.email}
                           onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                          placeholder="muthu.esevai@gmail.com"
+                          placeholder="muthu.centre@gmail.com"
                           className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219] transition-all"
                         />
                       </div>
@@ -1213,6 +1295,210 @@ export default function AdminCentresPage() {
                   className="px-5 py-2 rounded-[7px] bg-[#C98219] text-white hover:bg-[#B57414] text-xs font-bold disabled:opacity-50 transition-all shadow-subtle"
                 >
                   {submitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADJUST CENTRE WALLET (SUPER ADMIN) */}
+      {isWalletModalOpen && walletTargetCentre && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg rounded-[12px] border border-[#E6EAF0] bg-white shadow-2xl flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#E6EAF0] flex items-center justify-between bg-[#F8FAFC]">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-[8px] text-white shadow-sm ${
+                  walletAdjustAction === 'CREDIT' ? 'bg-emerald-600' : 'bg-red-600'
+                }`}>
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#172033] tracking-tight">
+                    {walletAdjustAction === 'CREDIT' ? 'Credit Centre Wallet' : 'Deduct Centre Wallet'}
+                  </h3>
+                  <p className="text-xs text-[#667085]">Super Admin Direct Financial Adjustment</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsWalletModalOpen(false)}
+                className="p-1.5 rounded-lg text-[#98A2B3] hover:text-[#172033] hover:bg-[#F2F4F7] transition-colors"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleWalletAdjustSubmit} className="p-6 space-y-5 text-xs">
+              {/* Centre Identity & Current Balance Banner */}
+              <div className="rounded-[10px] border border-[#E6EAF0] bg-[#FDFEFE] p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-[#172033] text-sm">{walletTargetCentre.centreName}</p>
+                  <p className="text-[11px] font-mono text-secondary-500 mt-0.5">
+                    Code: <span className="text-brand-900 font-semibold">{walletTargetCentre.centreCode}</span>
+                    {walletTargetCentre.user?.name && ` • Operator: ${walletTargetCentre.user.name}`}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-semibold text-secondary-500 uppercase tracking-wider block">
+                    Current Balance
+                  </span>
+                  <span className="text-base font-bold font-mono text-emerald-700">
+                    {formatINR(walletTargetCentre.user?.wallet?.availableBalance ?? 0)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Switcher: CREDIT vs DEBIT */}
+              <div>
+                <label className="block font-semibold text-[#344054] mb-1.5">Adjustment Action</label>
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-[8px] bg-neutral-100 border border-border-subtle">
+                  <button
+                    type="button"
+                    onClick={() => setWalletAdjustAction('CREDIT')}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-[6px] text-xs font-bold transition-all ${
+                      walletAdjustAction === 'CREDIT'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-secondary-600 hover:text-neutral-900 hover:bg-neutral-200/60'
+                    }`}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                    <span>Credit (+) Add Funds</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWalletAdjustAction('DEBIT')}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-[6px] text-xs font-bold transition-all ${
+                      walletAdjustAction === 'DEBIT'
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'text-secondary-600 hover:text-neutral-900 hover:bg-neutral-200/60'
+                    }`}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                    <span>Deduct (-) Decrease Funds</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Amount Input & Preset Chips */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-semibold text-[#344054]">
+                    Adjustment Amount (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-1">
+                    {[500, 1000, 2000, 5000].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setWalletAdjustAmount(preset.toString())}
+                        className="px-2 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-[10.5px] font-mono font-semibold text-secondary-700 border border-neutral-300 transition-colors"
+                      >
+                        ₹{preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-secondary-500 font-bold">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    required
+                    value={walletAdjustAmount}
+                    onChange={(e) => setWalletAdjustAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="w-full rounded-[7px] border border-[#D0D5DD] pl-8 pr-3 py-2 text-sm font-mono font-bold text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219] transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Reason / Reference */}
+              <div>
+                <label className="block font-semibold text-[#344054] mb-1">
+                  Reason / Audit Reference (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={walletAdjustReason}
+                  onChange={(e) => setWalletAdjustReason(e.target.value)}
+                  placeholder="e.g. Bank IMPS Ref #92831, Admin Correction, Direct Deposit"
+                  className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-2 text-xs text-[#172033] bg-white focus:outline-none focus:ring-2 focus:ring-[#C98219]/20 focus:border-[#C98219] transition-all"
+                />
+              </div>
+
+              {/* Dynamic Projection Summary */}
+              {(() => {
+                const currentBal = Number(walletTargetCentre.user?.wallet?.availableBalance ?? 0);
+                const amt = parseFloat(walletAdjustAmount) || 0;
+                const newBal = walletAdjustAction === 'CREDIT' ? currentBal + amt : currentBal - amt;
+                const isInsufficient = walletAdjustAction === 'DEBIT' && amt > currentBal;
+
+                return (
+                  <div className={`p-3.5 rounded-[8px] border ${
+                    isInsufficient ? 'bg-red-50 border-red-200 text-red-800' : 'bg-neutral-50 border-border-default'
+                  }`}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-secondary-600">Current Balance:</span>
+                      <span className="font-mono font-semibold">{formatINR(currentBal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-secondary-600">
+                        {walletAdjustAction === 'CREDIT' ? 'Credit Addition:' : 'Deduction:'}
+                      </span>
+                      <span className={`font-mono font-bold ${
+                        walletAdjustAction === 'CREDIT' ? 'text-emerald-700' : 'text-red-700'
+                      }`}>
+                        {walletAdjustAction === 'CREDIT' ? `+ ${formatINR(amt)}` : `- ${formatINR(amt)}`}
+                      </span>
+                    </div>
+                    <div className="pt-2 border-t border-border-subtle flex items-center justify-between text-xs">
+                      <span className="font-bold text-text-primary">Projected New Balance:</span>
+                      <span className={`font-mono font-bold text-sm ${
+                        isInsufficient ? 'text-red-700' : 'text-brand-900'
+                      }`}>
+                        {formatINR(Math.max(0, newBal))}
+                      </span>
+                    </div>
+                    {isInsufficient && (
+                      <p className="text-[11px] text-red-700 font-medium mt-2 flex items-center gap-1">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        <span>Cannot deduct more than available balance ({formatINR(currentBal)})</span>
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Modal Actions */}
+              <div className="pt-4 border-t border-[#E6EAF0] flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsWalletModalOpen(false)}
+                  className="px-4 py-2 rounded-[7px] border border-[#D0D5DD] text-[#344054] hover:bg-[#F2F4F7] text-xs font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={walletSubmitting || (
+                    walletAdjustAction === 'DEBIT' &&
+                    (parseFloat(walletAdjustAmount) || 0) > Number(walletTargetCentre.user?.wallet?.availableBalance ?? 0)
+                  )}
+                  className={`px-5 py-2 rounded-[7px] text-white text-xs font-bold disabled:opacity-50 transition-all shadow-subtle ${
+                    walletAdjustAction === 'CREDIT'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  {walletSubmitting
+                    ? 'Processing...'
+                    : walletAdjustAction === 'CREDIT'
+                    ? 'Confirm Credit Balance'
+                    : 'Confirm Deduct Balance'}
                 </button>
               </div>
             </form>

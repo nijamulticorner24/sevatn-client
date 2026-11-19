@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '../../lib/api';
-import { formatCurrency, formatNumber, formatDate } from '../../lib/utils';
+import { formatCurrency, formatNumber, formatDate, cn } from '../../lib/utils';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/ui/Toast';
 import {
@@ -210,53 +210,67 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Live Sync Badge & Auto-refresh control */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Live Sync / Auto-refresh Toggle */}
           <button
             type="button"
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`h-8.5 px-3 rounded-[8px] text-xs font-semibold border transition-colors inline-flex items-center gap-1.5 ${
+            className={cn(
+              "h-9 px-3 rounded-lg text-xs font-medium border transition-all inline-flex items-center gap-2 shadow-xs active:scale-[0.98] select-none",
               autoRefresh
-                ? 'bg-[#EAF7EE] text-[#198754] border-[#C3E6CB]'
-                : 'bg-[#F2F4F7] text-[#667085] border-[#D0D5DD]'
-            }`}
-            title={autoRefresh ? 'Auto-refresh active every 5s (Click to pause)' : 'Auto-refresh paused (Click to enable)'}
+                ? "bg-[#EAF7EE] text-[#198754] border-[#C3E6CB] hover:bg-[#DDF2E3]"
+                : "bg-white text-[#667085] border-[#D0D5DD] hover:bg-[#F9FAFB]"
+            )}
+            title={autoRefresh ? "Auto-refresh active every 5s (Click to pause)" : "Auto-refresh paused (Click to resume)"}
           >
             <span
-              className={`h-2 w-2 rounded-full ${
-                autoRefresh ? 'bg-[#198754] animate-pulse' : 'bg-[#98A2B3]'
-              }`}
+              className={cn(
+                "h-2 w-2 rounded-full shrink-0",
+                autoRefresh ? "bg-[#198754] animate-pulse" : "bg-[#98A2B3]"
+              )}
             />
-            <span>{autoRefresh ? 'Auto-Sync (5s)' : 'Sync Paused'}</span>
-            {autoRefresh ? <Pause className="h-3 w-3 opacity-60" /> : <Play className="h-3 w-3 opacity-60" />}
+            <span className="font-semibold">{autoRefresh ? "Auto-Sync (5s)" : "Sync Paused"}</span>
+            {autoRefresh ? (
+              <Pause className="h-3 w-3 text-[#198754] opacity-75 shrink-0" />
+            ) : (
+              <Play className="h-3 w-3 text-[#667085] opacity-75 shrink-0" />
+            )}
           </button>
 
+          {/* Manual Refresh Icon Button */}
           <button
             type="button"
             onClick={loadData}
-            className="h-8.5 w-8.5 flex items-center justify-center rounded-[8px] border border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F9FAFB] hover:text-[#172033] transition-colors shadow-subtle"
+            disabled={loading}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F9FAFB] hover:text-[#172033] hover:border-[#98A2B3] transition-all shadow-xs active:scale-[0.98] disabled:opacity-50 select-none"
             title="Refresh Metrics Immediately"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={cn("h-4 w-4 shrink-0 transition-transform", loading && "animate-spin text-[#C98219]")} />
           </button>
 
+          {/* Reset Queues (Destructive Outline Action) */}
           <button
             type="button"
             onClick={() => setIsClearQueueModalOpen(true)}
             disabled={resetting}
-            className="h-8.5 px-3 rounded-[8px] border border-[#F8C4C2] bg-[#FDECEC] text-xs font-semibold text-[#992B26] hover:bg-[#F9D6D5] transition-colors shadow-subtle disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="h-9 px-3.5 rounded-lg border border-[#F8C4C2] bg-[#FDECEC] text-[#992B26] hover:bg-[#F9D6D5] hover:border-[#F5A9A7] text-xs font-semibold transition-all shadow-xs active:scale-[0.98] disabled:opacity-50 inline-flex items-center gap-1.5 select-none"
             title="Reset active queues & release held funds"
           >
-            <Trash2 className="h-3.5 w-3.5 text-[#C2413B]" />
+            <Trash2 className="h-3.5 w-3.5 text-[#C2413B] shrink-0" />
             <span>{resetting ? 'Resetting...' : 'Reset Queues'}</span>
           </button>
 
+          {/* Worker Fleet CTA */}
           <Link
             href="/admin/fleet"
-            className="h-8.5 px-3.5 rounded-[8px] bg-[#C98219] hover:bg-[#B57414] text-xs font-semibold text-white transition-all shadow-subtle hover:shadow inline-flex items-center gap-1.5"
+            className="h-9 px-3.5 rounded-lg bg-[#C98219] hover:bg-[#B57414] text-xs font-bold text-white transition-all shadow-subtle hover:shadow active:scale-[0.98] inline-flex items-center gap-2 select-none"
           >
-            <Cpu className="h-3.5 w-3.5" />
-            <span>Worker Fleet ({workers.online} Online)</span>
+            <Cpu className="h-4 w-4 shrink-0" />
+            <span>Worker Fleet</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-white/20 text-[11px] font-bold tabular-nums">
+              {workers.online} Online
+            </span>
+            <ChevronRight className="h-3.5 w-3.5 opacity-80 shrink-0 -mr-0.5" />
           </Link>
         </div>
       </div>
@@ -384,7 +398,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider block">
-                  Tier 4 • eSevai Centres
+                  Tier 4 • Booking Centres
                 </span>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-2xl font-extrabold text-[#172033] font-mono">

@@ -428,7 +428,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
             5 KM Geofence Guard
           </p>
           <p className="leading-relaxed">
-            GPS validated for registered eSevai centre operations.
+            GPS validated for registered centre operations.
           </p>
         </div>
       </div>
