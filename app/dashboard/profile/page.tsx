@@ -232,7 +232,7 @@ export default function ProfilePage() {
               </span>
             </div>
             <p className="text-xs text-[#667085] mt-0.5">
-              Tamil Nadu Centre Network • {centre?.taluk ? `${centre.taluk}, ` : ''}{centre?.district || 'Tamil Nadu'}
+              Authorized Centre Network • {centre?.taluk ? `${centre.taluk}, ` : ''}{centre?.district || 'Tamil Nadu'}
             </p>
           </div>
         </div>

@@ -33,6 +33,7 @@ import {
   TrendingUp,
   BadgeDollarSign,
   UserPlus,
+  History,
   DollarSign,
 } from 'lucide-react';
 
@@ -89,7 +90,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     const u = api.getUser();
     setUser(u);
     if (u && !isPublicRoute) {
-      if (u.role === 'CENTRE') {
+      if (u.role === 'CENTRE' || u.role === 'DISTRIBUTOR') {
         api.getWallet()
           .then(setWallet)
           .catch(() => {});
@@ -116,6 +117,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       }
     }
   }, [pathname, isPublicRoute]);
+
+  useEffect(() => {
+    const handleWalletRefresh = () => {
+      const u = api.getUser();
+      if (u && (u.role === 'CENTRE' || u.role === 'DISTRIBUTOR')) {
+        api.getWallet()
+          .then(setWallet)
+          .catch(() => {});
+      }
+    };
+
+    window.addEventListener('wallet-refresh', handleWalletRefresh);
+    return () => {
+      window.removeEventListener('wallet-refresh', handleWalletRefresh);
+    };
+  }, []);
 
   if (isPublicRoute) {
     return (
@@ -219,6 +236,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       ],
     },
     {
+      group: 'SERVICES & BOOKINGS',
+      items: [
+        { name: 'New Ticket Booking', href: '/distributor/bookings/new', icon: CirclePlus, highlight: true },
+        { name: 'Booking Queue', href: '/distributor/bookings', icon: Timer },
+      ],
+    },
+    {
       group: 'NETWORK',
       items: [
         { name: 'Centres', href: '/distributor/centres', icon: Building2 },
@@ -227,6 +251,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     {
       group: 'FINANCE',
       items: [
+        { name: 'Wallet & Topup', href: '/distributor/wallet', icon: Wallet },
+        { name: 'Wallet History', href: '/distributor/wallet/history', icon: History },
         { name: 'Ticket Markup', href: '/distributor/markup', icon: DollarSign },
         { name: 'Earnings & Payouts', href: '/distributor/payouts', icon: BadgeDollarSign },
       ],
@@ -353,11 +379,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             </div>
           )}
 
-          {/* Wallet Balance Pill with Direct Quick Recharge (+) for Centre Operators */}
-          {!isAdmin && !isPartner && !isDistributor && (
-            <div className="flex items-center rounded-[7px] border border-[#E4E7EC] bg-[#F8FAFC] pl-3 pr-1 py-1 text-[13px] font-semibold text-[#172033] shadow-xs">
+          {/* Wallet Balance Pill with Direct Quick Recharge (+) for Centre Operators & Distributors */}
+          {(user?.role === 'CENTRE' || user?.role === 'DISTRIBUTOR') && (
+            <div className="flex items-center rounded-[7px] border border-[#E4E7EC] bg-[#F8FAFC] pl-3 pr-1 py-1 text-[13px] font-semibold text-[#172033] shadow-xs hover:border-[#C98219]/40 transition-colors">
               <Link
-                href="/dashboard/wallet"
+                href={isDistributor ? '/distributor/wallet' : '/dashboard/wallet'}
                 className="flex items-center gap-2 mr-2 hover:text-[#C98219] transition-colors"
                 title="View Wallet Ledger & History"
               >
@@ -372,9 +398,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 )}
               </Link>
               <Link
-                href="/dashboard/wallet"
+                href={isDistributor ? '/distributor/wallet' : '/dashboard/wallet'}
                 className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-[#C98219] hover:bg-[#B57414] text-white transition-colors shadow-2xs"
-                title="Add Funds to Wallet"
+                title="Add Funds / Top-Up Wallet"
               >
                 <CirclePlus className="h-3.5 w-3.5" />
               </Link>
@@ -674,25 +700,25 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               : isPartner
               ? '/partner/centres'
               : isDistributor
-              ? '/distributor/centres'
+              ? '/distributor/bookings'
               : '/dashboard/bookings'
           }
           className={cn(
             'flex flex-col items-center gap-1 text-[11px] font-medium py-1',
             pathname.startsWith('/admin/bookings') ||
               pathname.startsWith('/partner/centres') ||
-              pathname.startsWith('/distributor/centres') ||
+              pathname.startsWith('/distributor/bookings') ||
               pathname.startsWith('/dashboard/bookings')
               ? 'text-[#C98219] font-bold'
               : 'text-[#667085]',
           )}
         >
           <CalendarCheck2 className="h-4 w-4" />
-          <span>{isAdmin ? 'Queue' : isPartner || isDistributor ? 'Centres' : 'Bookings'}</span>
+          <span>{isAdmin ? 'Queue' : isPartner ? 'Centres' : 'Bookings'}</span>
         </Link>
-        {user?.role === 'CENTRE' && (
+        {(user?.role === 'CENTRE' || user?.role === 'DISTRIBUTOR') && (
           <Link
-            href="/dashboard/bookings/new"
+            href={isDistributor ? '/distributor/bookings/new' : '/dashboard/bookings/new'}
             className="flex flex-col items-center gap-1 text-[11px] font-bold text-white bg-[#C98219] p-2 rounded-full shadow-subtle -mt-4 hover:bg-[#B57414]"
             title="Create New Booking"
           >
@@ -706,7 +732,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               : isPartner
               ? '/partner/payouts'
               : isDistributor
-              ? '/distributor/payouts'
+              ? '/distributor/wallet'
               : '/dashboard/wallet'
           }
           className={cn(
@@ -714,6 +740,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             pathname.startsWith('/admin/ledger') ||
               pathname.startsWith('/partner/payouts') ||
               pathname.startsWith('/partner/ledger') ||
+              pathname.startsWith('/distributor/wallet') ||
               pathname.startsWith('/distributor/payouts') ||
               pathname.startsWith('/distributor/markup') ||
               pathname.startsWith('/dashboard/wallet')
@@ -722,7 +749,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           )}
         >
           <Wallet className="h-4 w-4" />
-          <span>{isAdmin ? 'Ledger' : isPartner || isDistributor ? 'Payouts' : 'Wallet'}</span>
+          <span>{isAdmin ? 'Ledger' : isPartner ? 'Payouts' : 'Wallet'}</span>
         </Link>
         <button
           onClick={() => setMobileDrawerOpen(true)}

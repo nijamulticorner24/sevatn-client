@@ -497,8 +497,13 @@ class ApiClient {
     });
   }
 
-  async getTransactions(page = 1, limit = 50) {
-    return this.request(`/wallet/transactions?page=${page}&limit=${limit}`);
+  async getTransactions(page = 1, limit = 50, type?: string, search?: string) {
+    const q = new URLSearchParams();
+    if (page) q.set('page', page.toString());
+    if (limit) q.set('limit', limit.toString());
+    if (type && type !== 'ALL') q.set('type', type);
+    if (search && search.trim()) q.set('search', search.trim());
+    return this.request(`/wallet/transactions?${q.toString()}`);
   }
 
   async requestRefund(amount: number, reason: string, upiId?: string) {
@@ -709,6 +714,13 @@ class ApiClient {
 
   async adjustCentreWallet(id: string, data: { amount: number; action: 'CREDIT' | 'DEBIT'; reason?: string }) {
     return this.request(`/admin/centres/${id}/wallet-adjust`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async adjustDistributorWallet(id: string, data: { amount: number; action: 'CREDIT' | 'DEBIT'; reason?: string }) {
+    return this.request(`/admin/distributors/${id}/wallet-adjust`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -1177,6 +1189,13 @@ class ApiClient {
     if (search) q.set('search', search);
     const qs = q.toString();
     return this.request(`/distributor/centres${qs ? `?${qs}` : ''}`);
+  }
+
+  async shareWalletWithCentre(data: { centreId: string; amount: number; notes?: string }) {
+    return this.request('/distributor/wallet/transfer-to-centre', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async createDistributorCentreInvitation(data?: any) {

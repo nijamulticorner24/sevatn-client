@@ -1,14 +1,5 @@
-import type { Metadata } from 'next';
-import { HomePageClient } from '@/components/public/HomePageClient';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'ServiceTN — Your Services, One Simple Platform',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-export default function LandingPage() {
-  return <HomePageClient />;
+export default function RootPage() {
+  redirect('/auth/login');
 }

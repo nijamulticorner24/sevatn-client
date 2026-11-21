@@ -99,6 +99,7 @@ export default function AdminDashboardPage() {
           </span>
         );
       case 'WATCHING':
+      case 'RETRYABLE_FAILURE':
         return (
           <span className="inline-flex items-center gap-1 rounded bg-[#FEF7E6] px-2 py-0.5 text-[10.5px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
             <Activity className="h-3 w-3 animate-spin" /> Watching

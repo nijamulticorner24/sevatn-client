@@ -174,7 +174,7 @@ export default function LoginPage() {
       <div className="md:w-[48%] lg:w-[46%] bg-[#172033] text-white p-8 sm:p-12 lg:p-14 flex flex-col justify-between border-r border-[#263550] relative">
         <div className="relative z-10">
           <div className="flex items-center justify-between">
-            <Link href="/" className="inline-flex items-center gap-2.5 bg-white/95 px-3 py-1.5 rounded-[9px] shadow-sm hover:bg-white transition-colors">
+            <Link href="/auth/login" className="inline-flex items-center gap-2.5 bg-white/95 px-3 py-1.5 rounded-[9px] shadow-sm hover:bg-white transition-colors">
               <img
                 src="/logo.png"
                 alt="ServiceTN — Powered by NIJA"
@@ -193,7 +193,7 @@ export default function LoginPage() {
               Citizen &amp; Assisted <span className="text-[#C98219]">Services Hub</span>
             </h2>
             <p className="mt-2 text-[13.5px] text-[#98A2B3] leading-relaxed">
-              Unified platform for Tamil Nadu authorized booking and computer centres providing TicketAssist booking and Instant Service certificate verification.
+              Unified platform for authorized booking and computer centres providing ticket booking and Instant Service certificate verification.
             </p>
 
             {/* Core Features */}
@@ -277,10 +277,10 @@ export default function LoginPage() {
         <div className="w-full max-w-[420px] space-y-6">
           <div>
             <h2 className="text-[24px] font-bold text-[#172033] tracking-tight">
-              Sign In to TicketAssist
+              Sign In to Your Account
             </h2>
             <p className="mt-1 text-[13px] text-[#667085]">
-              Authorized portal for registered Tamil Nadu centre operators and administrators.
+              Authorized portal for registered centre operators and administrators.
             </p>
           </div>
 
@@ -619,7 +619,7 @@ export default function LoginPage() {
                     Password Reset Successfully!
                   </h4>
                   <p className="text-[12.5px] text-[#475467] max-w-sm mx-auto">
-                    Your password has been securely updated. You can now log into your TicketAssist account using your new credentials.
+                    Your password has been securely updated. You can now log into your account using your new credentials.
                   </p>
                   <div className="pt-2">
                     <button

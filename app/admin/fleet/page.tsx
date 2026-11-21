@@ -2084,6 +2084,7 @@ export default function WorkerFleetPage() {
                 <option value="STEP_COMPLETED">STEP_COMPLETED</option>
                 <option value="HUMAN_INTERVENTION_REQUESTED">HUMAN_INTERVENTION</option>
                 <option value="JOB_SUCCEEDED">JOB_SUCCEEDED</option>
+                <option value="WATCHING">WATCHING</option>
                 <option value="JOB_FAILED">JOB_FAILED</option>
                 <option value="WORKER_ENABLED">WORKER_ENABLED</option>
                 <option value="WORKER_DISABLED">WORKER_DISABLED</option>
@@ -2673,6 +2674,7 @@ export default function WorkerFleetPage() {
                 <option value="STEP_STARTED">STEP_STARTED</option>
                 <option value="STEP_COMPLETED">STEP_COMPLETED</option>
                 <option value="JOB_SUCCEEDED">JOB_SUCCEEDED</option>
+                <option value="WATCHING">WATCHING</option>
                 <option value="JOB_FAILED">JOB_FAILED</option>
               </select>
 

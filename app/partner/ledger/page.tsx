@@ -72,7 +72,7 @@ export default function PartnerLedgerPage() {
             {centres.length}
           </p>
           <span className="text-[11px] text-[#667085] mt-0.5 block">
-            Authorized Tamil Nadu Centres
+            Authorized Network Centres
           </span>
         </div>
 

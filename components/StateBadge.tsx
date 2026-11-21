@@ -7,6 +7,8 @@ export type SystemStatus =
   | 'QUEUED'
   | 'ASSIGNED'
   | 'WATCHING'
+  | 'DATE_FULL'
+  | 'RETRYABLE_FAILURE'
   | 'WAITING'
   | 'AVAILABILITY_FOUND'
   | 'BOOKING'
@@ -84,7 +86,23 @@ export const StateBadge: React.FC<StateBadgeProps> = ({
       text: 'text-[#8F5A0D]',
       border: 'border-[#F9DE9B]',
       dot: 'bg-[#C98219]',
-      label: 'Watching Slots',
+      label: 'Watching',
+      pulse: true,
+    },
+    DATE_FULL: {
+      bg: 'bg-[#FEF7E6]',
+      text: 'text-[#8F5A0D]',
+      border: 'border-[#F9DE9B]',
+      dot: 'bg-[#C98219]',
+      label: 'Watching',
+      pulse: true,
+    },
+    RETRYABLE_FAILURE: {
+      bg: 'bg-[#FEF7E6]',
+      text: 'text-[#8F5A0D]',
+      border: 'border-[#F9DE9B]',
+      dot: 'bg-[#C98219]',
+      label: 'Watching / Retrying',
       pulse: true,
     },
     WAITING: {

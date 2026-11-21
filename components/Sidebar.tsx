@@ -35,6 +35,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
   const pathname = usePathname();
   const isSuperAdmin = userRole === 'SUPER_ADMIN';
   const isPartner = userRole === 'PARTNER';
+  const isDistributor = userRole === 'DISTRIBUTOR';
+
+  // Distributor Navigation Groups
+  const distributorNavGroups = [
+    {
+      group: 'Overview',
+      items: [
+        { name: 'Dashboard', href: '/distributor', icon: LayoutDashboard },
+      ],
+    },
+    {
+      group: 'Ticket Bookings',
+      items: [
+        { name: 'New Booking', href: '/dashboard/bookings/new', icon: CirclePlus, highlight: true },
+        { name: 'Booking Queue', href: '/dashboard/bookings', icon: Timer },
+      ],
+    },
+    {
+      group: 'Network Management',
+      items: [
+        { name: 'Centres', href: '/distributor/centres', icon: Building2 },
+      ],
+    },
+    {
+      group: 'Finance & Wallet',
+      items: [
+        { name: 'Wallet & Topup', href: '/distributor/wallet', icon: Wallet },
+        { name: 'Ticket Markup', href: '/distributor/markup', icon: DollarSign },
+        { name: 'Earnings & Payouts', href: '/distributor/payouts', icon: DollarSign },
+      ],
+    },
+    {
+      group: 'Business Settings',
+      items: [
+        { name: 'Profile', href: '/distributor/profile', icon: UserCheck },
+      ],
+    },
+  ];
 
   // Partner Navigation Groups
   const partnerNavGroups = [
@@ -128,8 +166,45 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
   return (
     <aside className="w-64 shrink-0 hidden md:block">
       <div className="sticky top-20 flex flex-col gap-6 rounded-[10px] bg-white p-4 border border-[#E6EAF0] shadow-subtle">
-        {/* CONTEXT 0: PARTNER PORTAL NAVIGATION */}
-        {isPartner || pathname?.startsWith('/partner') ? (
+        {/* CONTEXT 0: DISTRIBUTOR PORTAL NAVIGATION */}
+        {isDistributor || pathname?.startsWith('/distributor') ? (
+          <>
+            <div className="border-b border-[#E6EAF0] pb-2">
+              <p className="text-[10px] font-extrabold tracking-wider text-[#175CD3] uppercase">
+                DISTRIBUTOR PORTAL
+              </p>
+            </div>
+            {distributorNavGroups.map((group) => (
+              <div key={group.group}>
+                <p className="px-3 text-[10.5px] font-bold tracking-wider text-[#98A2B3] uppercase mb-1">
+                  {group.group}
+                </p>
+                <nav className="space-y-0.5">
+                  {group.items.map((item: any) => {
+                    const active = pathname === item.href;
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-[13px] font-medium transition-colors',
+                          active
+                            ? 'bg-[#FDF7ED] text-[#172033] font-semibold border-l-2 border-[#C98219]'
+                            : 'text-[#475467] hover:bg-[#F8FAFC] hover:text-[#172033]',
+                          item.highlight && !active && 'text-[#C98219] font-semibold',
+                        )}
+                      >
+                        <Icon className={cn('h-4 w-4', active ? 'text-[#C98219]' : item.highlight ? 'text-[#C98219]' : 'text-[#667085]')} />
+                        <span>{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            ))}
+          </>
+        ) : isPartner || pathname?.startsWith('/partner') ? (
           <>
             <div className="border-b border-[#E6EAF0] pb-2">
               <p className="text-[10px] font-extrabold tracking-wider text-[#C98219] uppercase">

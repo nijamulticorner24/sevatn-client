@@ -28,7 +28,7 @@ export interface LocationPermissionGuardProps {
 
 export function LocationPermissionGuard({
   children,
-  exemptRoles = ['WORKER'],
+  exemptRoles = ['WORKER', 'SUPER_ADMIN', 'PARTNER', 'DISTRIBUTOR'],
   allowSuperAdminBypass = false,
 }: LocationPermissionGuardProps) {
   const {

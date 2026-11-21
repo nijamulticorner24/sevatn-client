@@ -14,17 +14,24 @@ import {
   CheckCircle2,
   SlidersHorizontal,
   Info,
+  Wallet,
+  CirclePlus,
 } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 export default function DistributorOverviewPage() {
   const [data, setData] = useState<any>(null);
+  const [wallet, setWallet] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getDistributorOverview()
-      .then((res) => {
-        setData(res);
+    Promise.all([
+      api.getDistributorOverview().catch(() => null),
+      api.getWallet().catch(() => null),
+    ])
+      .then(([res, wRes]) => {
+        if (res) setData(res);
+        if (wRes) setWallet(wRes);
         setLoading(false);
       })
       .catch((err) => {
@@ -85,7 +92,29 @@ export default function DistributorOverviewPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-[#667085]">
+              <span>Wallet Working Balance</span>
+              <Wallet className="h-4 w-4 text-[#175CD3]" />
+            </div>
+            <div className="text-2xl font-black text-[#175CD3] mt-2">
+              {formatINR(Number(wallet?.availableBalance || 0))}
+            </div>
+            <span className="text-[11px] text-[#667085] mt-1">
+              Hold: {formatINR(Number(wallet?.reservedBalance || 0))}
+            </span>
+          </div>
+          <Link
+            href="/distributor/wallet"
+            className="mt-3 text-xs font-bold text-[#175CD3] hover:underline flex items-center gap-1"
+          >
+            <span>Top Up &amp; Manage</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#667085]">
@@ -136,6 +165,37 @@ export default function DistributorOverviewPage() {
           <div className="mt-3 text-[11px] text-[#198754] font-medium">
             3-Level Guaranteed Rate
           </div>
+        </div>
+      </div>
+
+      {/* Direct Devotee Booking & Wallet Top-Up Action */}
+      <div className="rounded-[10px] border border-[#B2DDFF] bg-[#EFF8FF] p-5 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[8px] bg-white text-[#175CD3] border border-[#B2DDFF] shadow-sm shrink-0">
+            <CirclePlus className="h-6 w-6 text-[#175CD3]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-[#175CD3]">Ticket Booking &amp; Wallet Management</h3>
+            <p className="text-xs text-[#475467] mt-0.5">
+              Distributor working balance available: <strong className="text-[#172033]">{formatINR(Number(wallet?.availableBalance || 0))}</strong>. Create ticket bookings directly.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/distributor/wallet"
+            className="inline-flex items-center justify-center gap-1.5 rounded-[7px] border border-[#B2DDFF] bg-white hover:bg-[#F0F8FF] px-4 py-2.5 text-xs font-bold text-[#175CD3] shadow-subtle transition-all"
+          >
+            <Wallet className="h-3.5 w-3.5" />
+            <span>Top Up Wallet</span>
+          </Link>
+          <Link
+            href="/dashboard/bookings/new"
+            className="inline-flex items-center justify-center gap-2 rounded-[7px] bg-[#175CD3] hover:bg-[#154EB5] px-4 py-2.5 text-xs font-bold text-white shadow-subtle transition-all"
+          >
+            <span>Book Tickets</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </div>
 

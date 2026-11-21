@@ -406,7 +406,7 @@ export default function SevaTNPlatformHomePage() {
               {getTimeGreeting()}, {user?.name || 'Operator'}
             </h1>
             <p className="text-xs sm:text-sm text-[#64748B] mt-1 max-w-xl">
-              <span className="font-semibold text-[#0F172A]">{centre?.centreName || 'Tamil Nadu Booking Centre'}</span> • {centre?.district || 'Tamil Nadu'} ({centre?.taluk || 'Local Service Area'})
+              <span className="font-semibold text-[#0F172A]">{centre?.centreName || 'Authorized Booking Centre'}</span> • {centre?.district || 'Tamil Nadu'} ({centre?.taluk || 'Local Service Area'})
             </p>
           </div>
 

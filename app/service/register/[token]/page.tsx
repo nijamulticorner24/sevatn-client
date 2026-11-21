@@ -463,7 +463,7 @@ export default function PartnerInvitationRegisterPage() {
                 Centre & Operator Details
               </h2>
               <p className="text-xs text-[#667085] mt-0.5">
-                Register your Tamil Nadu CSC / Citizen Booking Centre under this authorized partner.
+                Register your CSC / Citizen Booking Centre under this authorized partner.
               </p>
             </div>
 

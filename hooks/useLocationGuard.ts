@@ -45,8 +45,8 @@ export function useLocationGuard() {
       const profile = await api.getMe().catch(() => null);
       const user = profile?.user || api.getUser();
 
-      // Super Admins are exempt from the 5 KM physical geofence
-      if (user?.role === 'SUPER_ADMIN') {
+      // Super Admins, Distributors, and Partners are exempt from the 5 KM physical geofence
+      if (user?.role === 'SUPER_ADMIN' || user?.role === 'DISTRIBUTOR' || user?.role === 'PARTNER') {
         setIsWithinRadius(true);
         setDistanceKm(0);
         setLoading(false);

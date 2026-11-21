@@ -10,9 +10,6 @@ import {
   Mail,
   MapPin,
   Calendar,
-  Percent,
-  DollarSign,
-  ShieldCheck,
 } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
@@ -83,34 +80,6 @@ export default function DistributorProfilePage() {
             <div className="p-3 rounded-[8px] bg-[#F8FAFC] border border-[#E6EAF0]">
               <span className="text-[#667085] text-[11px]">Account Status</span>
               <p className="font-bold text-[#198754] mt-0.5">{profile?.status}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-[#E6EAF0] pt-6">
-          <h2 className="text-sm font-bold text-[#172033] mb-4 flex items-center gap-2">
-            <Percent className="h-4 w-4 text-[#175CD3]" />
-            <span>Assigned Partner &amp; Commission Slab</span>
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div className="p-3 rounded-[8px] bg-[#EFF8FF] border border-[#B2DDFF]">
-              <span className="text-[#175CD3] text-[11px] font-semibold">Parent Partner Franchise</span>
-              <p className="font-bold text-[#172033] mt-0.5">
-                {profile?.partner?.name} ({profile?.partner?.partnerCode})
-              </p>
-              <p className="text-[10.5px] text-[#667085] mt-1">
-                Your account was created and is governed by this regional Partner.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-[8px] bg-[#FEF7E6] border border-[#F9DE9B]">
-              <span className="text-[#8F5A0D] text-[11px] font-semibold">Assigned Commission Slab</span>
-              <p className="font-bold text-[#172033] mt-0.5">
-                {profile?.commissionSlab || 'STANDARD'} ({profile?.commissionPercentage}%)
-              </p>
-              <p className="text-[10.5px] text-[#667085] mt-1">
-                Commission configuration is assigned directly by your Partner.
-              </p>
             </div>
           </div>
         </div>

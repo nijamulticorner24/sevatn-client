@@ -20,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
+  Minus,
   Info,
   Lock,
   Trash2,
@@ -37,6 +39,7 @@ import {
 import { useLocationGuard } from '@/hooks/useLocationGuard';
 import { useToast } from '@/components/ui/Toast';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { formatDate } from '@/lib/utils';
 
 const OFFICIAL_ROUTES = [
   { id: 'Pamba (Regular Footpath Route)', name: 'Pamba Base', desc: 'Direct traditional footpath from Pamba base', tag: 'Standard' },
@@ -77,6 +80,7 @@ export default function NewBookingPage() {
   // Section 1: Official Devotee Account State
   const [accountMode, setAccountMode] = useState<'saved' | 'new'>('saved');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [existingBookings, setExistingBookings] = useState<any[]>([]);
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [accountSearch, setAccountSearch] = useState('');
   const [pendingDeleteAccountId, setPendingDeleteAccountId] = useState<string | null>(null);
@@ -98,8 +102,8 @@ export default function NewBookingPage() {
   // Section 2: Booking Details State
   const [requestedDate, setRequestedDate] = useState(getTodayDateStr());
   const [route, setRoute] = useState(OFFICIAL_ROUTES[0].id);
-  const [pilgrimCount, setPilgrimCount] = useState<number>(0);
-  const [pilgrimCountInput, setPilgrimCountInput] = useState<string>('0');
+  const [pilgrimCount, setPilgrimCount] = useState<number>(1);
+  const [pilgrimCountInput, setPilgrimCountInput] = useState<string>('1');
   const [pilgrimError, setPilgrimError] = useState<string | null>(null);
 
   // Section 3: Nominee Details State & Modal
@@ -111,7 +115,15 @@ export default function NewBookingPage() {
     nomineePhone: string;
   }
 
-  const [nominees, setNominees] = useState<NomineeInput[]>([]);
+  const [nominees, setNominees] = useState<NomineeInput[]>([
+    {
+      id: '1',
+      nomineeName: '',
+      nomineeAge: '',
+      nomineeRelationship: 'Spouse',
+      nomineePhone: '',
+    },
+  ]);
   const [isNomineeModalOpen, setIsNomineeModalOpen] = useState(false);
   const [nomineeModalError, setNomineeModalError] = useState<string | null>(null);
   const [isNomineesConfirmed, setIsNomineesConfirmed] = useState(false);
@@ -186,6 +198,8 @@ export default function NewBookingPage() {
     setPilgrimError(null);
     setPilgrimCount(num);
     adjustNominees(num);
+    setNomineeModalError(null);
+    setIsNomineeModalOpen(true);
   };
 
   const setExplicitPilgrimCount = (num: number, openModal = true) => {
@@ -294,14 +308,23 @@ export default function NewBookingPage() {
   const accountDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const u = api.getUser();
+    if (u?.role === 'DISTRIBUTOR') {
+      window.location.replace('/distributor/bookings/new');
+      return;
+    }
     Promise.all([
       api.getBookingConfig().catch(() => null),
       api.getAccounts().catch(() => []),
       api.getWallet().catch(() => null),
       api.ensureLocationCoordinates().catch(() => null),
-    ]).then(([cfg, aData, wData, loc]) => {
+      api.getBookings(undefined, 1, undefined).catch(() => null),
+    ]).then(([cfg, aData, wData, loc, bData]) => {
       if (cfg && cfg.serviceFee !== undefined) {
         setServiceFee(Number(cfg.serviceFee));
+      }
+      if (bData && bData.bookings) {
+        setExistingBookings(bData.bookings);
       }
       if (aData && aData.length > 0) {
         setSavedAccounts(aData);
@@ -475,11 +498,11 @@ export default function NewBookingPage() {
   // Formatted display date helper
   const formattedDisplayDate = requestedDate
     ? new Date(requestedDate).toLocaleDateString('en-IN', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
     : '';
 
   // Route filter
@@ -506,6 +529,22 @@ export default function NewBookingPage() {
   const activeAccount = savedAccounts.find((a) => a.id === selectedAccountId);
   const currentUser = api.getUser();
 
+  const isBookingActive = (b: any) => {
+    if (!b) return false;
+    const status = typeof b === 'string' ? b : b.status;
+    return !['SUCCESS', 'COMPLETED', 'CANCELLED', 'FAILED', 'EXPIRED', 'SITE_UNAVAILABLE', 'SITE_ERROR'].includes(status);
+  };
+
+  const activeBookingForSelectedProfile = accountMode === 'saved'
+    ? existingBookings.find((b) => b.accountId === selectedAccountId && isBookingActive(b))
+    : officialUsername.trim()
+      ? existingBookings.find(
+        (b) =>
+          b.account?.username?.toLowerCase() === officialUsername.trim().toLowerCase() &&
+          isBookingActive(b),
+      )
+      : null;
+
   const selectedRouteObj = OFFICIAL_ROUTES.find((r) => r.id === route) || OFFICIAL_ROUTES[0];
   const availableBalance = wallet ? Number(wallet.availableBalance ?? wallet.balance ?? 0) : null;
   const totalServiceFee = serviceFee * pilgrimCount;
@@ -516,9 +555,9 @@ export default function NewBookingPage() {
     e.preventDefault();
     setError(null);
 
-    // 0. Verify role is strictly CENTRE
-    if (!currentUser || currentUser.role !== 'CENTRE') {
-      setError('Booking creation is strictly restricted to authorized Centre operators.');
+    // 0. Verify role is CENTRE or DISTRIBUTOR
+    if (!currentUser || (currentUser.role !== 'CENTRE' && currentUser.role !== 'DISTRIBUTOR')) {
+      setError('Booking creation is strictly restricted to authorized Centre operators and Distributors.');
       return;
     }
 
@@ -552,6 +591,14 @@ export default function NewBookingPage() {
 
     setTermsError(false);
 
+    // 1c. Devotee Profile Single Active Request Enforcement
+    if (activeBookingForSelectedProfile) {
+      setError(
+        `This devotee profile already has an active booking request (#${activeBookingForSelectedProfile.bookingCode} for ${formatDate(activeBookingForSelectedProfile.requestedDate)}). Only 1 active booking request is allowed per devotee profile. No multiple dates or requests are permitted on the same profile until the active request is finalized or cancelled.`,
+      );
+      return;
+    }
+
     // 1b. Location Guard Verification
     if (isWithinRadius === false) {
       setError(`Access Restricted: You are currently ${distanceKm !== null ? `${distanceKm} KM` : 'more than 5 KM'} away from your registered centre. Bookings are only permitted within 5 KM.`);
@@ -581,9 +628,8 @@ export default function NewBookingPage() {
 
     // 2b. Validate Nominees (Mandatory Pilgrim Insurance)
     if (!nominees || nominees.length === 0 || !areNomineesFilled(nominees, pilgrimCount)) {
-      setNomineeModalError('Please complete and save the nominee insurance details for all pilgrims.');
-      setIsNomineeModalOpen(true);
-      setError('Please fill in and save the Nominee Details popup before submitting.');
+      setNomineeModalError('Please complete the nominee insurance details for all pilgrims.');
+      setError('Please fill in the Nominee Details for all pilgrims in Section 3 before submitting.');
       return;
     }
 
@@ -659,6 +705,9 @@ export default function NewBookingPage() {
       }
 
       await api.createBooking(payload);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('wallet-refresh'));
+      }
 
       // Close modal on successful queue
       setIsConfirmModalOpen(false);
@@ -675,12 +724,11 @@ export default function NewBookingPage() {
     }
   };
 
-  // Role Guard: Exclusively Centre operators can access booking creation
-  if (currentUser && currentUser.role !== 'CENTRE') {
+  // Role Guard: Exclusively Centre operators and Distributors can access booking creation
+  if (currentUser && currentUser.role !== 'CENTRE' && currentUser.role !== 'DISTRIBUTOR') {
     const roleRedirect =
-      currentUser.role === 'SUPER_ADMIN' ? '/admin/dashboard' :
-      currentUser.role === 'PARTNER' ? '/partner/dashboard' :
-      currentUser.role === 'DISTRIBUTOR' ? '/distributor/dashboard' : '/dashboard';
+      currentUser.role === 'SUPER_ADMIN' ? '/admin' :
+        currentUser.role === 'PARTNER' ? '/partner' : currentUser.role === 'DISTRIBUTOR' ? '/distributor' : '/dashboard';
 
     return (
       <div className="w-full max-w-[620px] mx-auto py-16 px-4 animate-in fade-in duration-200">
@@ -690,10 +738,10 @@ export default function NewBookingPage() {
           </div>
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-[#172033]">
-              Booking Creation Restricted to Centres Only
+              Booking Creation Restricted
             </h2>
             <p className="text-xs text-[#667085] max-w-md mx-auto leading-relaxed">
-              Direct Sabarimala Q-Coupon booking operations are strictly restricted to verified <strong className="text-[#172033]">Centre Operators</strong> with active geo-verified premises. Other roles ({currentUser.role.replace('_', ' ')}) cannot initiate bookings directly.
+              Direct Sabarimala Q-Coupon booking operations are restricted to verified <strong className="text-[#172033]">Centre Operators</strong> and <strong className="text-[#172033]">Distributors</strong>. Other roles ({currentUser.role?.replace('_', ' ')}) cannot initiate bookings directly.
             </p>
           </div>
           <div className="pt-2">
@@ -701,7 +749,7 @@ export default function NewBookingPage() {
               href={roleRedirect}
               className="inline-flex items-center justify-center gap-2 rounded-[8px] bg-[#C98219] hover:bg-[#B57414] px-5 py-2.5 text-xs font-bold text-white transition-all shadow-subtle hover:shadow"
             >
-              <span>Return to {currentUser.role.replace('_', ' ')} Dashboard</span>
+              <span>Return to {currentUser.role?.replace('_', ' ')} Dashboard</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -954,15 +1002,15 @@ export default function NewBookingPage() {
               </div>
 
               {/* Saved vs New Toggle */}
-              <div className="flex items-center rounded-[7px] bg-[#F1F4F9] p-0.5 text-[11px] font-semibold">
+              <div className="flex items-center gap-1.5 rounded-[9px] bg-[#F1F4F9] p-1 border border-[#E6EAF0]">
                 <button
                   type="button"
                   onClick={() => handleModeChange('saved')}
                   disabled={savedAccounts.length === 0}
-                  className={`px-2.5 py-1 rounded-[5px] transition-all ${
+                  className={`px-3.5 py-2 rounded-[7px] text-[12.5px] font-semibold transition-all ${
                     accountMode === 'saved'
-                      ? 'bg-white text-[#172033] shadow-subtle font-bold'
-                      : 'text-[#667085] hover:text-[#172033] disabled:opacity-40'
+                      ? 'bg-white text-[#172033] shadow-sm font-bold border border-[#E6EAF0]'
+                      : 'text-[#667085] hover:text-[#172033] hover:bg-white/60 disabled:opacity-40'
                   }`}
                 >
                   Saved ({savedAccounts.length})
@@ -970,13 +1018,14 @@ export default function NewBookingPage() {
                 <button
                   type="button"
                   onClick={() => handleModeChange('new')}
-                  className={`px-2.5 py-1 rounded-[5px] transition-all ${
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-[7px] text-[13px] font-bold transition-all shadow-sm cursor-pointer ${
                     accountMode === 'new'
-                      ? 'bg-white text-[#172033] shadow-subtle font-bold'
-                      : 'text-[#667085] hover:text-[#172033]'
+                      ? 'bg-[#C98219] text-white hover:bg-[#B57414] shadow'
+                      : 'bg-[#FEF7E6] text-[#8F5A0D] border border-[#F9DE9B] hover:bg-[#FCE0A6]'
                   }`}
                 >
-                  + New
+                  <Plus className="h-4 w-4" />
+                  <span>+ New</span>
                 </button>
               </div>
             </div>
@@ -1045,53 +1094,61 @@ export default function NewBookingPage() {
                           </div>
                         ) : (
                           filteredSavedAccounts.map((acc) => {
-                          const isSelected = selectedAccountId === acc.id;
-                          return (
-                            <div
-                              key={acc.id}
-                              onClick={() => handleAccountSelect(acc.id)}
-                              className={`flex items-center justify-between p-2.5 rounded-[6px] cursor-pointer transition-colors ${
-                                isSelected ? 'bg-[#FDF7ED] text-[#172033]' : 'hover:bg-[#F8FAFC] text-[#344054]'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
-                                  isSelected ? 'bg-[#C98219] text-white' : 'bg-[#F2F4F7] text-[#475467]'
-                                }`}>
-                                  {(acc.label || acc.username).charAt(0).toUpperCase()}
+                            const isSelected = selectedAccountId === acc.id;
+                            const accActiveBooking = existingBookings.find(
+                              (b) => b.accountId === acc.id && isBookingActive(b),
+                            );
+                            return (
+                              <div
+                                key={acc.id}
+                                onClick={() => handleAccountSelect(acc.id)}
+                                className={`flex items-center justify-between p-2.5 rounded-[6px] cursor-pointer transition-colors ${isSelected ? 'bg-[#FDF7ED] text-[#172033]' : 'hover:bg-[#F8FAFC] text-[#344054]'
+                                  }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${isSelected ? 'bg-[#C98219] text-white' : 'bg-[#F2F4F7] text-[#475467]'
+                                    }`}>
+                                    {(acc.label || acc.username).charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="truncate">
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-[12.5px] font-bold text-[#172033] truncate">
+                                        {acc.label || acc.username}
+                                      </p>
+                                      {accActiveBooking && (
+                                        <span className="text-[9.5px] font-bold text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] px-1.5 py-0.2 rounded shrink-0">
+                                          Active #{accActiveBooking.bookingCode}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-[#667085] font-mono truncate">
+                                      {acc.username}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="truncate">
-                                  <p className="text-[12.5px] font-bold text-[#172033] truncate">
-                                    {acc.label || acc.username}
-                                  </p>
-                                  <p className="text-[11px] text-[#667085] font-mono truncate">
-                                    {acc.username}
-                                  </p>
-                                </div>
-                              </div>
 
-                              <div className="flex items-center gap-2 shrink-0 ml-2">
-                                {isSelected && (
-                                  <Check className="h-4 w-4 text-[#C98219]" />
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteAccount(e, acc.id)}
-                                  disabled={deletingAccountId === acc.id}
-                                  className="p-1 text-[#98A2B3] hover:text-[#C2413B] hover:bg-[#FDECEC] rounded transition-colors"
-                                  title="Delete saved profile"
-                                >
-                                  {deletingAccountId === acc.id ? (
-                                    <div className="h-3 w-3 border-2 border-[#C2413B]/30 border-t-[#C2413B] rounded-full animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                  {isSelected && (
+                                    <Check className="h-4 w-4 text-[#C98219]" />
                                   )}
-                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteAccount(e, acc.id)}
+                                    disabled={deletingAccountId === acc.id}
+                                    className="p-1 text-[#98A2B3] hover:text-[#C2413B] hover:bg-[#FDECEC] rounded transition-colors"
+                                    title="Delete saved profile"
+                                  >
+                                    {deletingAccountId === acc.id ? (
+                                      <div className="h-3 w-3 border-2 border-[#C2413B]/30 border-t-[#C2413B] rounded-full animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    )}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })
-                      )}
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   )}
@@ -1175,11 +1232,10 @@ export default function NewBookingPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-[#667085] font-medium">Verification Status:</span>
                   <span
-                    className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[11px] ${
-                      activeAccount.status === 'VERIFIED'
-                        ? 'bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]'
-                        : 'bg-[#FEF7E6] text-[#B45309] border border-[#FDE68A]'
-                    }`}
+                    className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded text-[11px] ${activeAccount.status === 'VERIFIED'
+                      ? 'bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]'
+                      : 'bg-[#FEF7E6] text-[#B45309] border border-[#FDE68A]'
+                      }`}
                   >
                     {activeAccount.status === 'VERIFIED' ? (
                       <>
@@ -1199,6 +1255,41 @@ export default function NewBookingPage() {
                     Execution blocked until verified
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* Active Booking Warning Banner (Single request limit per devotee profile) */}
+            {activeBookingForSelectedProfile && (
+              <div className="flex items-start gap-2.5 rounded-[8px] border border-[#FCD34D] bg-[#FFFBEB] p-3 text-[12.5px] text-[#92400E] animate-in fade-in duration-200">
+                <AlertTriangle className="h-4 w-4 text-[#D97706] shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold">
+                    Active Booking Already Exists For This Devotee Profile
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-[#B45309]">
+                    This devotee profile already has an in-flight booking request{' '}
+                    <strong className="font-mono font-bold">#{activeBookingForSelectedProfile.bookingCode}</strong>{' '}
+                    for <strong>{formatDate(activeBookingForSelectedProfile.requestedDate)}</strong> ({activeBookingForSelectedProfile.route}).
+                  </p>
+                  <p className="mt-1 text-[11.5px] text-[#92400E]">
+                    Each devotee profile is strictly limited to <strong>1 active booking request</strong> at a time. Multiple dates or concurrent requests on the same profile are not permitted until the active request finishes or is cancelled.
+                  </p>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/bookings/${activeBookingForSelectedProfile.id}`}
+                      className="inline-flex items-center gap-1 rounded bg-[#C98219] text-white px-3 py-1 text-[11.5px] font-bold hover:bg-[#B57414] transition-colors"
+                    >
+                      <span>Inspect Active Request #{activeBookingForSelectedProfile.bookingCode}</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                    <Link
+                      href="/dashboard/bookings"
+                      className="inline-flex items-center gap-1 rounded border border-[#D0D5DD] bg-white text-[#344054] px-2.5 py-1 text-[11.5px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+                    >
+                      Bookings Queue
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1302,15 +1393,14 @@ export default function NewBookingPage() {
                               type="button"
                               disabled={isPast}
                               onClick={() => handleDateSelect(item.dateStr)}
-                              className={`h-7 w-full text-[12px] font-medium rounded-[5px] flex items-center justify-center transition-all ${
-                                isSelected
-                                  ? 'bg-[#C98219] text-white font-bold shadow-xs'
-                                  : isPast
+                              className={`h-7 w-full text-[12px] font-medium rounded-[5px] flex items-center justify-center transition-all ${isSelected
+                                ? 'bg-[#C98219] text-white font-bold shadow-xs'
+                                : isPast
                                   ? 'text-[#D0D5DD] cursor-not-allowed'
                                   : isToday
-                                  ? 'bg-[#FEF7E6] text-[#8F5A0D] font-bold border border-[#F9DE9B]'
-                                  : 'text-[#344054] hover:bg-[#F9FAFB] hover:text-[#C98219]'
-                              }`}
+                                    ? 'bg-[#FEF7E6] text-[#8F5A0D] font-bold border border-[#F9DE9B]'
+                                    : 'text-[#344054] hover:bg-[#F9FAFB] hover:text-[#C98219]'
+                                }`}
                             >
                               {item.day}
                             </button>
@@ -1410,11 +1500,10 @@ export default function NewBookingPage() {
                                   setRouteSearch('');
                                   setError(null);
                                 }}
-                                className={`w-full text-left p-2.5 rounded-[6px] transition-colors flex items-start justify-between gap-2 ${
-                                  isSelected
-                                    ? 'bg-[#FDF7ED] text-[#172033] border-l-2 border-[#C98219]'
-                                    : 'hover:bg-[#F8FAFC] text-[#344054]'
-                                }`}
+                                className={`w-full text-left p-2.5 rounded-[6px] transition-colors flex items-start justify-between gap-2 ${isSelected
+                                  ? 'bg-[#FDF7ED] text-[#172033] border-l-2 border-[#C98219]'
+                                  : 'hover:bg-[#F8FAFC] text-[#344054]'
+                                  }`}
                               >
                                 <div className="space-y-0.5 min-w-0">
                                   <div className="flex items-center gap-1.5">
@@ -1455,22 +1544,49 @@ export default function NewBookingPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  {/* Direct Number Input */}
-                  <div className="relative w-full sm:w-28">
+                  {/* Interactive Stepper with Arrow Buttons */}
+                  <div className="inline-flex items-center rounded-[8px] border border-[#D0D5DD] bg-white p-0.5 shadow-2xs w-fit">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = pilgrimCount || 0;
+                        if (current > 1) {
+                          setExplicitPilgrimCount(current - 1, true);
+                        } else if (current === 1) {
+                          setExplicitPilgrimCount(0, false);
+                        }
+                      }}
+                      disabled={pilgrimCount <= 0}
+                      className="h-8 w-8 rounded-[6px] text-[#344054] hover:bg-[#F2F4F7] hover:text-[#172033] flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Decrease Pilgrims (Arrow Down)"
+                      aria-label="Decrease Pilgrims"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+
                     <input
                       type="number"
                       min="0"
                       max="10"
                       value={pilgrimCountInput}
                       onChange={(e) => handlePilgrimCountChange(e.target.value)}
-                      onBlur={() => {
+                      onClick={() => {
                         const num = parseInt(pilgrimCountInput, 10);
-                        if (!isNaN(num) && num >= 1 && num <= 10 && !areNomineesFilled(nominees, num)) {
+                        if (!isNaN(num) && num >= 1 && num <= 10) {
+                          setNomineeModalError(null);
                           setIsNomineeModalOpen(true);
                         }
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          const current = pilgrimCount || 0;
+                          if (current < 10) setExplicitPilgrimCount(current + 1, true);
+                        } else if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          const current = pilgrimCount || 0;
+                          if (current > 0) setExplicitPilgrimCount(current - 1, true);
+                        } else if (e.key === 'Enter') {
                           e.preventDefault();
                           const num = parseInt(pilgrimCountInput, 10);
                           if (!isNaN(num) && num >= 1 && num <= 10) {
@@ -1478,13 +1594,32 @@ export default function NewBookingPage() {
                           }
                         }
                       }}
-                      className={`w-full rounded-[7px] border px-3 py-2 text-[13px] font-bold text-[#172033] focus:outline-none focus:ring-2 transition-all ${
-                        pilgrimError
-                          ? 'border-[#FDA29B] bg-[#FEF3F2] focus:ring-[#FDA29B]'
-                          : 'border-[#D0D5DD] bg-white focus:border-[#C98219] focus:ring-[#C98219]/20'
-                      }`}
+                      onBlur={() => {
+                        const num = parseInt(pilgrimCountInput, 10);
+                        if (!isNaN(num) && num >= 1 && num <= 10) {
+                          setNomineeModalError(null);
+                          setIsNomineeModalOpen(true);
+                        }
+                      }}
+                      className="h-8 w-12 text-center text-[13.5px] font-extrabold text-[#172033] focus:outline-none bg-transparent cursor-pointer"
                       placeholder="0"
                     />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = pilgrimCount || 0;
+                        if (current < 10) {
+                          setExplicitPilgrimCount(current + 1, true);
+                        }
+                      }}
+                      disabled={pilgrimCount >= 10}
+                      className="h-8 w-8 rounded-[6px] text-[#344054] hover:bg-[#F2F4F7] hover:text-[#172033] flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Increase Pilgrims (Arrow Up)"
+                      aria-label="Increase Pilgrims"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
                   </div>
 
                   {/* Quick Select Pills 1 to 10 */}
@@ -1496,11 +1631,10 @@ export default function NewBookingPage() {
                           key={num}
                           type="button"
                           onClick={() => setExplicitPilgrimCount(num, true)}
-                          className={`h-8 min-w-[32px] px-2.5 rounded-[6px] text-[12px] font-bold transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#C98219] text-white shadow-2xs'
-                              : 'bg-white border border-[#D0D5DD] text-[#344054] hover:border-[#C98219] hover:bg-[#FEF7E6] hover:text-[#C98219]'
-                          }`}
+                          className={`h-8 min-w-[32px] px-2.5 rounded-[6px] text-[12px] font-bold transition-all cursor-pointer ${isSelected
+                            ? 'bg-[#C98219] text-white shadow-2xs'
+                            : 'bg-white border border-[#D0D5DD] text-[#344054] hover:border-[#C98219] hover:bg-[#FEF7E6] hover:text-[#C98219]'
+                            }`}
                         >
                           {num}
                         </button>
@@ -1514,41 +1648,6 @@ export default function NewBookingPage() {
                   <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[#B42318] bg-[#FEF3F2] p-2.5 rounded-[6px] border border-[#FECDCA]">
                     <AlertCircle className="h-4 w-4 shrink-0 text-[#D92D20]" />
                     <span>{pilgrimError}</span>
-                  </div>
-                )}
-                <p className="text-[11px] text-[#667085]">
-                  Sabarimala portal allows up to 10 pilgrims per booking transaction. Service fee is ₹{serviceFee} per pilgrim. Nominee details popup will open to enter required insurance information.
-                </p>
-
-                {/* Three-Level Pricing Breakdown Preview */}
-                {pricingBreakdown && (
-                  <div className="rounded-[8px] bg-[#F8FAFC] border border-[#E6EAF0] p-3 text-xs space-y-1.5 mt-2">
-                    <div className="flex items-center justify-between text-[#667085]">
-                      <span>Base Assistance Fee:</span>
-                      <span className="font-semibold text-[#172033]">₹{pricingBreakdown.baseTicketPrice}</span>
-                    </div>
-                    {pricingBreakdown.partnerMarkup > 0 && (
-                      <div className="flex items-center justify-between text-[#667085]">
-                        <span>Regional Partner Markup:</span>
-                        <span className="font-semibold text-[#175CD3]">+₹{pricingBreakdown.partnerMarkup}</span>
-                      </div>
-                    )}
-                    {pricingBreakdown.distributorMarkup > 0 && (
-                      <div className="flex items-center justify-between text-[#667085]">
-                        <span>Taluk Distributor Markup:</span>
-                        <span className="font-semibold text-[#C98219]">+₹{pricingBreakdown.distributorMarkup}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between border-t border-[#E6EAF0] pt-1.5 text-[#172033] font-bold">
-                      <span>Effective Rate per Devotee:</span>
-                      <span className="text-[#198754]">₹{pricingBreakdown.finalTicketPrice}</span>
-                    </div>
-                    {pilgrimCount > 1 && (
-                      <div className="flex items-center justify-between text-[#172033] font-bold text-[12px] pt-0.5">
-                        <span>Total Payable ({pilgrimCount} Devotees):</span>
-                        <span className="text-[#198754]">₹{pricingBreakdown.totalTicketAmount}</span>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1579,7 +1678,7 @@ export default function NewBookingPage() {
                     setNomineeModalError(null);
                     setIsNomineeModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1 rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-1.5 text-[11.5px] font-bold text-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-1.5 text-[11.5px] font-bold text-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer shadow-2xs"
                 >
                   <Edit3 className="h-3.5 w-3.5" />
                   <span>{areNomineesFilled(nominees, pilgrimCount) ? 'Edit Nominees' : 'Fill Details'}</span>
@@ -1593,11 +1692,11 @@ export default function NewBookingPage() {
                   Pilgrims Not Selected
                 </p>
                 <p className="text-[11px] text-[#667085]">
-                  Default is 0. Select 1 to 10 pilgrims in Section 2 above. A popup will open to enter nominee insurance details.
+                  Select 1 to 10 pilgrims in Section 2 above. A popup will open to enter nominee insurance details.
                 </p>
               </div>
             ) : areNomineesFilled(nominees, pilgrimCount) ? (
-              <div className="p-3.5 rounded-[8px] border border-[#C3E6CB] bg-[#F4FBF6] space-y-2">
+              <div className="p-3.5 rounded-[8px] border border-[#C3E6CB] bg-[#F4FBF6] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-[#198754]" />
@@ -1605,14 +1704,21 @@ export default function NewBookingPage() {
                       Nominee Details Confirmed ({pilgrimCount} Pilgrim{pilgrimCount > 1 ? 's' : ''})
                     </span>
                   </div>
-                  <span className="text-[10.5px] font-semibold text-[#155724] bg-[#EAF7EE] border border-[#C3E6CB] px-2 py-0.5 rounded-full">
-                    Ready to Book
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNomineeModalError(null);
+                      setIsNomineeModalOpen(true);
+                    }}
+                    className="text-[11px] font-bold text-[#155724] underline hover:text-[#0f3d19] cursor-pointer"
+                  >
+                    Edit in Popup
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11.5px]">
                   {nominees.map((n, idx) => (
-                    <div key={n.id || idx} className="p-2 rounded-[6px] bg-white border border-[#D0E7D6] flex items-center justify-between">
+                    <div key={n.id || idx} className="p-2.5 rounded-[6px] bg-white border border-[#D0E7D6] flex items-center justify-between shadow-2xs">
                       <span className="font-semibold text-[#172033] truncate">
                         #{idx + 1}: {n.nomineeName}
                       </span>
@@ -1678,8 +1784,8 @@ export default function NewBookingPage() {
                       ? `${activeAccount.label} (${activeAccount.username})`
                       : activeAccount?.username || 'Selected Profile'
                     : accountLabel
-                    ? `${accountLabel} (${officialUsername || 'New'})`
-                    : officialUsername || 'New Account'}
+                      ? `${accountLabel} (${officialUsername || 'New'})`
+                      : officialUsername || 'New Account'}
                 </span>
               </div>
 
@@ -1780,13 +1886,12 @@ export default function NewBookingPage() {
             {/* Terms & Conditions Acceptance Checkbox */}
             <div
               ref={termsRef}
-              className={`rounded-[8px] border p-3 transition-all ${
-                termsError
-                  ? 'border-[#EF4444] bg-[#FEF2F2] ring-2 ring-[#EF4444]/20'
-                  : termsAccepted
+              className={`rounded-[8px] border p-3 transition-all ${termsError
+                ? 'border-[#EF4444] bg-[#FEF2F2] ring-2 ring-[#EF4444]/20'
+                : termsAccepted
                   ? 'border-[#C98219]/40 bg-[#FEFCF6]'
                   : 'border-[#E6EAF0] bg-[#F8FAFC]'
-              }`}
+                }`}
             >
               <div className="flex items-start gap-2.5">
                 <input
@@ -1841,22 +1946,39 @@ export default function NewBookingPage() {
               )}
             </div>
 
+            {/* Active Booking Block Notice */}
+            {activeBookingForSelectedProfile && (
+              <div className="rounded-[7px] bg-[#FFFBEB] border border-[#FCD34D] p-2.5 text-[#92400E] text-[11.5px] font-medium flex items-start gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-[#D97706] shrink-0 mt-0.5" />
+                <span>
+                  Profile already has active request <strong className="font-mono">#{activeBookingForSelectedProfile.bookingCode}</strong>. Only 1 active request is permitted per devotee profile.
+                </span>
+              </div>
+            )}
+
             {/* Action Submit Button */}
             <button
               type="submit"
-              disabled={loading || pilgrimCount < 1 || !termsAccepted || isInsufficientBalance}
+              disabled={loading || pilgrimCount < 1 || !termsAccepted || isInsufficientBalance || Boolean(activeBookingForSelectedProfile)}
               title={
-                pilgrimCount < 1
-                  ? 'Please select number of pilgrims (1-10)'
-                  : isInsufficientBalance
-                  ? `Minimum ₹${totalServiceFee} wallet balance required`
-                  : !termsAccepted
-                  ? 'Please accept the Terms & Conditions and Refund Policy to enable booking'
-                  : undefined
+                activeBookingForSelectedProfile
+                  ? `Devotee Profile has an active booking request (#${activeBookingForSelectedProfile.bookingCode}). Only 1 active request is permitted per profile.`
+                  : pilgrimCount < 1
+                    ? 'Please select number of pilgrims (1-10)'
+                    : isInsufficientBalance
+                      ? `Minimum ₹${totalServiceFee} wallet balance required`
+                      : !termsAccepted
+                        ? 'Please accept the Terms & Conditions and Refund Policy to enable booking'
+                        : undefined
               }
               className="w-full flex items-center justify-center gap-2 rounded-[8px] bg-[#C98219] hover:bg-[#B57414] py-2.5 text-[13px] font-bold text-white transition-all shadow-subtle hover:shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#C98219] disabled:active:scale-100 active:scale-[0.99] cursor-pointer"
             >
-              {isInsufficientBalance ? (
+              {activeBookingForSelectedProfile ? (
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Profile Has Active Request</span>
+                </div>
+              ) : isInsufficientBalance ? (
                 <div className="flex items-center gap-2">
                   <Wallet className="h-4 w-4" />
                   <span>Insufficient Balance (Min ₹{totalServiceFee})</span>
@@ -1904,33 +2026,71 @@ export default function NewBookingPage() {
       {/* NOMINEE DETAILS POPUP MODAL */}
       {isNomineeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl rounded-[14px] bg-white shadow-2xl border border-[#E6EAF0] my-8 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-4xl lg:max-w-5xl rounded-[14px] bg-white shadow-2xl border border-[#E6EAF0] my-8 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E6EAF0] bg-white sticky top-0 z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3.5 border-b border-[#E6EAF0] bg-white sticky top-0 z-10 gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#FEF7E6] text-[#C98219] shrink-0">
                   <HeartHandshake className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-[14.5px] font-bold text-[#172033]">
-                    3. Nominee Details ({pilgrimCount} Pilgrim{pilgrimCount !== 1 ? 's' : ''})
+                  <h3 className="text-[14px] font-bold text-[#172033]">
+                    3. Nominee Insurance Details
                   </h3>
                   <p className="text-[11px] text-[#667085]">
-                    Travancore Devaswom Board emergency insurance nominee for each pilgrim (18+ adult)
+                    Travancore Devaswom Board emergency accident nominee for each pilgrim (18+ adult)
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsNomineeModalOpen(false);
-                  setNomineeModalError(null);
-                }}
-                className="text-[#98A2B3] hover:text-[#172033] p-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5" />
-              </button>
+
+              {/* Number of Pilgrims Arrow Stepper inside Modal */}
+              <div className="flex items-center gap-3 self-end sm:self-auto">
+                <div className="inline-flex items-center rounded-[7px] border border-[#D0D5DD] bg-[#FAFBFD] p-0.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (pilgrimCount > 1) {
+                        setExplicitPilgrimCount(pilgrimCount - 1, true);
+                      }
+                    }}
+                    disabled={pilgrimCount <= 1}
+                    className="h-7 w-7 rounded-[5px] text-[#344054] hover:bg-[#EEF2F6] flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Decrease Pilgrims (Arrow Down)"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+
+                  <span className="px-2.5 text-[12px] font-black text-[#172033] min-w-[70px] text-center select-none">
+                    {pilgrimCount} {pilgrimCount === 1 ? 'Pilgrim' : 'Pilgrims'}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (pilgrimCount < 10) {
+                        setExplicitPilgrimCount(pilgrimCount + 1, true);
+                      }
+                    }}
+                    disabled={pilgrimCount >= 10}
+                    className="h-7 w-7 rounded-[5px] text-[#344054] hover:bg-[#EEF2F6] flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Increase Pilgrims (Arrow Up)"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNomineeModalOpen(false);
+                    setNomineeModalError(null);
+                  }}
+                  className="text-[#98A2B3] hover:text-[#172033] p-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
+                  aria-label="Close modal"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Error Banner */}
@@ -1942,7 +2102,7 @@ export default function NewBookingPage() {
             )}
 
             {/* Modal Body */}
-            <div className="p-5 overflow-y-auto space-y-3.5 flex-1">
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
               {nominees.length > 1 && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-[8px] bg-[#FDF7ED] border border-[#E8D5B7] text-[#7A4A12]">
                   <div className="text-[12px] leading-relaxed">
@@ -1951,95 +2111,106 @@ export default function NewBookingPage() {
                   <button
                     type="button"
                     onClick={handleCopyNominee1ToAll}
-                    className="shrink-0 self-start sm:self-center rounded-[6px] bg-[#C98219] hover:bg-[#B57414] text-white px-3 py-1.5 text-[11.5px] font-bold transition-all shadow-xs active:scale-95"
+                    className="shrink-0 self-start sm:self-center rounded-[6px] bg-[#C98219] hover:bg-[#B57414] text-white px-3 py-1.5 text-[11.5px] font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
                   >
                     Copy #1 to All
                   </button>
                 </div>
               )}
-              {nominees.map((nominee, idx) => (
-                <div
-                  key={nominee.id || idx}
-                  className="p-3.5 rounded-[9px] border border-[#E6EAF0] bg-[#FAFBFD] space-y-2.5 relative"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11.5px] font-bold text-[#344054] uppercase tracking-wider">
-                      Nominee for Pilgrim #{idx + 1} {idx === 0 ? '(Primary Nominee)' : ''}
-                    </span>
-                    {nominees.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setExplicitPilgrimCount(Math.max(1, pilgrimCount - 1), false)}
-                        className="text-[#98A2B3] hover:text-[#C2413B] p-1 rounded transition-colors cursor-pointer text-xs flex items-center gap-1"
-                        title="Remove this pilgrim"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span>Remove</span>
-                      </button>
-                    )}
+
+              {/* 2-Column Grid Layout for Nominee Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {nominees.map((nominee, idx) => (
+                  <div
+                    key={nominee.id || idx}
+                    className="p-3.5 rounded-[9px] border border-[#E6EAF0] bg-[#FAFBFD] space-y-2.5 relative flex flex-col justify-between shadow-2xs hover:border-[#D0D5DD] transition-colors"
+                  >
+                    <div className="flex items-center justify-between pb-1.5 border-b border-[#F0F3F8]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#C98219] text-white text-[10px] font-black">
+                          {idx + 1}
+                        </span>
+                        <span className="text-[11.5px] font-bold text-[#172033] uppercase tracking-wider">
+                          Nominee for Pilgrim #{idx + 1} {idx === 0 ? '(Primary)' : ''}
+                        </span>
+                      </div>
+                      {nominees.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setExplicitPilgrimCount(Math.max(1, pilgrimCount - 1), false)}
+                          className="text-[#98A2B3] hover:text-[#C2413B] p-1 rounded transition-colors cursor-pointer text-xs flex items-center gap-1"
+                          title="Remove this pilgrim"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                          Nominee Full Name <span className="text-[#C2413B]">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={nominee.nomineeName}
+                          onChange={(e) => handleNomineeChange(idx, 'nomineeName', e.target.value)}
+                          placeholder="e.g. Lakshmi S"
+                          className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                          autoFocus={idx === 0}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                            Age (18+) <span className="text-[#C2413B]">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="18"
+                            max="120"
+                            value={nominee.nomineeAge}
+                            onChange={(e) => handleNomineeChange(idx, 'nomineeAge', e.target.value)}
+                            placeholder="18+"
+                            className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                            Relationship <span className="text-[#C2413B]">*</span>
+                          </label>
+                          <select
+                            value={nominee.nomineeRelationship}
+                            onChange={(e) => handleNomineeChange(idx, 'nomineeRelationship', e.target.value)}
+                            className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                          >
+                            <option value="Spouse">Spouse</option>
+                            <option value="Father">Father</option>
+                            <option value="Mother">Mother</option>
+                            <option value="Son">Son</option>
+                            <option value="Daughter">Daughter</option>
+                            <option value="Brother">Brother</option>
+                            <option value="Sister">Sister</option>
+                            <option value="Guardian">Guardian</option>
+                            <option value="Friend">Friend</option>
+                            <option value="Relative">Relative</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    <div className="sm:col-span-5">
-                      <label className="block text-[11px] font-semibold text-[#475467] mb-1">
-                        Nominee Full Name <span className="text-[#C2413B]">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={nominee.nomineeName}
-                        onChange={(e) => handleNomineeChange(idx, 'nomineeName', e.target.value)}
-                        placeholder="e.g. Lakshmi S"
-                        className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
-                        autoFocus={idx === 0}
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-semibold text-[#475467] mb-1">
-                        Age (18+) <span className="text-[#C2413B]">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="18"
-                        max="120"
-                        value={nominee.nomineeAge}
-                        onChange={(e) => handleNomineeChange(idx, 'nomineeAge', e.target.value)}
-                        placeholder="18+"
-                        className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-5">
-                      <label className="block text-[11px] font-semibold text-[#475467] mb-1">
-                        Relationship <span className="text-[#C2413B]">*</span>
-                      </label>
-                      <select
-                        value={nominee.nomineeRelationship}
-                        onChange={(e) => handleNomineeChange(idx, 'nomineeRelationship', e.target.value)}
-                        className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
-                      >
-                        <option value="Spouse">Spouse</option>
-                        <option value="Father">Father</option>
-                        <option value="Mother">Mother</option>
-                        <option value="Son">Son</option>
-                        <option value="Daughter">Daughter</option>
-                        <option value="Brother">Brother</option>
-                        <option value="Sister">Sister</option>
-                        <option value="Guardian">Guardian</option>
-                        <option value="Friend">Friend</option>
-                        <option value="Relative">Relative</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
               {nominees.length < 10 && (
                 <button
                   type="button"
                   onClick={() => setExplicitPilgrimCount(Math.min(10, pilgrimCount + 1), false)}
-                  className="w-full flex items-center justify-center gap-2 rounded-[8px] border-2 border-dashed border-[#D0D5DD] bg-[#FAFBFD] py-2.5 text-[12px] font-semibold text-[#C98219] hover:border-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 rounded-[8px] border-2 border-dashed border-[#D0D5DD] bg-[#FAFBFD] py-3 text-[12px] font-bold text-[#C98219] hover:border-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   <span>+ Add Another Pilgrim ({nominees.length}/10)</span>
@@ -2159,8 +2330,8 @@ export default function NewBookingPage() {
                             ? '•••••••••••• (Saved Account)'
                             : '••••••••'
                           : showConfirmPassword
-                          ? officialPassword
-                          : '••••••••'}
+                            ? officialPassword
+                            : '••••••••'}
                       </span>
                       <div>
                         <label className="inline-flex items-center gap-1.5 text-[11px] text-[#C98219] font-medium cursor-pointer select-none">
@@ -2299,11 +2470,11 @@ export default function NewBookingPage() {
           type="button"
           onClick={() => {
             if (pilgrimCount < 1) {
-              setExplicitPilgrimCount(1, true);
+              setExplicitPilgrimCount(1, false);
               return;
             }
-            if (!isNomineesConfirmed) {
-              setIsNomineeModalOpen(true);
+            if (!areNomineesFilled(nominees, pilgrimCount)) {
+              setError('Please fill in the Nominee Details for all pilgrims before submitting.');
               return;
             }
             setIsConfirmModalOpen(true);

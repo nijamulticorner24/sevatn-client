@@ -110,6 +110,7 @@ export default function BookingDetailPage() {
   const bookingId = params?.id as string;
 
   const [booking, setBooking] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [humanModalOpen, setHumanModalOpen] = useState(false);
   const [manualRef, setManualRef] = useState('');
@@ -121,15 +122,22 @@ export default function BookingDetailPage() {
     api.getBookingById(bookingId)
       .then((data) => {
         setBooking(data);
+        setError(null);
         setLoading(false);
       })
       .catch((err) => {
         console.error(err);
+        setError(err.message || 'Access denied: You do not have permission to view this booking.');
         setLoading(false);
       });
   };
 
   useEffect(() => {
+    const u = api.getUser();
+    if (u?.role === 'DISTRIBUTOR') {
+      window.location.replace(`/distributor/bookings/${bookingId}`);
+      return;
+    }
     fetchBooking();
     // Live polling every 2.5 seconds
     const interval = setInterval(fetchBooking, 2500);
@@ -160,12 +168,38 @@ export default function BookingDetailPage() {
     window.print();
   };
 
-  if (loading || !booking) {
+  if (loading && !booking && !error) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-3 border-[#C98219] border-t-transparent" />
           <p className="text-[13px] text-[#667085] font-medium">Loading booking details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !booking) {
+    return (
+      <div className="w-full max-w-[600px] mx-auto py-16 px-4">
+        <div className="rounded-[12px] border border-[#FDA29B] bg-white p-8 text-center space-y-4 shadow-card">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FEF3F2] text-[#D92D20] border border-[#FECDCA]">
+            <Lock className="h-7 w-7" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-[#172033]">Booking Access Denied</h2>
+            <p className="text-xs text-[#667085] max-w-sm mx-auto leading-relaxed">
+              {error || 'This booking belongs to another centre or user and is isolated from your account under SevaTN tenant security.'}
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href="/dashboard/bookings"
+              className="inline-flex items-center gap-2 rounded-[8px] bg-[#C98219] hover:bg-[#B57414] px-5 py-2.5 text-xs font-bold text-white transition-all shadow-subtle"
+            >
+              <span>Return to Bookings Queue</span>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -382,8 +416,53 @@ export default function BookingDetailPage() {
         )}
       </div>
 
-      {/* 2 Balanced Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* 3 Balanced Summary Cards: Origin, Devotee Account, Settlement Ledger */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Originating Operator & Tenant Details */}
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle space-y-3">
+          <div className="flex items-center gap-2 pb-2.5 border-b border-[#E6EAF0]">
+            <Building className="h-4 w-4 text-[#175CD3]" />
+            <h3 className="text-[12px] font-bold text-[#172033] uppercase tracking-wider">
+              Originating Tenant & Operator
+            </h3>
+          </div>
+          <div className="space-y-2 text-[12.5px]">
+            <div>
+              <span className="text-[#667085]">Booking Origin:</span>
+              <p className="font-bold text-[#172033] mt-0.5">
+                {booking.user?.centre?.centreName || booking.user?.name || 'Authorized Operator'}
+                {booking.user?.role && (
+                  <span className="ml-1.5 inline-block text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+                    {booking.user.role.replace('_', ' ')}
+                  </span>
+                )}
+              </p>
+            </div>
+            {booking.user?.centre?.centreCode && (
+              <div>
+                <span className="text-[#667085]">Centre Code & Jurisdiction:</span>
+                <p className="font-mono font-semibold text-[#475467] mt-0.5">
+                  {booking.user.centre.centreCode} • {booking.user.centre.district || 'Tamil Nadu'}
+                </p>
+              </div>
+            )}
+            {booking.user?.distributor && (
+              <div>
+                <span className="text-[#667085]">Regional Distributor:</span>
+                <p className="font-semibold text-[#175CD3] mt-0.5">
+                  {booking.user.distributor.name} ({booking.user.distributor.distributorCode})
+                </p>
+              </div>
+            )}
+            <div>
+              <span className="text-[#667085]">Devotees in Request:</span>
+              <p className="font-semibold text-[#172033] mt-0.5">
+                {booking.pilgrims?.length || 1} Registered Pilgrim{booking.pilgrims?.length === 1 ? '' : 's'}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Official Account & Route Details */}
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle space-y-3">
           <div className="flex items-center gap-2 pb-2.5 border-b border-[#E6EAF0]">
@@ -435,10 +514,10 @@ export default function BookingDetailPage() {
               <p className="font-semibold mt-0.5">
                 {completed ? (
                   <span className="text-[#155724]">
-                    Settled ({formatCurrency(Number(booking.transactions?.find((t: any) => t.type === 'RESERVE' || t.type === 'CAPTURE')?.amount || 100))} Assistance Fee Captured)
+                    Settled ({formatCurrency(Number(booking.transactions?.find((t: any) => t.type === 'RESERVE' || t.type === 'CAPTURE')?.amount || 100))} Captured)
                   </span>
                 ) : failed ? (
-                  <span className="text-[#667085]">Released to Centre Wallet</span>
+                  <span className="text-[#667085]">Released to Wallet</span>
                 ) : (
                   <span className="text-[#8F5A0D]">Held in Reservation Ledger</span>
                 )}
