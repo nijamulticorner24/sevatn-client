@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatINR } from '@/lib/utils';
 import { useSocketStatus, useLiveEvent } from '@/lib/useSocket';
 import { useToast } from '@/components/ui/Toast';
 import {
@@ -28,6 +28,7 @@ import {
   Radio,
   BellRing,
   UserPlus,
+  Wallet,
 } from 'lucide-react';
 
 const TN_DISTRICTS = [
@@ -122,6 +123,7 @@ export default function PartnerInvitationsPage() {
   const [copiedPortalUrl, setCopiedPortalUrl] = useState(false);
   const [directSubmitting, setDirectSubmitting] = useState(false);
   const [directError, setDirectError] = useState<string | null>(null);
+  const [partnerWallet, setPartnerWallet] = useState<any>(null);
 
   // Direct Form State
   const [createForm, setCreateForm] = useState({
@@ -167,8 +169,14 @@ export default function PartnerInvitationsPage() {
 
   const loadInvitations = async () => {
     try {
-      const res = await api.getPartnerInvitations();
+      const [res, me] = await Promise.all([
+        api.getPartnerInvitations(),
+        api.getMe().catch(() => null),
+      ]);
       setInvitations(res.invitations || []);
+      if (me?.wallet) {
+        setPartnerWallet(me.wallet);
+      }
       setLoading(false);
     } catch (err) {
       console.warn('Failed to load partner invitations:', err);
@@ -928,6 +936,33 @@ export default function PartnerInvitationsPage() {
             </div>
 
             <form onSubmit={handleDirectCreate} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+              {/* Wallet Balance & Onboarding Fee Notice */}
+              <div className="rounded-[8px] bg-[#FEF7E6] border border-[#F9DE9B] p-3 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-[#C98219] shrink-0" />
+                  <div>
+                    <span className="font-bold text-[#8F5A0D]">Centre Onboarding Fee:</span>
+                    <span className="ml-1 text-[#172033] font-mono font-bold">₹249.00</span>
+                    <span className="block text-[10.5px] text-[#667085]">Automatically deducted from your Partner Wallet</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-[#667085] block">Your Balance</span>
+                  <span className={`font-mono font-bold ${Number(partnerWallet?.availableBalance || 0) >= 249 ? 'text-[#198754]' : 'text-[#C2413B]'}`}>
+                    {formatINR(Number(partnerWallet?.availableBalance || 0))}
+                  </span>
+                </div>
+              </div>
+
+              {Number(partnerWallet?.availableBalance || 0) < 249 && (
+                <div className="rounded-[8px] bg-[#FDECEC] border border-[#F8C4C2] p-2.5 text-xs text-[#992B26] flex items-center justify-between">
+                  <span>Insufficient wallet balance. Minimum ₹249 required to onboard.</span>
+                  <Link href="/partner/wallet" className="font-bold underline text-[#C2413B] hover:text-[#992B26]">
+                    Recharge Wallet
+                  </Link>
+                </div>
+              )}
+
               {directError && (
                 <div className="rounded-[8px] bg-[#FDECEC] border border-[#F5C6CB] p-3 text-xs text-[#C2413B] flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -1085,7 +1120,7 @@ export default function PartnerInvitationsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={directSubmitting}
+                  disabled={directSubmitting || Number(partnerWallet?.availableBalance || 0) < 249}
                   className="rounded-[8px] bg-[#C98219] px-6 py-2 text-xs sm:text-sm font-bold text-white hover:bg-[#B57414] shadow-subtle transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {directSubmitting ? (
@@ -1096,7 +1131,7 @@ export default function PartnerInvitationsPage() {
                   ) : (
                     <>
                       <Plus className="h-4 w-4" />
-                      <span>Provision Centre Account</span>
+                      <span>Provision Centre & Deduct ₹249 from Wallet</span>
                     </>
                   )}
                 </button>

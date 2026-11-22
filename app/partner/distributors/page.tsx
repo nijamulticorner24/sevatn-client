@@ -28,6 +28,7 @@ import {
   Copy,
   ExternalLink,
   Send,
+  Wallet,
 } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -60,6 +61,7 @@ export default function PartnerDistributorsPage() {
   const [search, setSearch] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<any | null>(null);
+  const [partnerWallet, setPartnerWallet] = useState<any>(null);
 
   // Form State for Create
   const [formData, setFormData] = useState({
@@ -95,8 +97,14 @@ export default function PartnerDistributorsPage() {
 
   const loadDistributors = async () => {
     try {
-      const data = await api.getPartnerDistributors();
+      const [data, me] = await Promise.all([
+        api.getPartnerDistributors(),
+        api.getMe().catch(() => null),
+      ]);
       setDistributors(data || []);
+      if (me?.wallet) {
+        setPartnerWallet(me.wallet);
+      }
       setLoading(false);
     } catch (err) {
       console.error('Failed to load distributors:', err);
@@ -509,6 +517,33 @@ export default function PartnerDistributorsPage() {
             </div>
 
             <form onSubmit={handleCreate} className="space-y-4 text-xs">
+              {/* Wallet Balance & License Fee Notice */}
+              <div className="rounded-[8px] bg-[#FEF7E6] border border-[#F9DE9B] p-3 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-[#C98219] shrink-0" />
+                  <div>
+                    <span className="font-bold text-[#8F5A0D]">Distributor License Fee:</span>
+                    <span className="ml-1 text-[#172033] font-mono font-bold">₹399.00</span>
+                    <span className="block text-[10.5px] text-[#667085]">Automatically deducted from your Partner Wallet</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-[#667085] block">Your Balance</span>
+                  <span className={`font-mono font-bold ${Number(partnerWallet?.availableBalance || 0) >= 399 ? 'text-[#198754]' : 'text-[#C2413B]'}`}>
+                    {formatINR(Number(partnerWallet?.availableBalance || 0))}
+                  </span>
+                </div>
+              </div>
+
+              {Number(partnerWallet?.availableBalance || 0) < 399 && (
+                <div className="rounded-[8px] bg-[#FDECEC] border border-[#F8C4C2] p-2.5 text-xs text-[#992B26] flex items-center justify-between">
+                  <span>Insufficient wallet balance. Minimum ₹399 required to onboard.</span>
+                  <Link href="/partner/wallet" className="font-bold underline text-[#C2413B] hover:text-[#992B26]">
+                    Recharge Wallet
+                  </Link>
+                </div>
+              )}
+
               <div>
                 <label className="block font-bold text-[#172033] mb-1">Full Name *</label>
                 <input
@@ -632,10 +667,10 @@ export default function PartnerDistributorsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || Number(partnerWallet?.availableBalance || 0) < 399}
                   className="rounded-[8px] bg-[#C98219] px-4 py-2 text-xs font-bold text-white hover:bg-[#A86B14] transition-all disabled:opacity-50"
                 >
-                  {submitting ? 'Creating...' : 'Confirm & Create'}
+                  {submitting ? 'Creating...' : 'Create & Deduct ₹399 from Wallet'}
                 </button>
               </div>
             </form>
