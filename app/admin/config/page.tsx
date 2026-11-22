@@ -46,8 +46,8 @@ export default function SystemConfigPage() {
     onlineGatewayKeySecret: '',
 
     offlinePaymentEnabled: true,
-    offlineUpiId: 'pay.ticketassist@okaxis',
-    offlineAccountName: 'TicketAssist Services & Network',
+    offlineUpiId: 'pay.sevatn@okaxis',
+    offlineAccountName: 'SevaTN Services & Network',
     offlineQrImageUrl: '',
     offlineBankName: 'HDFC Bank',
     offlineAccountNumber: '50200012345678',

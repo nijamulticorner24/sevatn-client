@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatINR, cn } from '@/lib/utils';
+import { getSocket } from '@/lib/socket';
 import { HeaderMarqueeBar } from '@/components/HeaderMarqueeBar';
 import {
   LayoutDashboard,
@@ -90,7 +91,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     const u = api.getUser();
     setUser(u);
     if (u && !isPublicRoute) {
-      if (u.role === 'CENTRE' || u.role === 'DISTRIBUTOR') {
+      if (u.role === 'CENTRE' || u.role === 'DISTRIBUTOR' || u.role === 'PARTNER') {
         api.getWallet()
           .then(setWallet)
           .catch(() => {});
@@ -121,7 +122,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   useEffect(() => {
     const handleWalletRefresh = () => {
       const u = api.getUser();
-      if (u && (u.role === 'CENTRE' || u.role === 'DISTRIBUTOR')) {
+      if (u && (u.role === 'CENTRE' || u.role === 'DISTRIBUTOR' || u.role === 'PARTNER')) {
         api.getWallet()
           .then(setWallet)
           .catch(() => {});
@@ -129,8 +130,28 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     };
 
     window.addEventListener('wallet-refresh', handleWalletRefresh);
+
+    let socket: any = null;
+    try {
+      socket = getSocket();
+      if (socket) {
+        socket.on('wallet:updated', (payload: any) => {
+          setWallet((prev: any) => ({
+            ...prev,
+            availableBalance: payload.availableBalance !== undefined ? payload.availableBalance : prev?.availableBalance,
+            reservedBalance: payload.reservedBalance !== undefined ? payload.reservedBalance : prev?.reservedBalance,
+          }));
+        });
+      }
+    } catch {
+      // socket init fallback
+    }
+
     return () => {
       window.removeEventListener('wallet-refresh', handleWalletRefresh);
+      if (socket) {
+        socket.off('wallet:updated');
+      }
     };
   }, []);
 
@@ -214,6 +235,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     {
       group: 'FINANCE',
       items: [
+        { name: 'Wallet & Topup', href: '/partner/wallet', icon: Wallet },
         { name: 'Ticket Markup', href: '/partner/markup', icon: DollarSign },
         { name: 'Payouts', href: '/partner/payouts', icon: BadgeDollarSign },
         { name: 'Ledger', href: '/partner/ledger', icon: Receipt },
@@ -379,11 +401,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             </div>
           )}
 
-          {/* Wallet Balance Pill with Direct Quick Recharge (+) for Centre Operators & Distributors */}
-          {(user?.role === 'CENTRE' || user?.role === 'DISTRIBUTOR') && (
+          {/* Wallet Balance Pill with Direct Quick Recharge (+) for Centre Operators, Distributors & Partners */}
+          {(user?.role === 'CENTRE' || user?.role === 'DISTRIBUTOR' || user?.role === 'PARTNER') && (
             <div className="flex items-center rounded-[7px] border border-[#E4E7EC] bg-[#F8FAFC] pl-3 pr-1 py-1 text-[13px] font-semibold text-[#172033] shadow-xs hover:border-[#C98219]/40 transition-colors">
               <Link
-                href={isDistributor ? '/distributor/wallet' : '/dashboard/wallet'}
+                href={isPartner ? '/partner/wallet' : isDistributor ? '/distributor/wallet' : '/dashboard/wallet'}
                 className="flex items-center gap-2 mr-2 hover:text-[#C98219] transition-colors"
                 title="View Wallet Ledger & History"
               >
@@ -398,7 +420,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 )}
               </Link>
               <Link
-                href={isDistributor ? '/distributor/wallet' : '/dashboard/wallet'}
+                href={isPartner ? '/partner/wallet' : isDistributor ? '/distributor/wallet' : '/dashboard/wallet'}
                 className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-[#C98219] hover:bg-[#B57414] text-white transition-colors shadow-2xs"
                 title="Add Funds / Top-Up Wallet"
               >
@@ -730,7 +752,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             isAdmin
               ? '/admin/ledger'
               : isPartner
-              ? '/partner/payouts'
+              ? '/partner/wallet'
               : isDistributor
               ? '/distributor/wallet'
               : '/dashboard/wallet'
@@ -738,6 +760,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           className={cn(
             'flex flex-col items-center gap-1 text-[11px] font-medium py-1',
             pathname.startsWith('/admin/ledger') ||
+              pathname.startsWith('/partner/wallet') ||
               pathname.startsWith('/partner/payouts') ||
               pathname.startsWith('/partner/ledger') ||
               pathname.startsWith('/distributor/wallet') ||
@@ -749,7 +772,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           )}
         >
           <Wallet className="h-4 w-4" />
-          <span>{isAdmin ? 'Ledger' : isPartner ? 'Payouts' : 'Wallet'}</span>
+          <span>{isAdmin ? 'Ledger' : 'Wallet'}</span>
         </Link>
         <button
           onClick={() => setMobileDrawerOpen(true)}

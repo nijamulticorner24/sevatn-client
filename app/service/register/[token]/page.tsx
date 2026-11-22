@@ -152,7 +152,7 @@ export default function PartnerInvitationRegisterPage() {
   };
 
   const getUpiId = () => {
-    return paymentConfig?.offlineUpiId || 'pay.ticketassist@okaxis';
+    return paymentConfig?.offlineUpiId || 'pay.sevatn@okaxis';
   };
 
   const getRegistrationFee = () => {

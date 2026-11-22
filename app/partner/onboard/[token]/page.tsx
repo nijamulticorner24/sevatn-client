@@ -101,7 +101,7 @@ export default function PartnerOnboardPage() {
   const anyPaymentEnabled = onlineEnabled || offlineEnabled;
 
   const getUpiId = () => {
-    return paymentConfig?.offlineUpiId || 'pay.ticketassist@okaxis';
+    return paymentConfig?.offlineUpiId || 'pay.sevatn@okaxis';
   };
 
   const getFranchiseFee = () => {

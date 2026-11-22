@@ -131,6 +131,8 @@ export default function NewBookingPage() {
   // Mandatory Pre-Submit Confirmation Modal State
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
+  const [isRevealingPassword, setIsRevealingPassword] = useState(false);
 
   const areNomineesFilled = (items: NomineeInput[], count: number) => {
     if (count < 1 || items.length !== count) return false;
@@ -315,12 +317,16 @@ export default function NewBookingPage() {
     }
     Promise.all([
       api.getBookingConfig().catch(() => null),
+      api.getBookingPricingPreview(1).catch(() => null),
       api.getAccounts().catch(() => []),
       api.getWallet().catch(() => null),
       api.ensureLocationCoordinates().catch(() => null),
       api.getBookings(undefined, 1, undefined).catch(() => null),
-    ]).then(([cfg, aData, wData, loc, bData]) => {
-      if (cfg && cfg.serviceFee !== undefined) {
+    ]).then(([cfg, pricing, aData, wData, loc, bData]) => {
+      if (pricing && pricing.finalTicketPrice) {
+        setPricingBreakdown(pricing);
+        setServiceFee(Number(pricing.finalTicketPrice));
+      } else if (cfg && cfg.serviceFee !== undefined) {
         setServiceFee(Number(cfg.serviceFee));
       }
       if (bData && bData.bookings) {
@@ -332,6 +338,13 @@ export default function NewBookingPage() {
         setAccountMode('saved');
         setOfficialUsername(aData[0].username);
         setOfficialPassword('••••••••••••');
+        api.getAccountPassword(aData[0].id)
+          .then((res: any) => {
+            if (res?.password) {
+              setRevealedPasswords((prev) => ({ ...prev, [aData[0].id]: res.password }));
+            }
+          })
+          .catch(() => null);
       } else {
         setSavedAccounts(aData || []);
         setAccountMode('new');
@@ -397,6 +410,32 @@ export default function NewBookingPage() {
       setOfficialUsername(acc.username);
       setOfficialPassword('••••••••••••');
       setAccountLabel(acc.label || '');
+      if (!revealedPasswords[accId]) {
+        api.getAccountPassword(accId)
+          .then((res: any) => {
+            if (res?.password) {
+              setRevealedPasswords((prev) => ({ ...prev, [accId]: res.password }));
+            }
+          })
+          .catch(() => null);
+      }
+    }
+  };
+
+  const handleToggleShowConfirmPassword = async (checked: boolean) => {
+    setShowConfirmPassword(checked);
+    if (checked && accountMode === 'saved' && selectedAccountId && !revealedPasswords[selectedAccountId]) {
+      setIsRevealingPassword(true);
+      try {
+        const res = await api.getAccountPassword(selectedAccountId);
+        if (res?.password) {
+          setRevealedPasswords((prev) => ({ ...prev, [selectedAccountId]: res.password }));
+        }
+      } catch (err) {
+        console.error('Failed to retrieve account password:', err);
+      } finally {
+        setIsRevealingPassword(false);
+      }
     }
   };
 
@@ -635,6 +674,15 @@ export default function NewBookingPage() {
 
     // Trigger mandatory pre-submit confirmation modal before calling API
     setShowConfirmPassword(false);
+    if (accountMode === 'saved' && selectedAccountId && !revealedPasswords[selectedAccountId]) {
+      api.getAccountPassword(selectedAccountId)
+        .then((res: any) => {
+          if (res?.password) {
+            setRevealedPasswords((prev) => ({ ...prev, [selectedAccountId]: res.password }));
+          }
+        })
+        .catch(() => null);
+    }
     setIsConfirmModalOpen(true);
   };
 
@@ -644,11 +692,12 @@ export default function NewBookingPage() {
     setError(null);
 
     try {
-      // 3. Validate current dynamically calculated fee with the backend
+      // 3. Validate current 3-tier fee with backend (Base Price + Franchise Markup + Distributor Markup)
       try {
-        const cfg = await api.getBookingConfig();
-        if (cfg && cfg.serviceFee !== undefined) {
-          setServiceFee(Number(cfg.serviceFee));
+        const pricing = await api.getBookingPricingPreview(pilgrimCount);
+        if (pricing && pricing.finalTicketPrice) {
+          setPricingBreakdown(pricing);
+          setServiceFee(Number(pricing.finalTicketPrice));
         }
       } catch (_) {
         // Fallback to currently loaded service fee
@@ -1539,7 +1588,7 @@ export default function NewBookingPage() {
                     Number of Pilgrims (Max 10) <span className="text-[#C2413B]">*</span>
                   </label>
                   <span className="text-[11px] font-semibold text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] px-2 py-0.5 rounded">
-                    ₹{serviceFee} × {pilgrimCount} = ₹{totalServiceFee}
+                    ₹{pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} = ₹{totalServiceFee}
                   </span>
                 </div>
 
@@ -1821,12 +1870,13 @@ export default function NewBookingPage() {
                 </span>
               </div>
 
+              {/* Assistance Service Fee */}
               <div className="flex items-center justify-between py-1 border-b border-[#F0F3F8]">
                 <span className="text-[#667085]">Assistance Service Fee</span>
                 <div className="text-right">
                   <span className="font-bold text-[#172033] tabular-nums text-[13px]">₹{totalServiceFee}</span>
                   <div className="text-[10.5px] text-[#667085]">
-                    (₹{serviceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
+                    (₹{pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
                   </div>
                 </div>
               </div>
@@ -2324,21 +2374,21 @@ export default function NewBookingPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
                     <span className="text-[#667085] font-medium">Official Portal Password:</span>
                     <div className="sm:text-right">
-                      <span className="font-mono font-bold text-[#172033]">
-                        {accountMode === 'saved'
-                          ? showConfirmPassword
-                            ? '•••••••••••• (Saved Account)'
-                            : '••••••••'
-                          : showConfirmPassword
-                            ? officialPassword
-                            : '••••••••'}
+                      <span className="font-mono font-bold text-[#172033] select-all">
+                        {showConfirmPassword
+                          ? accountMode === 'saved'
+                            ? isRevealingPassword
+                              ? '••••••••'
+                              : revealedPasswords[selectedAccountId] || (officialPassword !== '••••••••••••' ? officialPassword : '••••••••')
+                            : officialPassword || '••••••••'
+                          : '••••••••'}
                       </span>
                       <div>
                         <label className="inline-flex items-center gap-1.5 text-[11px] text-[#C98219] font-medium cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={showConfirmPassword}
-                            onChange={(e) => setShowConfirmPassword(e.target.checked)}
+                            onChange={(e) => handleToggleShowConfirmPassword(e.target.checked)}
                             className="rounded border-[#D0D5DD] text-[#C98219] accent-[#C98219] cursor-pointer"
                           />
                           <span>Show password</span>
@@ -2368,6 +2418,14 @@ export default function NewBookingPage() {
                     <span className="text-[#667085] font-medium">Number of Pilgrims:</span>
                     <span className="font-bold text-[#172033] sm:text-right">
                       {pilgrimCount}
+                    </span>
+                  </div>
+
+                  {/* Assistance Service Fee */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
+                    <span className="text-[#667085] font-medium">Assistance Service Fee:</span>
+                    <span className="font-bold text-[#172033] sm:text-right">
+                      ₹{totalServiceFee} (₹{pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''})
                     </span>
                   </div>
 
@@ -2476,6 +2534,15 @@ export default function NewBookingPage() {
             if (!areNomineesFilled(nominees, pilgrimCount)) {
               setError('Please fill in the Nominee Details for all pilgrims before submitting.');
               return;
+            }
+            if (accountMode === 'saved' && selectedAccountId && !revealedPasswords[selectedAccountId]) {
+              api.getAccountPassword(selectedAccountId)
+                .then((res: any) => {
+                  if (res?.password) {
+                    setRevealedPasswords((prev) => ({ ...prev, [selectedAccountId]: res.password }));
+                  }
+                })
+                .catch(() => null);
             }
             setIsConfirmModalOpen(true);
           }}

@@ -467,6 +467,10 @@ class ApiClient {
     });
   }
 
+  async getAccountPassword(id: string) {
+    return this.request(`/booking/accounts/${encodeURIComponent(id)}/password`);
+  }
+
   // Wallet APIs
   async getWallet() {
     return this.request('/wallet');
@@ -835,6 +839,22 @@ class ApiClient {
 
   async requestPartnerPayout(data: { amount: number; upiId: string; accountHolder?: string; notes?: string }) {
     return this.request('/partner/payouts/request', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPartnerNetworkRecipients() {
+    return this.request('/partner/wallet/recipients');
+  }
+
+  async sharePartnerWallet(data: {
+    targetType: 'DISTRIBUTOR' | 'CENTRE';
+    targetId: string;
+    amount: number;
+    notes?: string;
+  }) {
+    return this.request('/partner/wallet/share', {
       method: 'POST',
       body: JSON.stringify(data),
     });

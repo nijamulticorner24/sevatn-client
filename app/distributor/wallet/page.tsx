@@ -10,6 +10,8 @@ import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import {
   Wallet,
   Plus,
+  PhoneCall,
+  Phone,
   ArrowUpRight,
   ArrowDownLeft,
   CheckCircle2,
@@ -44,6 +46,7 @@ export default function DistributorWalletPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [paymentConfig, setPaymentConfig] = useState<any>(null);
   const [distributorData, setDistributorData] = useState<any>(null);
+  const [distributorProfile, setDistributorProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Top-up Modal states
@@ -103,12 +106,14 @@ export default function DistributorWalletPage() {
       api.getTransactions(1, 50).catch(() => ({ transactions: [] })),
       api.getPublicPaymentConfig().catch(() => null),
       api.getDistributorOverview().catch(() => null),
+      api.getDistributorProfile().catch(() => null),
       api.getDistributorCentres(1, 100).catch(() => ({ centres: [] })),
     ])
-      .then(([wData, tData, pCfg, dData, cData]) => {
+      .then(([wData, tData, pCfg, dData, profData, cData]) => {
         if (wData) setWallet(wData);
         if (tData?.transactions) setTransactions(tData.transactions);
         if (dData) setDistributorData(dData);
+        if (profData) setDistributorProfile(profData);
         if (cData?.centres) {
           setCentres(cData.centres);
           if (cData.centres.length > 0 && !selectedCentreId) {
@@ -469,6 +474,7 @@ export default function DistributorWalletPage() {
   const availableBalance = Number(wallet?.availableBalance || 0);
   const reservedBalance = Number(wallet?.reservedBalance || 0);
   const totalBalance = availableBalance + reservedBalance;
+  const assignedPartner = distributorProfile?.partner || distributorData?.distributor?.partner;
 
   return (
     <div className="space-y-6">
@@ -724,295 +730,127 @@ export default function DistributorWalletPage() {
         )}
       </div>
 
-      {/* TOP-UP MODAL (Portal covers entire screen) */}
+      {/* TOP-UP MODAL (Notice: Contact Provider Only) */}
       {isTopupModalOpen && mounted && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#101828]/70 backdrop-blur-[3px] p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setIsTopupModalOpen(false);
-              setFormError(null);
-              setReceiptError(null);
             }
           }}
         >
-          <div className="relative w-full max-w-4xl lg:max-w-[920px] rounded-[14px] bg-white p-4 sm:p-6 shadow-2xl border border-[#E6EAF0] my-auto">
+          <div className="relative w-full max-w-md rounded-[12px] bg-white p-5 sm:p-6 shadow-elevated border border-[#E6EAF0] my-auto space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3 mb-3.5">
+            <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B] shrink-0">
-                  <Wallet className="h-4.5 w-4.5" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B] shrink-0">
+                  <PhoneCall className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#172033] leading-tight">Top Up Distributor Wallet</h3>
-                  <p className="text-[11px] text-[#667085]">Instant balance recharge with payment screenshot upload &amp; verification</p>
+                  <h3 className="text-base font-bold text-[#172033]">Contact Your Provider</h3>
+                  <p className="text-xs text-[#667085]">Distributor Wallet Top-Up Notice</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsTopupModalOpen(false)}
-                className="rounded-full p-1 text-[#98A2B3] hover:bg-[#F2F4F7] hover:text-[#344054]"
+                className="rounded-full p-1 text-[#98A2B3] hover:bg-[#F2F4F7] hover:text-[#344054] transition-colors"
+                title="Close"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Form - Side-by-side Single-View Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-              {/* LEFT COLUMN: Payment Method & QR Card (col-span-5) */}
-              <div className="md:col-span-5 space-y-3">
-                {/* Payment Method Selector */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#344054] uppercase tracking-wider mb-1">
-                    Select Payment Method
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleMethodChange('OFFLINE_QR')}
-                      disabled={!offlineEnabled}
-                      className={`flex items-center gap-2 p-2 rounded-[7px] border text-left transition-all ${
-                        topupMethod === 'OFFLINE_QR'
-                          ? 'border-[#C98219] bg-[#FEF7E6] text-[#172033] font-bold shadow-2xs'
-                          : 'border-[#E6EAF0] bg-white text-[#475467] hover:bg-[#F8FAFC]'
-                      } ${!offlineEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <QrCode className="h-4 w-4 text-[#C98219] shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold leading-tight">UPI / QR</div>
-                        <div className="text-[10px] text-[#667085] leading-tight">0% Fee • Proof</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleMethodChange('ONLINE')}
-                      disabled={!onlineEnabled}
-                      className={`flex items-center gap-2 p-2 rounded-[7px] border text-left transition-all ${
-                        topupMethod === 'ONLINE'
-                          ? 'border-[#C98219] bg-[#FEF7E6] text-[#172033] font-bold shadow-2xs'
-                          : 'border-[#E6EAF0] bg-white text-[#475467] hover:bg-[#F8FAFC]'
-                      } ${!onlineEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <CreditCard className="h-4 w-4 text-[#175CD3] shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold leading-tight">Online Gateway</div>
-                        <div className="text-[10px] text-[#667085] leading-tight">Instant Credit</div>
-                      </div>
-                    </button>
-                  </div>
+            {/* Body */}
+            <div className="space-y-4 pt-1">
+              {/* Informational Message Banner */}
+              <div className="rounded-[10px] bg-[#EFF8FF] border border-[#B2DDFF] p-4 flex items-start gap-3">
+                <Building2 className="h-5 w-5 text-[#175CD3] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#175CD3] leading-relaxed">
+                  <p className="font-bold text-sm text-[#102A43] mb-1">
+                    Direct top-up is managed by your provider
+                  </p>
+                  <p className="text-[#344054]">
+                    Distributor wallets are credited directly by your assigned Franchise Provider. Please contact your provider to recharge your distributor wallet balance.
+                  </p>
                 </div>
-
-                {/* QR Card (when OFFLINE_QR) */}
-                {topupMethod === 'OFFLINE_QR' ? (
-                  <div className="rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF0] p-3 text-center">
-                    <p className="text-[11px] font-bold text-[#172033] mb-1.5">Scan &amp; Pay via Any UPI App</p>
-
-                    {(paymentConfig?.offlineQrImageUrl || paymentConfig?.offlineQrCodeUrl) ? (
-                      <div className="mx-auto w-36 h-36 bg-white p-1.5 rounded-[8px] border border-[#E6EAF0] shadow-2xs flex items-center justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={paymentConfig.offlineQrImageUrl || paymentConfig.offlineQrCodeUrl}
-                          alt="Official UPI QR Code"
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="mx-auto w-36 h-36 bg-white p-2 rounded-[8px] border border-[#E6EAF0] shadow-2xs flex flex-col items-center justify-center text-[#667085]">
-                        <QrCode className="h-12 w-12 text-[#C98219] mb-1" />
-                        <span className="text-[10px] font-bold">Official UPI QR</span>
-                      </div>
-                    )}
-
-                    {paymentConfig?.offlineAccountName && (
-                      <p className="text-[10.5px] font-semibold text-[#475467] mt-1.5 truncate">
-                        Account: <span className="text-[#172033] font-bold">{paymentConfig.offlineAccountName}</span>
-                      </p>
-                    )}
-
-                    {paymentConfig?.offlineUpiId && (
-                      <div className="mt-2 flex items-center justify-center gap-1.5">
-                        <span className="font-mono text-[11px] font-bold text-[#172033] bg-white px-2 py-0.5 rounded border border-[#E6EAF0] truncate max-w-[190px]">
-                          {paymentConfig.offlineUpiId}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={copyUpi}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#C98219] hover:underline shrink-0"
-                        >
-                          {copiedUpi ? <Check className="h-3 w-3 text-[#198754]" /> : <Copy className="h-3 w-3" />}
-                          <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-[10px] bg-[#EFF8FF] border border-[#B2DDFF] p-4 text-center space-y-2">
-                    <CreditCard className="h-8 w-8 text-[#175CD3] mx-auto" />
-                    <p className="text-xs font-bold text-[#175CD3]">Online Payment Gateway</p>
-                    <p className="text-[11px] text-[#475467]">
-                      Click submit to proceed to the secure online checkout gateway for automated instant wallet credit.
-                    </p>
-                  </div>
-                )}
               </div>
 
-              {/* RIGHT COLUMN: Amount, UTR, Screenshot, Errors & Actions (col-span-7) */}
-              <div className="md:col-span-7 flex flex-col justify-between space-y-3">
-                {/* Top-Up Amount Selection */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#344054] uppercase tracking-wider mb-1">
-                    Top-Up Amount (₹)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#667085]">₹</span>
-                    <input
-                      type="number"
-                      min="100"
-                      step="50"
-                      value={topupAmount}
-                      onChange={(e) => setTopupAmount(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full rounded-[7px] border border-[#D0D5DD] pl-8 pr-3 py-1.5 text-sm font-bold text-[#172033] focus:border-[#C98219] focus:outline-none focus:ring-1 focus:ring-[#C98219]"
-                      placeholder="Enter amount"
-                    />
+              {/* Provider Contact Card */}
+              {assignedPartner ? (
+                <div className="rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF0] p-4 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-2">
+                    <span className="text-[10px] uppercase font-bold text-[#667085] tracking-wider">
+                      Assigned Franchise Provider
+                    </span>
+                    <span className="font-mono text-[10.5px] font-bold text-[#C98219] bg-[#FEF7E6] px-2 py-0.5 rounded border border-[#F9DE9B]">
+                      {assignedPartner.partnerCode}
+                    </span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {[500, 1000, 2000, 5000, 10000].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => setTopupAmount(amt)}
-                        className={`px-2 py-0.5 text-[11px] rounded-[5px] border font-semibold transition-all ${
-                          topupAmount === amt
-                            ? 'border-[#C98219] bg-[#FEF7E6] text-[#8F5A0D] font-bold'
-                            : 'border-[#E6EAF0] bg-white text-[#475467] hover:bg-[#F8FAFC]'
-                        }`}
-                      >
-                        +{formatINR(amt)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* OFFLINE DETAILS: UTR & Receipt */}
-                {topupMethod === 'OFFLINE_QR' && (
-                  <>
-                    {/* 12-Digit UTR Number (Optional) */}
-                    <div>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <label className="text-[11px] font-bold text-[#344054] uppercase tracking-wider">
-                          12-Digit UPI Ref / UTR Number <span className="text-[10px] font-normal text-[#667085] lowercase">(optional)</span>
-                        </label>
-                        <span className="text-[10px] text-[#667085]">From UPI app transaction details</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={paymentRef}
-                        onChange={(e) => setPaymentRef(e.target.value)}
-                        placeholder="e.g. 432109876543 (optional)"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] px-3 py-1.5 text-xs font-mono text-[#172033] focus:border-[#C98219] focus:outline-none focus:ring-1 focus:ring-[#C98219]"
-                      />
-                    </div>
-
-                    {/* Screenshot Upload */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#344054] uppercase tracking-wider mb-1">
-                        Payment Screenshot / Receipt <span className="text-[#C2413B]">*</span>
-                      </label>
-
-                      {!receiptFile ? (
-                        <div
-                          onClick={() => fileInputRef.current?.click()}
-                          className="border-2 border-dashed border-[#D0D5DD] hover:border-[#C98219] rounded-[7px] p-2.5 text-center cursor-pointer bg-[#F8FAFC] transition-colors"
-                        >
-                          <Upload className="h-5 w-5 text-[#98A2B3] mx-auto mb-1" />
-                          <p className="text-xs font-semibold text-[#172033]">
-                            Click to upload payment screenshot
-                          </p>
-                          <p className="text-[10px] text-[#667085]">JPG, PNG, or PDF (Max 5 MB)</p>
-                        </div>
-                      ) : (
-                        <div className="rounded-[7px] border border-[#B2DDFF] bg-[#EFF8FF] p-2 flex items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {receiptPreview ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={receiptPreview}
-                                alt="Receipt Preview"
-                                className="h-8 w-8 rounded object-cover border border-[#B2DDFF] shrink-0"
-                              />
-                            ) : (
-                              <FileText className="h-7 w-7 text-[#175CD3] shrink-0" />
-                            )}
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-[#172033] truncate">{receiptFileName}</p>
-                              <p className="text-[9.5px] text-[#667085]">
-                                {(receiptFileSize / 1024).toFixed(1)} KB • Ready to submit
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleRemoveReceipt}
-                            className="p-1 rounded text-[#C2413B] hover:bg-[#FDECEC]"
-                            title="Remove file"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
-                        className="hidden"
-                        onChange={handleFileChange}
-                      />
-
-                      {receiptError && (
-                        <p className="text-[10.5px] text-[#C2413B] font-medium mt-1 flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3 shrink-0" />
-                          <span>{receiptError}</span>
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Form Error (if any) */}
-                {formError && (
-                  <div className="rounded-[7px] bg-[#FDECEC] border border-[#F8C4C2] p-2 text-[11.5px] text-[#C2413B] flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span className="leading-tight">{formError}</span>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-[#E6EAF0]">
-                  <button
-                    type="button"
-                    onClick={() => setIsTopupModalOpen(false)}
-                    className="px-3.5 py-1.5 text-xs font-semibold text-[#667085] hover:text-[#172033]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTopup}
-                    disabled={topupLoading}
-                    className="inline-flex items-center gap-1.5 rounded-[7px] bg-[#C98219] hover:bg-[#B57414] px-4 py-1.5 text-xs font-bold text-white shadow-2xs transition-all disabled:opacity-50"
-                  >
-                    {topupLoading ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        <span>Submitting...</span>
-                      </>
-                    ) : (
-                      <span>Submit Top-Up Request</span>
+                  <div>
+                    <p className="text-sm font-bold text-[#172033]">{assignedPartner.name}</p>
+                    {(assignedPartner.district || assignedPartner.taluk) && (
+                      <p className="text-[11.5px] text-[#667085]">
+                        {[assignedPartner.taluk, assignedPartner.district].filter(Boolean).join(', ')}
+                      </p>
                     )}
-                  </button>
+                  </div>
+                  <div className="pt-1 space-y-1.5 border-t border-[#E6EAF0]">
+                    {assignedPartner.mobile && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#667085]">Phone / Mobile:</span>
+                        <a
+                          href={`tel:${assignedPartner.mobile}`}
+                          className="font-mono font-bold text-[#175CD3] hover:underline"
+                        >
+                          {assignedPartner.mobile}
+                        </a>
+                      </div>
+                    )}
+                    {assignedPartner.email && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#667085]">Email:</span>
+                        <a
+                          href={`mailto:${assignedPartner.email}`}
+                          className="font-mono text-[#475467] hover:underline"
+                        >
+                          {assignedPartner.email}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              ) : (
+                <div className="rounded-[10px] bg-[#FAFBFD] border border-[#E6EAF0] p-4 text-xs text-[#475467] space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-[#172033]">
+                    <ShieldCheck className="h-4 w-4 text-[#C98219]" />
+                    <span>Authorized Support Assistance</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    Please reach out to your franchise provider or the SevaTN support desk to recharge your distributor wallet.
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-[#E6EAF0]">
+                {assignedPartner?.mobile && (
+                  <a
+                    href={`tel:${assignedPartner.mobile}`}
+                    className="inline-flex items-center gap-1.5 rounded-[7px] bg-[#198754] hover:bg-[#157347] px-4 py-2 text-xs font-bold text-white transition-all shadow-subtle"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    <span>Call Provider</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsTopupModalOpen(false)}
+                  className="rounded-[7px] bg-[#172033] hover:bg-[#2A3750] px-4 py-2 text-xs font-bold text-white transition-all shadow-subtle"
+                >
+                  Understood, Close
+                </button>
               </div>
             </div>
           </div>

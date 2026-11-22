@@ -24,6 +24,7 @@ import {
   Layers,
   Activity,
   UserCheck,
+  Wallet,
 } from 'lucide-react';
 
 export default function PartnerOverviewPage() {
@@ -245,6 +246,13 @@ export default function PartnerOverviewPage() {
       {/* Quick Actions Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Link
+          href="/partner/wallet"
+          className="flex items-center gap-2.5 rounded-[8px] border border-[#B2DDFF] bg-[#EFF8FF] p-3.5 text-xs font-bold text-[#175CD3] hover:border-[#175CD3] hover:bg-[#E0F2FE] transition-all shadow-subtle"
+        >
+          <Wallet className="h-4 w-4 text-[#175CD3]" />
+          <span>Wallet &amp; Share Funds</span>
+        </Link>
+        <Link
           href="/partner/distributors"
           className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
         >
@@ -257,13 +265,6 @@ export default function PartnerOverviewPage() {
         >
           <DollarSign className="h-4 w-4 text-[#C98219]" />
           <span>Manage Ticket Markup</span>
-        </Link>
-        <Link
-          href="/partner/payouts"
-          className="flex items-center gap-2.5 rounded-[8px] border border-[#E6EAF0] bg-white p-3.5 text-xs font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FDF7ED] transition-all shadow-subtle"
-        >
-          <TrendingUp className="h-4 w-4 text-[#C98219]" />
-          <span>Markup Payouts</span>
         </Link>
         <Link
           href="/partner/centres"
