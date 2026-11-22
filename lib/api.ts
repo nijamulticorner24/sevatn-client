@@ -723,6 +723,12 @@ class ApiClient {
     });
   }
 
+  async deleteCentre(id: string) {
+    return this.request(`/admin/centres/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
   async adjustDistributorWallet(id: string, data: { amount: number; action: 'CREDIT' | 'DEBIT'; reason?: string }) {
     return this.request(`/admin/distributors/${id}/wallet-adjust`, {
       method: 'POST',

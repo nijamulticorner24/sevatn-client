@@ -32,6 +32,7 @@ import {
   Wallet,
   ArrowDown,
   ArrowUp,
+  Trash2,
 } from 'lucide-react';
 import { MetricBlock } from '../../../components/MetricBlock';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -302,6 +303,29 @@ export default function AdminCentresPage() {
           loadData();
         } catch (err: any) {
           toast.error(err.message || 'Failed to reissue activation');
+        } finally {
+          setConfirmLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteCentre = (centre: any) => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Delete Centre Account',
+      description: `Are you sure you want to permanently delete centre '${centre.centreName}' (${centre.centreCode || 'Pending Code'})? This will permanently remove the centre profile, user login credentials, registered location, and associated wallet. This action cannot be undone.`,
+      confirmLabel: 'Delete Centre',
+      isDestructive: true,
+      action: async () => {
+        setConfirmLoading(true);
+        try {
+          await api.deleteCentre(centre.id);
+          toast.success(`Centre '${centre.centreName}' has been permanently deleted.`);
+          setConfirmAction((prev) => ({ ...prev, isOpen: false }));
+          loadData();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete centre');
         } finally {
           setConfirmLoading(false);
         }
@@ -677,6 +701,15 @@ export default function AdminCentresPage() {
                             title={isActive ? 'Suspend Centre' : 'Activate Centre'}
                           >
                             {isActive ? 'Suspend' : 'Activate'}
+                          </button>
+
+                          {/* Delete Centre Button */}
+                          <button
+                            onClick={() => handleDeleteCentre(c)}
+                            className="flex h-7 w-7 items-center justify-center rounded border border-red-200 bg-white text-red-600 hover:text-white hover:bg-red-600 hover:border-red-600 transition-colors"
+                            title="Delete Centre Permanently"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
