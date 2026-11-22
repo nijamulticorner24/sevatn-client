@@ -26,8 +26,10 @@ import {
   AlertTriangle,
   X,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { useToast } from '../../../components/ui/Toast';
 
 export default function AdminDistributorsPage() {
@@ -45,6 +47,24 @@ export default function AdminDistributorsPage() {
   const [walletAdjustAmount, setWalletAdjustAmount] = useState<string>('500');
   const [walletAdjustReason, setWalletAdjustReason] = useState<string>('');
   const [walletSubmitting, setWalletSubmitting] = useState(false);
+
+  // Confirm Dialog State
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    isDestructive: boolean;
+    action: () => Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    confirmLabel: 'Confirm',
+    isDestructive: false,
+    action: async () => {},
+  });
 
   useEffect(() => {
     loadDistributors();
@@ -93,6 +113,29 @@ export default function AdminDistributorsPage() {
     } finally {
       setWalletSubmitting(false);
     }
+  };
+
+  const handleDeleteDistributor = (distributor: any) => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Delete Distributor Account',
+      description: `Are you sure you want to permanently delete distributor '${distributor.name}' (${distributor.distributorCode})? This will permanently remove the distributor account, login credentials, and wallet balance. Any affiliated centres will be detached. This action cannot be undone.`,
+      confirmLabel: 'Delete Distributor',
+      isDestructive: true,
+      action: async () => {
+        setConfirmLoading(true);
+        try {
+          await api.deleteDistributor(distributor.id);
+          toast.success(`Distributor '${distributor.name}' has been permanently deleted.`);
+          setConfirmAction((prev) => ({ ...prev, isOpen: false }));
+          loadDistributors();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete distributor');
+        } finally {
+          setConfirmLoading(false);
+        }
+      },
+    });
   };
 
   const copyToClipboard = (text: string, id: string) => {
@@ -333,17 +376,28 @@ export default function AdminDistributorsPage() {
                       {formatDate(d.createdAt)}
                     </td>
 
-                    {/* Actions: Adjust Wallet (Icon Only) */}
+                    {/* Actions: Adjust Wallet & Delete */}
                     <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => openWalletAdjustModal(d)}
-                        className="p-1.5 rounded-[6px] border border-[#F9DE9B] bg-[#FEF7E6] text-[#C98219] hover:bg-[#FCE0A6] hover:text-[#8F5A0D] transition-colors shadow-2xs inline-flex items-center justify-center"
-                        title="Adjust Wallet (Increase / Decrease Funds)"
-                        aria-label="Adjust Wallet"
-                      >
-                        <Wallet className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openWalletAdjustModal(d)}
+                          className="p-1.5 rounded-[6px] border border-[#F9DE9B] bg-[#FEF7E6] text-[#C98219] hover:bg-[#FCE0A6] hover:text-[#8F5A0D] transition-colors shadow-2xs inline-flex items-center justify-center"
+                          title="Adjust Wallet (Increase / Decrease Funds)"
+                          aria-label="Adjust Wallet"
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDistributor(d)}
+                          className="p-1.5 rounded-[6px] border border-red-200 bg-white text-red-600 hover:text-white hover:bg-red-600 hover:border-red-600 transition-colors shadow-2xs inline-flex items-center justify-center"
+                          title="Delete Distributor Permanently"
+                          aria-label="Delete Distributor"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -497,15 +551,26 @@ export default function AdminDistributorsPage() {
                         </span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => openWalletAdjustModal(d)}
-                      className="p-1.5 rounded-[6px] border border-[#F9DE9B] bg-[#FEF7E6] text-[#C98219] hover:bg-[#FCE0A6] hover:text-[#8F5A0D] transition-colors shadow-2xs inline-flex items-center justify-center"
-                      title="Adjust Wallet (Increase / Decrease Funds)"
-                      aria-label="Adjust Wallet"
-                    >
-                      <Wallet className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openWalletAdjustModal(d)}
+                        className="p-1.5 rounded-[6px] border border-[#F9DE9B] bg-[#FEF7E6] text-[#C98219] hover:bg-[#FCE0A6] hover:text-[#8F5A0D] transition-colors shadow-2xs inline-flex items-center justify-center"
+                        title="Adjust Wallet (Increase / Decrease Funds)"
+                        aria-label="Adjust Wallet"
+                      >
+                        <Wallet className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDistributor(d)}
+                        className="p-1.5 rounded-[6px] border border-red-200 bg-white text-red-600 hover:text-white hover:bg-red-600 hover:border-red-600 transition-colors shadow-2xs inline-flex items-center justify-center"
+                        title="Delete Distributor Permanently"
+                        aria-label="Delete Distributor"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -727,6 +792,19 @@ export default function AdminDistributorsPage() {
           </div>
         </div>
       )}
+
+      {/* CONFIRMATION DIALOG: DELETE DISTRIBUTOR */}
+      <ConfirmDialog
+        isOpen={confirmAction.isOpen}
+        title={confirmAction.title}
+        description={confirmAction.description}
+        confirmLabel={confirmAction.confirmLabel}
+        cancelLabel="Cancel"
+        isDestructive={confirmAction.isDestructive}
+        loading={confirmLoading}
+        onConfirm={confirmAction.action}
+        onCancel={() => setConfirmAction((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

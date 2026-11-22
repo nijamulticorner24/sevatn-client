@@ -1244,6 +1244,12 @@ class ApiClient {
   async getAllDistributorsAdmin() {
     return this.request('/admin/distributors');
   }
+
+  async deleteDistributor(id: string) {
+    return this.request(`/admin/distributors/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const api = new ApiClient();
