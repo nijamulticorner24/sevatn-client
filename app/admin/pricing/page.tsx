@@ -263,7 +263,7 @@ export default function AdminPricingConfigPage() {
               <Sparkles className="h-4 w-4 text-[#198754]" />
             </div>
             <div className="text-2xl font-black text-[#198754]">{formatINR(maxPossiblePrice)}</div>
-            <p className="text-[10.5px] text-[#198754] mt-1">₹{basePrice} + ₹{maxPartner} + ₹{maxDistributor}</p>
+            <p className="text-[10.5px] text-[#198754] mt-1">🪙 {basePrice} + 🪙 {maxPartner} + 🪙 {maxDistributor}</p>
           </div>
         </div>
 
@@ -271,10 +271,10 @@ export default function AdminPricingConfigPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Base Ticket Price (₹) *
+              Base Ticket Price (Chips) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 step="0.5"
@@ -290,10 +290,10 @@ export default function AdminPricingConfigPage() {
 
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Maximum Partner Markup Cap (₹) *
+              Maximum Partner Markup Cap (Chips) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 step="0.5"
@@ -309,10 +309,10 @@ export default function AdminPricingConfigPage() {
 
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Maximum Distributor Markup Cap (₹) *
+              Maximum Distributor Markup Cap (Chips) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 step="0.5"
@@ -388,10 +388,10 @@ export default function AdminPricingConfigPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Service Fee per Booking (₹) *
+              Service Fee per Booking (Chips) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 min="0"
@@ -406,10 +406,10 @@ export default function AdminPricingConfigPage() {
 
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Centre Onboarding Fee (₹) *
+              Centre Onboarding Fee (Chips) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 min="0"
@@ -419,15 +419,15 @@ export default function AdminPricingConfigPage() {
                 required
               />
             </div>
-            <p className="text-[11px] text-[#667085] mt-1">One-time registration for Booking / CSC centres (Default: ₹249).</p>
+            <p className="text-[11px] text-[#667085] mt-1">One-time registration for Booking / CSC centres (Default: 🪙 249).</p>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Distributor License Fee (₹) *
+              Distributor License Fee (Chips) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 min="0"
@@ -437,15 +437,15 @@ export default function AdminPricingConfigPage() {
                 required
               />
             </div>
-            <p className="text-[11px] text-[#667085] mt-1">One-time authorized distributor network license (Default: ₹399).</p>
+            <p className="text-[11px] text-[#667085] mt-1">One-time authorized distributor network license (Default: 🪙 399).</p>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Partner Franchise License Fee (₹) *
+              Partner Franchise License Fee (Chips) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 min="0"
@@ -455,16 +455,16 @@ export default function AdminPricingConfigPage() {
                 required
               />
             </div>
-            <p className="text-[11px] text-[#667085] mt-1">One-time regional franchise partner onboarding fee (Default: ₹599).</p>
+            <p className="text-[11px] text-[#667085] mt-1">One-time regional franchise partner onboarding fee (Default: 🪙 599).</p>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5 flex items-center justify-between">
-              <span>Partner Min Withdrawal (₹) *</span>
+              <span>Partner Min Withdrawal (Chips) *</span>
               <span className="text-[10px] font-bold text-[#C98219] bg-[#FEF7E6] px-1.5 py-0.5 rounded border border-[#F9DE9B]">Payout Limit</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 min="1"
@@ -474,7 +474,7 @@ export default function AdminPricingConfigPage() {
                 required
               />
             </div>
-            <p className="text-[11px] text-[#667085] mt-1">Minimum wallet balance partner can request to withdraw (Default: ₹100).</p>
+            <p className="text-[11px] text-[#667085] mt-1">Minimum wallet balance partner can request to withdraw (Default: 🪙 100).</p>
           </div>
         </div>
       </div>

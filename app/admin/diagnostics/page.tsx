@@ -634,10 +634,10 @@ export default function DiagnosticsPage() {
                   </span>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span className="font-mono text-2xl font-extrabold text-[#172033]">
-                      ₹{(kpis?.successfulBookingValue ?? 0).toFixed(2)}
+                      🪙 {(kpis?.successfulBookingValue ?? 0).toFixed(2)}
                     </span>
                     <span className="text-[10px] font-bold text-[#667085]">
-                      @ ₹{metadata?.systemServiceFee ?? 100}/pass
+                      @ 🪙 {metadata?.systemServiceFee ?? 100}/pass
                     </span>
                   </div>
                   <span className="text-[11px] text-[#667085] mt-1 block">Expected gross confirmed value</span>
@@ -646,11 +646,11 @@ export default function DiagnosticsPage() {
                 {/* 10. Actual Collected Amount (Ledger Capture) */}
                 <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle">
                   <span className="text-[10.5px] font-bold text-[#667085] uppercase tracking-wider block">
-                    Actual Collected Money
+                    Actual Collected Chips
                   </span>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span className="font-mono text-2xl font-extrabold text-[#027A48]">
-                      ₹{(kpis?.actualCollectedAmount ?? 0).toFixed(2)}
+                      🪙 {(kpis?.actualCollectedAmount ?? 0).toFixed(2)}
                     </span>
                     <span className="rounded bg-[#FEF7E6] border border-[#F9DE9B] px-1.5 py-0.5 text-[10px] font-bold text-[#8F5A0D]">
                       Ledger Verified
@@ -666,7 +666,7 @@ export default function DiagnosticsPage() {
                   </span>
                   <div className="mt-1 flex items-baseline justify-between">
                     <span className="font-mono text-2xl font-extrabold text-[#172033]">
-                      ₹{(kpis?.averageBookingAmount ?? 0).toFixed(2)}
+                      🪙 {(kpis?.averageBookingAmount ?? 0).toFixed(2)}
                     </span>
                     <span className="text-[10px] font-mono text-[#667085]">Per pass</span>
                   </div>
@@ -843,10 +843,10 @@ export default function DiagnosticsPage() {
                               {u.failedCount}
                             </td>
                             <td className="py-3 px-3 text-right font-mono font-bold text-[#172033]">
-                              ₹{u.successfulValue.toFixed(2)}
+                              🪙 {u.successfulValue.toFixed(2)}
                             </td>
                             <td className="py-3 px-3 text-right font-mono font-bold text-[#027A48]">
-                              ₹{u.actualPaid.toFixed(2)}
+                              🪙 {u.actualPaid.toFixed(2)}
                             </td>
                             <td className="py-3 px-3 whitespace-nowrap">
                               <span
@@ -1073,10 +1073,10 @@ export default function DiagnosticsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle">
                   <span className="text-[10.5px] font-bold text-[#667085] uppercase tracking-wider block">
-                    Actual Collected Money
+                    Actual Collected Chips
                   </span>
                   <div className="mt-1 font-mono text-2xl font-extrabold text-[#027A48]">
-                    ₹{(kpis?.actualCollectedAmount ?? 0).toFixed(2)}
+                    🪙 {(kpis?.actualCollectedAmount ?? 0).toFixed(2)}
                   </div>
                   <span className="text-[11px] text-[#667085] mt-1 block">
                     Authoritative wallet debits (CAPTUREs)
@@ -1088,7 +1088,7 @@ export default function DiagnosticsPage() {
                     Yuktron / Platform Share
                   </span>
                   <div className="mt-1 font-mono text-2xl font-extrabold text-[#C98219]">
-                    ₹{(kpis?.platformRevenue ?? 0).toFixed(2)}
+                    🪙 {(kpis?.platformRevenue ?? 0).toFixed(2)}
                   </div>
                   <span className="text-[11px] text-[#667085] mt-1 block">
                     Authoritative net platform revenue
@@ -1100,7 +1100,7 @@ export default function DiagnosticsPage() {
                     Reserved / Pending Funds
                   </span>
                   <div className="mt-1 font-mono text-2xl font-extrabold text-[#8F5A0D]">
-                    ₹{(kpis?.pendingReservedAmount ?? 0).toFixed(2)}
+                    🪙 {(kpis?.pendingReservedAmount ?? 0).toFixed(2)}
                   </div>
                   <span className="text-[11px] text-[#8F5A0D] mt-1 block">
                     Escrow-reserved for pending passes
@@ -1112,7 +1112,7 @@ export default function DiagnosticsPage() {
                     Refunded Funds
                   </span>
                   <div className="mt-1 font-mono text-2xl font-extrabold text-[#C2413B]">
-                    ₹{(kpis?.refundedAmount ?? 0).toFixed(2)}
+                    🪙 {(kpis?.refundedAmount ?? 0).toFixed(2)}
                   </div>
                   <span className="text-[11px] text-[#C2413B] mt-1 block">
                     Authoritative ledger refunds issued
@@ -1158,7 +1158,7 @@ export default function DiagnosticsPage() {
                             <td className="py-3 px-4 text-center font-mono font-bold text-[#027A48]">{s.success}</td>
                             <td className="py-3 px-4 text-center font-mono font-bold text-[#C98219]">{conv}%</td>
                             <td className="py-3 px-4 text-right font-mono font-bold text-[#172033]">
-                              ₹{s.value.toFixed(2)}
+                              🪙 {s.value.toFixed(2)}
                             </td>
                           </tr>
                         );
@@ -1433,7 +1433,7 @@ export default function DiagnosticsPage() {
                   <div>
                     <span className="text-[#667085] block font-medium">Wallet Balance:</span>
                     <strong className="text-[#027A48] font-mono">
-                      ₹{userDetailData.wallet.availableBalance.toFixed(2)}
+                      🪙 {userDetailData.wallet.availableBalance.toFixed(2)}
                     </strong>
                   </div>
                   <div>

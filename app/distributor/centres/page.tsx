@@ -605,19 +605,19 @@ export default function DistributorCentresPage() {
                     <div>
                       <span className="font-bold text-[#172033] block">Distributor Wallet Balance</span>
                       <span className="text-[11px] text-[#667085]">
-                        Available: {distributorWallet?.availableBalance !== undefined ? formatINR(Number(distributorWallet.availableBalance)) : '₹...'}
+                        Available: {distributorWallet?.availableBalance !== undefined ? formatINR(Number(distributorWallet.availableBalance)) : '🪙 ...'}
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="font-bold text-[#172033] text-sm block">₹249.00</span>
+                    <span className="font-bold text-[#172033] text-sm block">🪙 249.00</span>
                     <span className="text-[10.5px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       Auto-Deducted On Creation
                     </span>
                   </div>
                 </div>
                 <p className="text-[11px] text-[#475467] leading-relaxed pt-1 border-t border-[#EAECF0]">
-                  ₹249.00 will be debited from your distributor wallet to fully activate this centre account. 
+                  🪙 249.00 will be debited from your distributor wallet to fully activate this centre account. 
                   The centre operator will <span className="font-semibold text-emerald-700">never be asked to pay an onboarding fee</span> on login and will have instant access to book darshan.
                 </p>
                 {distributorWallet?.availableBalance !== undefined && Number(distributorWallet.availableBalance) < 249 && (
@@ -655,7 +655,7 @@ export default function DistributorCentresPage() {
                     className="flex items-center gap-2 px-5 py-2 rounded-[7px] bg-[#C98219] hover:bg-[#A86B14] text-white text-xs font-bold shadow-subtle transition-colors disabled:opacity-50"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>{submitting ? 'Creating Centre...' : 'Create & Deduct ₹249 from Wallet'}</span>
+                    <span>{submitting ? 'Creating Centre...' : 'Create & Deduct 249 Chips from Wallet'}</span>
                   </button>
                 </div>
               </div>
@@ -759,7 +759,7 @@ export default function DistributorCentresPage() {
               <div className="rounded-[8px] bg-[#EAF7EE] border border-[#BFE4C9] p-3 text-[11.5px] text-[#198754] leading-relaxed flex items-start gap-2">
                 <span className="text-sm">✅</span>
                 <span>
-                  <strong>Full Activation Guaranteed:</strong> The onboarding fee of ₹249.00 has been debited directly from your Distributor Wallet. The operator will <strong>never be asked for payment</strong> on login and only needs to set their permanent password to start booking.
+                  <strong>Full Activation Guaranteed:</strong> The onboarding fee of 🪙 249.00 has been debited directly from your Distributor Wallet. The operator will <strong>never be asked for payment</strong> on login and only needs to set their permanent password to start booking.
                 </span>
               </div>
 

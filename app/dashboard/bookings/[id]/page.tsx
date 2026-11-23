@@ -343,7 +343,7 @@ export default function BookingDetailPage() {
                   <div className="flex items-center gap-1.5 bg-[#F7F9FC] border border-[#E6EAF0] px-3 py-1 rounded-[6px]">
                     <span className="text-[#475467] font-medium">Service Fee:</span>
                     <span className={`font-semibold ${booking.financialStatus === 'CAPTURED' ? 'text-[#155724]' : 'text-[#8F5A0D]'}`}>
-                      {booking.financialStatus === 'CAPTURED' ? '₹100.00 Captured' : (booking.financialStatus || 'Reserved')}
+                      {booking.financialStatus === 'CAPTURED' ? '🪙 100.00 Captured' : (booking.financialStatus || 'Reserved')}
                     </span>
                   </div>
                   {durationText && (

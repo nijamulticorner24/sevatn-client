@@ -595,7 +595,7 @@ function PartnerCentresContent() {
                   <Wallet className="h-4 w-4 text-[#C98219] shrink-0" />
                   <div>
                     <span className="font-bold text-[#8F5A0D]">Centre Onboarding Fee:</span>
-                    <span className="ml-1 text-[#172033] font-mono font-bold">₹249.00</span>
+                    <span className="ml-1 text-[#172033] font-mono font-bold">🪙 249.00</span>
                     <span className="block text-[10.5px] text-[#667085]">Automatically deducted from your Partner Wallet</span>
                   </div>
                 </div>
@@ -609,7 +609,7 @@ function PartnerCentresContent() {
 
               {Number(partnerWallet?.availableBalance || 0) < 249 && (
                 <div className="rounded-[8px] bg-[#FDECEC] border border-[#F8C4C2] p-2.5 text-xs text-[#992B26] flex items-center justify-between">
-                  <span>Insufficient wallet balance. Minimum ₹249 required to onboard.</span>
+                  <span>Insufficient wallet balance. Minimum 🪙 249 required to onboard.</span>
                   <Link href="/partner/wallet" className="font-bold underline text-[#C2413B] hover:text-[#992B26]">
                     Recharge Wallet
                   </Link>
@@ -792,7 +792,7 @@ function PartnerCentresContent() {
                   ) : (
                     <>
                       <Plus className="h-4 w-4" />
-                      <span>Provision Centre & Deduct ₹249 from Wallet</span>
+                      <span>Provision Centre & Deduct 249 Chips from Wallet</span>
                     </>
                   )}
                 </button>

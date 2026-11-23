@@ -112,7 +112,7 @@ export default function RefundPolicyPage() {
                   <h2 className="text-xl font-bold text-[#171717]">Registration Fee</h2>
                 </div>
                 <p>
-                  The currently stated centre registration fee is <strong>₹500</strong>, subject to the specific fee amount displayed and confirmed during the checkout and onboarding process.
+                  The currently stated centre registration fee is <strong>🪙 500</strong>, subject to the specific fee amount displayed and confirmed during the checkout and onboarding process.
                 </p>
                 <p>
                   Once an onboarding payment is confirmed, centre credentials generated, and the 365-day platform activation granted, the registration fee is non-refundable as it covers dedicated infrastructure provisioning, cryptographic certificate setup, and localized partner coordination.
@@ -186,7 +186,7 @@ export default function RefundPolicyPage() {
                   A pending or failed payment must not be treated as a successful deposit. A temporary booking reservation must never be treated as a completed charge without verifying the authoritative transaction record in the platform ledger.
                 </p>
                 <p>
-                  Refunds of unreserved available wallet balances are subject to administrator review, anti-money-laundering verification, and applicable law. The platform does not promise automatic instant withdrawal or a fixed processing window without prior verification.
+                  Refunds of unreserved available wallet balances are subject to administrator review, anti-financial-fraud verification, and applicable law. The platform does not promise automatic instant withdrawal or a fixed processing window without prior verification.
                 </p>
               </section>
 
@@ -201,7 +201,7 @@ export default function RefundPolicyPage() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                   <li>
-                    <strong>Confirmation-Contingent Charge:</strong> Service fees (e.g. ₹100 per pass) are permanently captured only when an official, verifiable booking confirmation reference is generated and stored in the system.
+                    <strong>Confirmation-Contingent Charge:</strong> Service fees (e.g. 🪙 100 per pass) are permanently captured only when an official, verifiable booking confirmation reference is generated and stored in the system.
                   </li>
                   <li>
                     <strong>No Charge on Unsuccessful Attempts:</strong> If slot availability closes, a worker PC job times out, or the official portal rejects an entry, the held reservation is automatically released back to the centre&apos;s available wallet. No fee is deducted.

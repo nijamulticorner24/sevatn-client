@@ -668,7 +668,7 @@ export default function AdminDistributorsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block font-semibold text-[#344054]">
-                    Adjustment Amount (₹) <span className="text-red-500">*</span>
+                    Adjustment Amount (Chips) <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-1 flex-wrap">
                     {[500, 1000, 2000, 5000, 10000].map((preset) => (
@@ -678,13 +678,13 @@ export default function AdminDistributorsPage() {
                         onClick={() => setWalletAdjustAmount(preset.toString())}
                         className="px-2 py-0.5 rounded bg-[#F8FAFC] hover:bg-[#F2F4F7] text-[10.5px] font-mono font-semibold text-[#475467] border border-[#D0D5DD] transition-colors"
                       >
-                        ₹{preset}
+                        🪙 {preset}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-[#667085] font-bold">₹</span>
+                  <span className="absolute left-3 top-2.5 text-[#667085] font-bold">🪙</span>
                   <input
                     type="number"
                     min="1"

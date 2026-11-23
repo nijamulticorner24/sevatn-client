@@ -90,7 +90,7 @@ export default function RefundsPage() {
       return;
     }
     if (amount < 100) {
-      setFormError('Minimum refund payout request is ₹100');
+      setFormError('Minimum refund payout request is 🪙 100');
       return;
     }
     if (amount > available) {
@@ -260,7 +260,7 @@ export default function RefundsPage() {
               Available for Refund
             </span>
             <p className="font-mono text-2xl font-bold text-[#172033] mt-1">
-              {wallet ? formatCurrency(wallet.availableBalance) : '₹0.00'}
+              {wallet ? formatCurrency(wallet.availableBalance) : '🪙 0.00'}
             </p>
           </div>
           <p className="text-[11px] text-[#667085] mt-2">Free balance eligible for payout</p>
@@ -312,7 +312,7 @@ export default function RefundsPage() {
               Active Booking Holds
             </span>
             <p className="font-mono text-2xl font-bold text-amber-700 mt-1">
-              {wallet ? formatCurrency(wallet.reservedBalance) : '₹0.00'}
+              {wallet ? formatCurrency(wallet.reservedBalance) : '🪙 0.00'}
             </p>
           </div>
           <p className="text-[11px] text-[#667085] mt-2">Reserved for queue watchers</p>
@@ -530,10 +530,10 @@ export default function RefundsPage() {
               {/* Amount */}
               <div>
                 <label className="block font-semibold text-[#344054] mb-1">
-                  Refund Amount (₹) <span className="text-red-500">*</span>
+                  Refund Amount (Chips) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+                  <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
                   <input
                     type="number"
                     required
@@ -545,9 +545,9 @@ export default function RefundsPage() {
                   />
                 </div>
                 <div className="flex items-center justify-between mt-1 text-[11px] text-[#667085]">
-                  <span>Minimum request: ₹100</span>
+                  <span>Minimum request: 🪙 100</span>
                   <span>
-                    Available: <strong className="font-mono text-[#172033]">{wallet ? formatCurrency(wallet.availableBalance) : '₹0.00'}</strong>
+                    Available: <strong className="font-mono text-[#172033]">{wallet ? formatCurrency(wallet.availableBalance) : '🪙 0.00'}</strong>
                   </span>
                 </div>
 
@@ -560,7 +560,7 @@ export default function RefundsPage() {
                       onClick={() => setAmount(val)}
                       className="px-2.5 py-1 rounded bg-[#F8FAFC] border border-[#E6EAF0] text-[11px] font-mono font-semibold text-[#344054] hover:bg-[#F2F4F7]"
                     >
-                      ₹{val}
+                      🪙 {val}
                     </button>
                   ))}
                   {wallet && Number(wallet.availableBalance) > 0 && (

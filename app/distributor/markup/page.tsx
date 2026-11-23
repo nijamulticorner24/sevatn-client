@@ -80,7 +80,7 @@ export default function DistributorMarkupPage() {
       return;
     }
     if (val > maxCap) {
-      setErrorMsg(`Markup cannot exceed the Super Admin limit of ₹${maxCap.toFixed(2)}`);
+      setErrorMsg(`Markup cannot exceed the Super Admin limit of 🪙 ${maxCap.toFixed(2)}`);
       setSaving(false);
       return;
     }
@@ -303,17 +303,17 @@ export default function DistributorMarkupPage() {
           <div
             style={{ width: `${basePct}%` }}
             className="bg-[#475467] h-full transition-all duration-300"
-            title={`Base Price: ₹${basePrice}`}
+            title={`Base Price: 🪙 ${basePrice}`}
           />
           <div
             style={{ width: `${partnerPct}%` }}
             className="bg-[#175CD3] h-full transition-all duration-300"
-            title={`Partner Markup: ₹${partnerMarkup}`}
+            title={`Partner Markup: 🪙 ${partnerMarkup}`}
           />
           <div
             style={{ width: `${distributorPct}%` }}
             className="bg-[#C98219] h-full transition-all duration-300"
-            title={`Distributor Markup: ₹${currentMarkup}`}
+            title={`Distributor Markup: 🪙 ${currentMarkup}`}
           />
         </div>
 
@@ -342,7 +342,7 @@ export default function DistributorMarkupPage() {
               Adjust Markup Value
             </h2>
             <p className="text-xs text-[#667085] mt-0.5">
-              Select or slide to configure your markup. You may set any value from ₹0.00 up to the maximum limit of {formatINR(maxCap)}.
+              Select or slide to configure your markup. You may set any value from 🪙 0.00 up to the maximum limit of {formatINR(maxCap)}.
             </p>
           </div>
           {isDirty && (
@@ -386,7 +386,7 @@ export default function DistributorMarkupPage() {
         <div className="space-y-3 bg-[#F8FAFC] border border-[#E6EAF0] rounded-[10px] p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#172033]">
-              Configure Ticket Markup (₹)
+              Configure Ticket Markup (Chips)
             </span>
             <span className="text-xs font-mono font-bold text-[#C98219]">
               Current: +{formatINR(currentMarkup)} / Max: +{formatINR(maxCap)}
@@ -404,7 +404,7 @@ export default function DistributorMarkupPage() {
               className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[#C98219] bg-[#E2E8F0]"
             />
             <div className="w-32 shrink-0 relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
               <input
                 type="number"
                 min="0"
@@ -423,13 +423,13 @@ export default function DistributorMarkupPage() {
           {/* Pricing Equation Display */}
           <div className="rounded-[8px] bg-white border border-[#E6EAF0] p-3 text-xs text-[#344054] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="font-mono text-[11.5px]">
-              <span className="text-[#667085]">Base:</span> <strong>₹{basePrice}</strong>
+              <span className="text-[#667085]">Base:</span> <strong>🪙 {basePrice}</strong>
               <span className="text-[#667085] mx-1.5">+</span>
-              <span className="text-[#175CD3]">Partner:</span> <strong>+₹{partnerMarkup}</strong>
+              <span className="text-[#175CD3]">Partner:</span> <strong>+🪙 {partnerMarkup}</strong>
               <span className="text-[#667085] mx-1.5">+</span>
-              <span className="text-[#C98219]">Distributor:</span> <strong>+₹{currentMarkup.toFixed(2)}</strong>
+              <span className="text-[#C98219]">Distributor:</span> <strong>+🪙 {currentMarkup.toFixed(2)}</strong>
               <span className="text-[#667085] mx-1.5">=</span>
-              <span className="text-[#198754] font-bold">Total: ₹{finalPrice.toFixed(2)}</span>
+              <span className="text-[#198754] font-bold">Total: 🪙 {finalPrice.toFixed(2)}</span>
             </div>
             <span className="text-[10.5px] text-[#667085]">Per completed ticket</span>
           </div>
@@ -529,7 +529,7 @@ export default function DistributorMarkupPage() {
               <span>● Non-Negative Minimum</span>
             </span>
             <p className="text-[#667085] text-[11.5px] leading-relaxed">
-              Ticket markup cannot be negative. The minimum permitted value is ₹0.00 (zero distributor surcharge).
+              Ticket markup cannot be negative. The minimum permitted value is 🪙 0.00 (zero distributor surcharge).
             </p>
           </div>
 

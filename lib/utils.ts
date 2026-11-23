@@ -5,13 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatINR(amount: number | string): string {
+export function formatChips(amount: number | string, includeLabel = false): string {
   const val = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
+  const formatted = new Intl.NumberFormat('en-IN', {
     maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
   }).format(val || 0);
+  return includeLabel ? `🪙 ${formatted} Chips` : `🪙 ${formatted}`;
+}
+
+export function formatINR(amount: number | string): string {
+  return formatChips(amount, false);
 }
 
 export const formatCurrency = formatINR;

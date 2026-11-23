@@ -218,7 +218,7 @@ export default function AdminBookingsPage() {
         setActionLoading(true);
         try {
           const res = await api.clearAllQueues();
-          const text = `Queue Cleared: ${res.clearedBookings} bookings cancelled, ₹${res.releasedHolds * 100} hold funds refunded.`;
+          const text = `Queue Cleared: ${res.clearedBookings} bookings cancelled, 🪙 ${res.releasedHolds * 100} hold funds refunded.`;
           toast.success(text);
           setStatusMessage({ type: 'success', text });
           setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
@@ -713,7 +713,7 @@ export default function AdminBookingsPage() {
                               onClick={() => handleCancelBooking(b.id, b.bookingCode)}
                               disabled={isCancelling}
                               className="inline-flex items-center gap-1 rounded-btn border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-100 hover:text-red-800 transition-colors disabled:opacity-50"
-                              title="Cancel booking and refund ₹100 deposit hold"
+                              title="Cancel booking and refund 100 Chips deposit hold"
                             >
                               {isCancelling ? (
                                 <Loader2 className="h-3 w-3 animate-spin text-red-600" />

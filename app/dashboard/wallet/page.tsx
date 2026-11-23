@@ -199,7 +199,7 @@ export default function WalletPage() {
     }
 
     if (!topupAmount || topupAmount < 100) {
-      setFormError('Topup amount must be at least ₹100.');
+      setFormError('Topup amount must be at least 🪙 100.');
       return;
     }
 
@@ -416,7 +416,7 @@ export default function WalletPage() {
               className="inline-flex items-center gap-2 rounded-[8px] bg-[#C98219] hover:bg-[#B57414] px-4 py-2.5 text-xs font-bold text-white shadow-subtle transition-all"
             >
               <Plus className="h-4 w-4" />
-              <span>Add Money / Top Up</span>
+              <span>Add Chips / Top Up</span>
             </button>
 
             <Link

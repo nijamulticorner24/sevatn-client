@@ -195,7 +195,7 @@ export default function PartnerDistributorsPage() {
 
       setIsCreateOpen(false);
       setIsCredsModalOpen(true);
-      setSuccessMsg('Distributor successfully created and onboarded! ₹399 deducted from wallet.');
+      setSuccessMsg('Distributor successfully created and onboarded! 🪙 399 deducted from wallet.');
       setFormData({
         name: '',
         businessName: '',
@@ -343,7 +343,7 @@ export default function PartnerDistributorsPage() {
             My Distributors ({distributors.length})
           </h1>
           <p className="text-xs sm:text-sm text-[#667085] mt-1">
-            Create, configure markup commission (₹), and manage subordinate Distributors managing your regional Centres.
+            Create, configure markup commission (Chips), and manage subordinate Distributors managing your regional Centres.
           </p>
         </div>
 
@@ -455,7 +455,7 @@ export default function PartnerDistributorsPage() {
 
                 <div className="grid grid-cols-3 gap-2 text-xs bg-[#F8FAFC] p-3 rounded-[8px] border border-[#E6EAF0] mb-4">
                   <div>
-                    <span className="text-[#667085] text-[10.5px]">Distributor Markup (₹)</span>
+                    <span className="text-[#667085] text-[10.5px]">Distributor Markup (Chips)</span>
                     <p className="font-bold text-[#C98219]">+{formatINR(d.markup || 0)}</p>
                   </div>
                   <div>
@@ -575,7 +575,7 @@ export default function PartnerDistributorsPage() {
                   <Wallet className="h-4 w-4 text-[#C98219] shrink-0" />
                   <div>
                     <span className="font-bold text-[#8F5A0D]">Distributor License Fee:</span>
-                    <span className="ml-1 text-[#172033] font-mono font-bold">₹399.00</span>
+                    <span className="ml-1 text-[#172033] font-mono font-bold">🪙 399.00</span>
                     <span className="block text-[10.5px] text-[#667085]">Automatically deducted from your Partner Wallet</span>
                   </div>
                 </div>
@@ -589,7 +589,7 @@ export default function PartnerDistributorsPage() {
 
               {Number(partnerWallet?.availableBalance || 0) < 399 && (
                 <div className="rounded-[8px] bg-[#FDECEC] border border-[#F8C4C2] p-2.5 text-xs text-[#992B26] flex items-center justify-between">
-                  <span>Insufficient wallet balance. Minimum ₹399 required to onboard.</span>
+                  <span>Insufficient wallet balance. Minimum 🪙 399 required to onboard.</span>
                   <Link href="/partner/wallet" className="font-bold underline text-[#C2413B] hover:text-[#992B26]">
                     Recharge Wallet
                   </Link>
@@ -678,14 +678,14 @@ export default function PartnerDistributorsPage() {
               <div className="border-t border-[#F0F3F7] pt-3">
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-bold text-[#172033]">
-                    Distributor Markup (₹) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
+                    Distributor Markup (Chips) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
                   </label>
                   <span className="text-[11px] text-[#667085]">
-                    Max allowed: ₹2.00
+                    Max allowed: 🪙 2.00
                   </span>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-xs font-bold text-[#667085]">₹</span>
+                  <span className="absolute left-3 top-2 text-xs font-bold text-[#667085]">🪙</span>
                   <input
                     type="number"
                     step="0.5"
@@ -722,7 +722,7 @@ export default function PartnerDistributorsPage() {
                   disabled={submitting || Number(partnerWallet?.availableBalance || 0) < 399}
                   className="rounded-[8px] bg-[#C98219] px-4 py-2 text-xs font-bold text-white hover:bg-[#A86B14] transition-all disabled:opacity-50"
                 >
-                  {submitting ? 'Creating...' : 'Create & Deduct ₹399 from Wallet'}
+                  {submitting ? 'Creating...' : 'Create & Deduct 399 Chips from Wallet'}
                 </button>
               </div>
             </form>
@@ -764,14 +764,14 @@ export default function PartnerDistributorsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-bold text-[#172033]">
-                    Distributor Markup (₹) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
+                    Distributor Markup (Chips) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
                   </label>
                   <span className="text-[11px] text-[#667085]">
-                    Max allowed: ₹{editingDistributor.maxAllowedMarkup || 2}
+                    Max allowed: 🪙 {editingDistributor.maxAllowedMarkup || 2}
                   </span>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-xs font-bold text-[#667085]">₹</span>
+                  <span className="absolute left-3 top-2 text-xs font-bold text-[#667085]">🪙</span>
                   <input
                     type="number"
                     step="0.5"
@@ -853,7 +853,7 @@ export default function PartnerDistributorsPage() {
                   <p className="text-xs text-[#198754]">
                     {credentialsData.isRegenerated
                       ? 'New temporary login credentials generated successfully'
-                      : 'Distributor created & ₹399 deducted from Partner Wallet'}
+                      : 'Distributor created & 🪙 399 deducted from Partner Wallet'}
                   </p>
                 </div>
               </div>

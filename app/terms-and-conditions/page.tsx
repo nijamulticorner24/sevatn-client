@@ -174,7 +174,7 @@ export default function TermsAndConditionsPage() {
                   <h2 className="text-xl font-bold text-[#171717]">Registration Fee and Activation (365 Days)</h2>
                 </div>
                 <p>
-                  Account activation requires the payment of the established Centre Onboarding Fee. The currently stated registration fee is <strong>₹500</strong>, subject to the specific fee amount displayed and confirmed during the checkout and onboarding workflow.
+                  Account activation requires the payment of the established Centre Onboarding Fee. The currently stated registration fee is <strong>🪙 500</strong>, subject to the specific fee amount displayed and confirmed during the checkout and onboarding workflow.
                 </p>
                 <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FEF7E6] p-4 text-xs text-[#8F5A0D] space-y-1">
                   <p className="font-bold text-[#8F5A0D] flex items-center gap-1.5">

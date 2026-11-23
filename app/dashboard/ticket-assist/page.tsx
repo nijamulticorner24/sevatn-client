@@ -164,8 +164,8 @@ export default function TicketAssistDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricBlock
           label="Available Wallet"
-          value={wallet ? formatINR(wallet.availableBalance) : '₹0.00'}
-          subtext={`Reserved: ${wallet ? formatINR(wallet.reservedBalance) : '₹0.00'}`}
+          value={wallet ? formatINR(wallet.availableBalance) : '🪙 0.00'}
+          subtext={`Reserved: ${wallet ? formatINR(wallet.reservedBalance) : '🪙 0.00'}`}
           icon={Wallet}
           variant="brand"
         />
@@ -207,7 +207,7 @@ export default function TicketAssistDashboardPage() {
             </div>
             <div>
               <p className="text-[13.5px] font-bold text-[#172033]">New Booking Request</p>
-              <p className="text-[11.5px] text-[#667085]">Reserve ₹{serviceFee} from wallet</p>
+              <p className="text-[11.5px] text-[#667085]">Reserve 🪙 {serviceFee} from wallet</p>
             </div>
           </div>
           <ArrowRight className="h-4 w-4 text-[#98A2B3]" />
@@ -222,7 +222,7 @@ export default function TicketAssistDashboardPage() {
               <Wallet className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[13.5px] font-bold text-[#172033]">Add Money to Wallet</p>
+              <p className="text-[13.5px] font-bold text-[#172033]">Add Chips to Wallet</p>
               <p className="text-[11.5px] text-[#667085]">Top up via UPI / Netbanking</p>
             </div>
           </div>

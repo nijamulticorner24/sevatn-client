@@ -411,7 +411,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               >
                 <Wallet className="h-3.5 w-3.5 text-[#C98219] shrink-0" />
                 <span className="tabular-nums font-bold">
-                  {wallet ? formatINR(wallet.availableBalance) : '₹0.00'}
+                  {wallet ? formatINR(wallet.availableBalance) : '🪙 0.00'}
                 </span>
                 {wallet && Number(wallet.reservedBalance) > 0 && (
                   <span className="hidden sm:inline-block text-[11px] font-normal text-[#667085] border-l border-[#D0D5DD] pl-2 tabular-nums">

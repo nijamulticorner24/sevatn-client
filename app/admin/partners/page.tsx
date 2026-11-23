@@ -526,14 +526,14 @@ export default function AdminPartnersPage() {
                       <div className="flex items-center justify-between text-[#027A48] bg-[#ECFDF3]/60 -m-2.5 p-2.5 rounded-[7px]">
                         <span className="font-semibold flex items-center gap-1">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          Franchise Fee (₹599.00):
+                          Franchise Fee (🪙 599.00):
                         </span>
                         <span className="font-bold">Paid & Verified</span>
                       </div>
                     ) : isPendingApproval ? (
                       <div className="space-y-1.5 bg-[#EFF8FF]/70 -m-2.5 p-2.5 rounded-[7px] text-[#175CD3]">
                         <div className="flex items-center justify-between font-bold">
-                          <span>Franchise Fee: ₹599.00</span>
+                          <span>Franchise Fee: 🪙 599.00</span>
                           <span>Payment Submitted</span>
                         </div>
                         <div className="flex items-center justify-between text-[11px] text-[#1E40AF]">
@@ -561,7 +561,7 @@ export default function AdminPartnersPage() {
                       <div className="flex items-center justify-between text-[#8F5A0D] bg-[#FEF7E6]/70 -m-2.5 p-2.5 rounded-[7px]">
                         <span className="font-semibold flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
-                          Franchise Fee (₹599.00):
+                          Franchise Fee (🪙 599.00):
                         </span>
                         <span className="font-bold text-[#C98219]">Unpaid (Pending)</span>
                       </div>
@@ -585,10 +585,10 @@ export default function AdminPartnersPage() {
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-extrabold text-[#175CD3]">
-                        ₹{Number(p.baseTicketPrice ?? systemBaseTicketPrice).toFixed(2)}
+                        🪙 {Number(p.baseTicketPrice ?? systemBaseTicketPrice).toFixed(2)}
                       </span>
                       <span className="text-[10px] text-[#667085] block">
-                        {p.baseTicketPrice ? 'Dynamic Override' : `Default (₹${systemBaseTicketPrice.toFixed(2)})`}
+                        {p.baseTicketPrice ? 'Dynamic Override' : `Default (🪙 ${systemBaseTicketPrice.toFixed(2)})`}
                       </span>
                     </div>
                   </div>
@@ -609,7 +609,7 @@ export default function AdminPartnersPage() {
                         ) : (
                           <ShieldCheck className="h-4 w-4" />
                         )}
-                        <span>Verify & Approve Offline Payment (₹599)</span>
+                        <span>Verify & Approve Offline Payment (🪙 599)</span>
                       </button>
                     </div>
                   )}
@@ -759,7 +759,7 @@ export default function AdminPartnersPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-[#8F5A0D] font-medium">Franchise Fee:</span>
-                <span className="font-bold text-[#172033]">₹599.00 (Pending Payment)</span>
+                <span className="font-bold text-[#172033]">🪙 599.00 (Pending Payment)</span>
               </div>
             </div>
 
@@ -797,7 +797,7 @@ export default function AdminPartnersPage() {
                 </button>
               </div>
               <p className="text-[11px] text-[#667085]">
-                💡 The partner can open this link to verify their franchise, pay the ₹599 franchise fee, and submit their transaction reference for your approval.
+                💡 The partner can open this link to verify their franchise, pay the 🪙 599 franchise fee, and submit their transaction reference for your approval.
               </p>
             </div>
 
@@ -927,27 +927,27 @@ export default function AdminPartnersPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-[#172033] mb-1">
-                      Dynamic Base Ticket Price (₹) <span className="text-[#667085] font-normal">(Optional Override)</span>
+                      Dynamic Base Ticket Price (Chips) <span className="text-[#667085] font-normal">(Optional Override)</span>
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-2 text-xs text-[#667085] font-bold">₹</span>
+                      <span className="absolute left-3 top-2 text-xs text-[#667085] font-bold">🪙</span>
                       <input
                         type="number"
                         min="0"
                         step="0.5"
                         value={baseTicketPrice}
                         onChange={(e) => setBaseTicketPrice(e.target.value)}
-                        placeholder={`Leave blank to use default (₹${systemBaseTicketPrice.toFixed(2)})`}
+                        placeholder={`Leave blank to use default (🪙 ${systemBaseTicketPrice.toFixed(2)})`}
                         className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
                       />
                     </div>
                     <p className="text-[10.5px] text-[#667085] mt-1">
-                      Custom base rate for centres under this partner (Default: ₹{systemBaseTicketPrice.toFixed(2)}).
+                      Custom base rate for centres under this partner (Default: 🪙 {systemBaseTicketPrice.toFixed(2)}).
                     </p>
                   </div>
 
                   <div className="rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] p-2.5 text-[11.5px] text-[#8F5A0D] flex items-center justify-between font-medium">
-                    <span>Franchise Fee: <strong>₹599.00</strong></span>
+                    <span>Franchise Fee: <strong>🪙 599.00</strong></span>
                     <span>Initial Status: <strong>Pending Payment</strong></span>
                   </div>
                 </div>
@@ -1130,7 +1130,7 @@ export default function AdminPartnersPage() {
                         Dynamic Base Pricing
                       </span>
                       <span className="text-[11px] font-mono text-[#175CD3] bg-[#EFF8FF] border border-[#B2DDFF] px-2 py-0.5 rounded font-bold">
-                        ₹{editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)} Base Rate
+                        🪙 {editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)} Base Rate
                       </span>
                     </div>
 
@@ -1141,23 +1141,23 @@ export default function AdminPartnersPage() {
                           <Coins className="h-3.5 w-3.5 text-[#C98219]" />
                           Global Default Base Rate:
                         </span>
-                        <span className="font-mono font-bold text-xs text-[#172033]">₹{systemBaseTicketPrice.toFixed(2)}</span>
+                        <span className="font-mono font-bold text-xs text-[#172033]">🪙 {systemBaseTicketPrice.toFixed(2)}</span>
                       </div>
 
                       {/* Dynamic Base Ticket Price Input */}
                       <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-[#172033]">
-                          Partner Dynamic Base Ticket Price (₹)
+                          Partner Dynamic Base Ticket Price (Chips)
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+                          <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
                           <input
                             type="number"
                             min="0"
                             step="0.5"
                             value={editBaseTicketPrice}
                             onChange={(e) => setEditBaseTicketPrice(e.target.value)}
-                            placeholder={`Leave blank to inherit default (₹${systemBaseTicketPrice.toFixed(2)})`}
+                            placeholder={`Leave blank to inherit default (🪙 ${systemBaseTicketPrice.toFixed(2)})`}
                             className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-sm font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
                           />
                         </div>
@@ -1181,7 +1181,7 @@ export default function AdminPartnersPage() {
                                   : 'border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F8FAFC]'
                               }`}
                             >
-                              ₹{price}
+                              🪙 {price}
                             </button>
                           ))}
                         </div>
@@ -1191,7 +1191,7 @@ export default function AdminPartnersPage() {
                             onClick={() => setEditBaseTicketPrice('')}
                             className="text-[11px] text-[#C98219] hover:underline font-semibold block pt-1 cursor-pointer"
                           >
-                            Reset to Default (₹{systemBaseTicketPrice.toFixed(2)})
+                            Reset to Default (🪙 {systemBaseTicketPrice.toFixed(2)})
                           </button>
                         )}
                       </div>
@@ -1200,7 +1200,7 @@ export default function AdminPartnersPage() {
                       <div className="rounded-[6px] bg-[#EFF8FF] border border-[#B2DDFF] p-2.5 text-[11.5px] text-[#175CD3] flex items-center justify-between font-semibold">
                         <span>Active Partner Base Rate:</span>
                         <span className="font-mono font-bold text-sm">
-                          ₹{editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)}
+                          🪙 {editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)}
                           <span className="text-[10px] font-normal text-[#175CD3] ml-1">
                             ({editBaseTicketPrice.trim() !== '' ? 'Custom Override' : 'System Default'})
                           </span>

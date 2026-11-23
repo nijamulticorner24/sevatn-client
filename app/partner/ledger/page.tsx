@@ -49,7 +49,7 @@ export default function PartnerLedgerPage() {
             Partner Commission Ledger
           </h1>
           <p className="text-xs text-[#667085] mt-1">
-            Real-time audit ledger of the {commissionPercentage}% (₹{commissionRate.toFixed(2)}) franchise commission per completed pilgrim booking based on service fee.
+            Real-time audit ledger of the {commissionPercentage}% (🪙 {commissionRate.toFixed(2)}) franchise commission per completed pilgrim booking based on service fee.
           </p>
         </div>
       </div>
@@ -62,7 +62,7 @@ export default function PartnerLedgerPage() {
             {formatINR(totalCommission)}
           </p>
           <span className="text-[11px] text-[#667085] mt-0.5 block">
-            ₹20.00 × {totalPasses} Completed Passes
+            🪙 20.00 × {totalPasses} Completed Passes
           </span>
         </div>
 
@@ -116,10 +116,10 @@ export default function PartnerLedgerPage() {
                   </td>
                   <td className="py-3 px-4 text-[#475467]">{c.district}</td>
                   <td className="py-3 px-4 text-[#475467]">
-                    <span className="font-mono text-[#667085]">₹100 Total Fee</span>
+                    <span className="font-mono text-[#667085]">🪙 100 Total Fee</span>
                   </td>
                   <td className="py-3 px-4 font-mono font-bold text-[#198754]">
-                    +{commissionPercentage}% (₹{commissionRate.toFixed(2)}) / booking
+                    +{commissionPercentage}% (🪙 {commissionRate.toFixed(2)}) / booking
                   </td>
                   <td className="py-3 px-4">
                     <span className="rounded bg-[#EAF7EE] px-2 py-0.5 text-[10px] font-bold text-[#198754] border border-[#C3E6CB]">

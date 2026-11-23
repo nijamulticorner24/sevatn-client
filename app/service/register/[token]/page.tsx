@@ -639,7 +639,7 @@ export default function PartnerInvitationRegisterPage() {
                 </>
               ) : (
                 <>
-                  <span>Proceed to Centre Activation & Payment (₹{getRegistrationFee()})</span>
+                  <span>Proceed to Centre Activation & Payment (🪙 {getRegistrationFee()})</span>
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -664,7 +664,7 @@ export default function PartnerInvitationRegisterPage() {
                 </div>
                 <div className="sm:text-right">
                   <span className="text-xs text-[#667085] block">Onboarding Registration Fee</span>
-                  <span className="text-2xl font-black text-[#C98219]">₹{getRegistrationFee().toFixed(2)}</span>
+                  <span className="text-2xl font-black text-[#C98219]">🪙 {getRegistrationFee().toFixed(2)}</span>
                 </div>
               </div>
 
@@ -784,11 +784,11 @@ export default function PartnerInvitationRegisterPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#667085]">Registration Fee</span>
-                      <span className="font-bold text-[#172033]">₹{getRegistrationFee().toFixed(2)}</span>
+                      <span className="font-bold text-[#172033]">🪙 {getRegistrationFee().toFixed(2)}</span>
                     </div>
                     <div className="border-t border-[#E6EAF0] pt-2 flex justify-between font-bold text-sm">
                       <span className="text-[#172033]">Payable Amount</span>
-                      <span className="text-[#C98219]">₹{getRegistrationFee().toFixed(2)}</span>
+                      <span className="text-[#C98219]">🪙 {getRegistrationFee().toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -806,7 +806,7 @@ export default function PartnerInvitationRegisterPage() {
                     ) : (
                       <>
                         <CreditCard className="h-4 w-4" />
-                        <span>Proceed to Pay ₹{getRegistrationFee().toFixed(2)} & Activate Instantly</span>
+                        <span>Proceed to Pay 🪙 {getRegistrationFee().toFixed(2)} & Activate Instantly</span>
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
@@ -830,7 +830,7 @@ export default function PartnerInvitationRegisterPage() {
                           />
                         </div>
                         <span className="text-[10px] text-[#8F5A0D] mt-1.5 font-bold">
-                          {paymentConfig?.offlineQrImageUrl ? 'Official Admin QR Code' : `Scan to Pay ₹${getRegistrationFee()}`}
+                          {paymentConfig?.offlineQrImageUrl ? 'Official Admin QR Code' : `Scan to Pay 🪙 ${getRegistrationFee()}`}
                         </span>
                       </div>
 

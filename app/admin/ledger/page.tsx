@@ -880,7 +880,7 @@ export default function FinancialLedgerPage() {
             </div>
           </div>
           <div className="mt-3 pt-2 border-t border-[#F2F4F7] text-[10.5px] text-[#98A2B3]">
-            ₹100 captured per confirmed e-Pass
+            🪙 100 captured per confirmed e-Pass
           </div>
         </div>
 
@@ -889,7 +889,7 @@ export default function FinancialLedgerPage() {
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-[#F2F4F7]">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#475467]">
-                Centre Onboarding (₹249)
+                Centre Onboarding (🪙 249)
               </span>
               <Building2 className="h-3.5 w-3.5 text-blue-600" />
             </div>
@@ -924,7 +924,7 @@ export default function FinancialLedgerPage() {
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-[#F2F4F7]">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#475467]">
-                Partner Franchise (₹599)
+                Partner Franchise (🪙 599)
               </span>
               <Building2 className="h-3.5 w-3.5 text-amber-600" />
             </div>
@@ -1141,8 +1141,8 @@ export default function FinancialLedgerPage() {
               >
                 <option value="ALL">All Categories</option>
                 <option value="TOPUP">Wallet Top-Ups</option>
-                <option value="CAPTURE">Service Captures (₹100)</option>
-                <option value="RESERVE">Queue Holds (₹100)</option>
+                <option value="CAPTURE">Service Captures (🪙 100)</option>
+                <option value="RESERVE">Queue Holds (🪙 100)</option>
                 <option value="RELEASE">Queue Releases</option>
                 <option value="REFUND">Refunds</option>
               </select>
@@ -1244,7 +1244,7 @@ export default function FinancialLedgerPage() {
                   )}
                 >
                   <Building2 className="h-3 w-3 text-amber-600" />
-                  <span>Partner Franchise (₹599)</span>
+                  <span>Partner Franchise (🪙 599)</span>
                   {pendingPartnersList.length > 0 && (
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
                       {pendingPartnersList.length}
@@ -1280,7 +1280,7 @@ export default function FinancialLedgerPage() {
                   )}
                 >
                   <Building2 className="h-3 w-3 text-blue-600" />
-                  <span>Centre Registration (₹249)</span>
+                  <span>Centre Registration (🪙 249)</span>
                   {pendingCentresList.length > 0 && (
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-500 text-white">
                       {pendingCentresList.length}

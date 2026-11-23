@@ -52,7 +52,7 @@ export default function PartnerMarkupPage() {
       return;
     }
     if (val > (data?.maxAllowedMarkup || 2)) {
-      setErrorMsg(`Markup cannot exceed the Super Admin limit of ₹${data?.maxAllowedMarkup || 2}`);
+      setErrorMsg(`Markup cannot exceed the Super Admin limit of 🪙 ${data?.maxAllowedMarkup || 2}`);
       setSaving(false);
       return;
     }
@@ -156,14 +156,14 @@ export default function PartnerMarkupPage() {
           </p>
           <div className="text-[#667085] pt-2 border-t border-[#F0F3F7] grid grid-cols-1 sm:grid-cols-4 gap-2">
             <div>
-              Base Price: <strong className="text-[#172033]">₹{baseTicket}</strong>
+              Base Price: <strong className="text-[#172033]">🪙 {baseTicket}</strong>
               {data?.isCustomRate && (
                 <span className="block text-[10px] text-[#175CD3] font-sans font-bold">Custom Partner Rate</span>
               )}
             </div>
-            <div>Partner Markup: <strong className="text-[#C98219]">+₹{currentMarkup}</strong></div>
-            <div>Distributor Markup: <strong className="text-[#175CD3]">+₹0 to ₹2</strong> (Independent)</div>
-            <div>Final Ticket: <strong className="text-[#198754]">₹{baseTicket + currentMarkup} – ₹{baseTicket + currentMarkup + 2}</strong></div>
+            <div>Partner Markup: <strong className="text-[#C98219]">+🪙 {currentMarkup}</strong></div>
+            <div>Distributor Markup: <strong className="text-[#175CD3]">+🪙 0 to 🪙 2</strong> (Independent)</div>
+            <div>Final Ticket: <strong className="text-[#198754]">🪙 {baseTicket + currentMarkup} – 🪙 {baseTicket + currentMarkup + 2}</strong></div>
           </div>
         </div>
         <p className="text-[11px] text-[#8F5A0D]">
@@ -177,7 +177,7 @@ export default function PartnerMarkupPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-[#172033]">
-                Your Independent Partner Markup (₹)
+                Your Independent Partner Markup (Chips)
               </label>
               <span className="text-xs font-mono font-bold text-[#C98219]">
                 {formatINR(currentMarkup)} / {formatINR(maxCap)}
@@ -195,7 +195,7 @@ export default function PartnerMarkupPage() {
                 className="w-full accent-[#C98219] cursor-pointer"
               />
               <div className="w-28 shrink-0 relative">
-                <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
+                <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">🪙</span>
                 <input
                   type="number"
                   min="0"
@@ -208,7 +208,7 @@ export default function PartnerMarkupPage() {
               </div>
             </div>
             <p className="text-[11.5px] text-[#667085] mt-2">
-              Permitted range: ₹0.00 to ₹{maxCap.toFixed(2)}. This amount is added to every ticket booked by centres in your network.
+              Permitted range: 🪙 0.00 to 🪙 {maxCap.toFixed(2)}. This amount is added to every ticket booked by centres in your network.
             </p>
           </div>
 
