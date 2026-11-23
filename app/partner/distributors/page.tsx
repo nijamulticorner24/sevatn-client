@@ -82,6 +82,8 @@ export default function PartnerDistributorsPage() {
   const [credentialsData, setCredentialsData] = useState<any>(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
   const [copiedPortalUrl, setCopiedPortalUrl] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -116,11 +118,11 @@ export default function PartnerDistributorsPage() {
     if (!credentialsData) return;
     const text = `🎉 SEVATN DISTRIBUTOR ACCESS CREDENTIALS\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `Distributor Name: ${credentialsData.distributorName}\n` +
-      (credentialsData.businessName ? `Business Name   : ${credentialsData.businessName}\n` : '') +
-      `Distributor Code: ${credentialsData.distributorCode}\n` +
-      `Portal Login URL: ${credentialsData.portalUrl}\n` +
-      `Username / Mobile: ${credentialsData.mobile}\n` +
+      `Distributor Name  : ${credentialsData.distributorName}\n` +
+      (credentialsData.businessName ? `Business / Agency : ${credentialsData.businessName}\n` : '') +
+      `Distributor Code  : ${credentialsData.distributorCode}\n` +
+      `First Login URL   : ${credentialsData.portalUrl}\n` +
+      `Mobile / Username : ${credentialsData.mobile}\n` +
       `Temporary Password: ${credentialsData.temporaryPassword}\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `Please login and change your password immediately upon first access.`;
@@ -136,13 +138,22 @@ export default function PartnerDistributorsPage() {
     setTimeout(() => setCopiedPortalUrl(false), 2000);
   };
 
+  const copyPasswordOnly = () => {
+    if (!credentialsData?.temporaryPassword) return;
+    navigator.clipboard.writeText(credentialsData.temporaryPassword);
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2000);
+  };
+
   const shareCredentialsViaWhatsApp = () => {
     if (!credentialsData) return;
     const text = `🎉 *SEVATN DISTRIBUTOR ACCESS CREDENTIALS*\n` +
-      `Distributor: *${credentialsData.distributorName}* (${credentialsData.distributorCode})\n` +
-      `Portal: ${credentialsData.portalUrl}\n` +
-      `Mobile / Username: *${credentialsData.mobile}*\n` +
-      `Temporary Password: *${credentialsData.temporaryPassword}*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `*Distributor:* ${credentialsData.distributorName} (${credentialsData.distributorCode})\n` +
+      `*First Login URL:* ${credentialsData.portalUrl}\n` +
+      `*Mobile / Username:* ${credentialsData.mobile}\n` +
+      `*Temporary Password:* *${credentialsData.temporaryPassword}*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `_Please login and change your password upon first access._`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
@@ -169,7 +180,7 @@ export default function PartnerDistributorsPage() {
 
       const cleanMobile = formData.mobile.trim();
       const generatedPassword = res?.credentials?.temporaryPassword || `Dist@${cleanMobile.slice(-4)}`;
-      const portalUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/login`;
+      const portalUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/login`;
 
       setCredentialsData({
         distributorName: res?.distributor?.name || formData.name,
@@ -179,11 +190,12 @@ export default function PartnerDistributorsPage() {
         mobile: res?.credentials?.identifier || res?.distributor?.mobile || cleanMobile,
         temporaryPassword: generatedPassword,
         portalUrl,
+        isRegenerated: false,
       });
 
       setIsCreateOpen(false);
       setIsCredsModalOpen(true);
-      setSuccessMsg('Distributor successfully created and onboarded!');
+      setSuccessMsg('Distributor successfully created and onboarded! ₹399 deducted from wallet.');
       setFormData({
         name: '',
         businessName: '',
@@ -263,6 +275,36 @@ export default function PartnerDistributorsPage() {
       setStatusLoading(false);
     }
   };
+
+  const handleRegeneratePassword = async (d: any) => {
+    if (!confirm(`Are you sure you want to regenerate the login password for ${d.name} (${d.distributorCode})?\n\nA new temporary password will be created immediately.`)) {
+      return;
+    }
+    setRegeneratingId(d.id);
+    setErrorMsg(null);
+    try {
+      const res: any = await api.regeneratePartnerDistributorPassword(d.id);
+      const portalUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/login`;
+      setCredentialsData({
+        distributorName: res?.distributor?.name || d.name,
+        businessName: res?.distributor?.businessName || d.businessName,
+        distributorCode: res?.distributor?.distributorCode || d.distributorCode,
+        email: res?.distributor?.email || d.email,
+        mobile: res?.credentials?.identifier || d.mobile,
+        temporaryPassword: res?.credentials?.temporaryPassword,
+        portalUrl,
+        isRegenerated: true,
+      });
+      setIsCredsModalOpen(true);
+      setSuccessMsg(`Temporary login password regenerated for ${d.name}!`);
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to regenerate distributor password');
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
 
   const filtered = distributors.filter((d) => {
     if (filterStatus !== 'ALL' && d.status !== filterStatus) return false;
@@ -454,6 +496,16 @@ export default function PartnerDistributorsPage() {
                   >
                     <Edit2 className="h-3 w-3" />
                     <span>Edit Slab</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleRegeneratePassword(d)}
+                    disabled={regeneratingId === d.id}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#C98219] hover:text-[#A86B14] hover:bg-[#FEF7E6] px-2 py-0.5 rounded transition-colors disabled:opacity-50"
+                    title="Regenerate temporary login password"
+                  >
+                    <KeyRound className="h-3 w-3" />
+                    <span>{regeneratingId === d.id ? 'Resetting...' : 'Reset Password'}</span>
                   </button>
 
                   <button
@@ -795,9 +847,13 @@ export default function PartnerDistributorsPage() {
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#106A3B]">Distributor Account Provisioned</h3>
+                  <h3 className="text-base font-bold text-[#106A3B]">
+                    {credentialsData.isRegenerated ? 'Distributor Password Regenerated' : 'Distributor Account Provisioned'}
+                  </h3>
                   <p className="text-xs text-[#198754]">
-                    Temporary login credentials generated successfully
+                    {credentialsData.isRegenerated
+                      ? 'New temporary login credentials generated successfully'
+                      : 'Distributor created & ₹399 deducted from Partner Wallet'}
                   </p>
                 </div>
               </div>
@@ -841,23 +897,34 @@ export default function PartnerDistributorsPage() {
               </div>
 
               {/* Temporary Password Highlight Box */}
-              <div className="rounded-[10px] border-2 border-dashed border-[#C98219] bg-[#FEF7E6] p-4 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#8F5A0D] mb-1">
+              <div className="rounded-[10px] border-2 border-dashed border-[#C98219] bg-[#FEF7E6] p-4 text-center space-y-2">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#8F5A0D]">
                   <KeyRound className="h-4 w-4" />
                   <span>TEMPORARY ACTIVATION PASSWORD</span>
                 </div>
-                <div className="font-mono text-xl font-extrabold tracking-wider text-[#172033] py-1 select-all">
-                  {credentialsData.temporaryPassword || '—'}
+                <div className="flex items-center justify-center gap-2">
+                  <span className="font-mono text-xl sm:text-2xl font-extrabold tracking-wider text-[#172033] bg-white px-4 py-1.5 rounded-[8px] border border-[#F9DE9B] select-all shadow-xs">
+                    {credentialsData.temporaryPassword || '—'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyPasswordOnly}
+                    className="rounded-[8px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs font-bold text-[#344054] hover:bg-[#F2F4F7] transition-colors flex items-center gap-1.5 shrink-0 shadow-xs"
+                    title="Copy Password"
+                  >
+                    {copiedPassword ? <Check className="h-3.5 w-3.5 text-[#198754]" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedPassword ? 'Copied!' : 'Copy'}</span>
+                  </button>
                 </div>
                 <p className="text-[11px] text-[#8F5A0D]">
-                  The distributor will be prompted to set their permanent password upon first login.
+                  The distributor will use this temporary password to log in and will be prompted to set their permanent password upon first access.
                 </p>
               </div>
 
               {/* Portal Login URL */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-[#172033]">
-                  Distributor Direct Login Portal URL:
+                  Distributor First Login Portal URL:
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -884,6 +951,7 @@ export default function PartnerDistributorsPage() {
                   </a>
                 </div>
               </div>
+
 
               {/* Action Buttons */}
               <div className="space-y-2 pt-2">

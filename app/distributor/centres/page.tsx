@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatINR } from '@/lib/utils';
 import {
   Building2,
   Search,
@@ -25,6 +25,7 @@ import {
   Share2,
   AlertTriangle,
   RefreshCw,
+  Wallet,
 } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
@@ -51,6 +52,7 @@ export default function DistributorCentresPage() {
   const [centres, setCentres] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [distributorWallet, setDistributorWallet] = useState<{ availableBalance?: number; reservedBalance?: number } | null>(null);
 
   // Modals & Credential State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -82,8 +84,16 @@ export default function DistributorCentresPage() {
 
   const loadCentres = async () => {
     try {
-      const res = await api.getDistributorCentres(1, 50);
-      setCentres(res?.centres || []);
+      const [res, me] = await Promise.allSettled([
+        api.getDistributorCentres(1, 50),
+        api.getMe(),
+      ]);
+      if (res.status === 'fulfilled') {
+        setCentres(res.value?.centres || []);
+      }
+      if (me.status === 'fulfilled' && me.value?.wallet) {
+        setDistributorWallet(me.value.wallet);
+      }
       setLoading(false);
     } catch (err) {
       console.error('Failed to load centres:', err);
@@ -585,6 +595,39 @@ export default function DistributorCentresPage() {
                 </div>
               </div>
 
+              {/* Wallet Deduction and Onboarding Fee Box */}
+              <div className="rounded-[10px] border border-[#E6EAF0] bg-[#F8FAFC] p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-md bg-[#FEF7E6] border border-[#F9DE9B] flex items-center justify-center text-[#C98219]">
+                      <Wallet className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-[#172033] block">Distributor Wallet Balance</span>
+                      <span className="text-[11px] text-[#667085]">
+                        Available: {distributorWallet?.availableBalance !== undefined ? formatINR(Number(distributorWallet.availableBalance)) : '₹...'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-[#172033] text-sm block">₹249.00</span>
+                    <span className="text-[10.5px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Auto-Deducted On Creation
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-[#475467] leading-relaxed pt-1 border-t border-[#EAECF0]">
+                  ₹249.00 will be debited from your distributor wallet to fully activate this centre account. 
+                  The centre operator will <span className="font-semibold text-emerald-700">never be asked to pay an onboarding fee</span> on login and will have instant access to book darshan.
+                </p>
+                {distributorWallet?.availableBalance !== undefined && Number(distributorWallet.availableBalance) < 249 && (
+                  <div className="flex items-center gap-2 rounded-md bg-red-50 p-2.5 text-xs text-red-700 border border-red-200 mt-2 font-medium">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+                    <span>Insufficient wallet balance. Please recharge your distributor wallet before creating new centre accounts.</span>
+                  </div>
+                )}
+              </div>
+
               {/* Informational Note */}
               <div className="rounded-[8px] border border-[#F9DE9B] bg-[#FEF7E6] p-3 text-[11px] text-[#8F5A0D] flex items-start gap-2">
                 <span className="text-sm">💡</span>
@@ -608,11 +651,11 @@ export default function DistributorCentresPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || (distributorWallet?.availableBalance !== undefined && Number(distributorWallet.availableBalance) < 249)}
                     className="flex items-center gap-2 px-5 py-2 rounded-[7px] bg-[#C98219] hover:bg-[#A86B14] text-white text-xs font-bold shadow-subtle transition-colors disabled:opacity-50"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>{submitting ? 'Creating Centre...' : 'Create & Provision Account'}</span>
+                    <span>{submitting ? 'Creating Centre...' : 'Create & Deduct ₹249 from Wallet'}</span>
                   </button>
                 </div>
               </div>
@@ -714,9 +757,9 @@ export default function DistributorCentresPage() {
               </div>
 
               <div className="rounded-[8px] bg-[#EAF7EE] border border-[#BFE4C9] p-3 text-[11.5px] text-[#198754] leading-relaxed flex items-start gap-2">
-                <span className="text-sm">🔒</span>
+                <span className="text-sm">✅</span>
                 <span>
-                  <strong>First Login Security:</strong> The operator will be automatically prompted to set their permanent private password upon entering these credentials.
+                  <strong>Full Activation Guaranteed:</strong> The onboarding fee of ₹249.00 has been debited directly from your Distributor Wallet. The operator will <strong>never be asked for payment</strong> on login and only needs to set their permanent password to start booking.
                 </span>
               </div>
 

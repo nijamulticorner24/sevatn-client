@@ -21,6 +21,7 @@ import {
   BellRing,
   Sparkles,
   RefreshCw,
+  RotateCcw,
   Layers,
   ShieldCheck,
   Zap,
@@ -82,17 +83,35 @@ function isCancelled(b: any) {
   return status === 'CANCELLED';
 }
 
-function isPastDateCancelled(b: any) {
-  if (!isCancelled(b)) return false;
-  const note = String(b?.requiresHumanNote || b?.errorMessage || '');
+function isDatePassed(b: any) {
+  if (!b) return false;
+  const note = String(b?.requiresHumanNote || b?.failureReason || b?.errorMessage || '');
+  if (note.includes('passed') || note.includes('Auto-cancelled') || note.includes('past')) {
+    return true;
+  }
   const dateStr = b?.requestedDateStr || (b?.requestedDate ? String(b.requestedDate).split('T')[0] : '');
+  if (!dateStr) return false;
   let today = '';
   try {
     today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   } catch {
     today = new Date().toISOString().split('T')[0];
   }
-  return note.includes('passed') || note.includes('Auto-cancelled') || (Boolean(dateStr) && dateStr < today);
+  return dateStr < today;
+}
+
+function isPastDateCancelled(b: any) {
+  return isCancelled(b) && isDatePassed(b);
+}
+
+function isRestartable(b: any) {
+  if (!b) return false;
+  // Never restart confirmed / success passes
+  if (isCompleted(b)) return false;
+  // Never restart if Darshan date has finished / passed
+  if (isDatePassed(b)) return false;
+  // Only CANCELLED and FAILED bookings can be restarted
+  return isCancelled(b) || isFailed(b);
 }
 
 function isPending(b: any) {
@@ -220,6 +239,8 @@ export default function BookingsPage() {
   const [recentSuccessToast, setRecentSuccessToast] = useState<any | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<any | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [restartingBooking, setRestartingBooking] = useState<any | null>(null);
+  const [isRestarting, setIsRestarting] = useState(false);
 
   useEffect(() => {
     const u = api.getUser();
@@ -242,6 +263,21 @@ export default function BookingsPage() {
       toast.error(err.message || 'Failed to cancel booking');
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleConfirmRestart = async () => {
+    if (!restartingBooking) return;
+    setIsRestarting(true);
+    try {
+      const res = await api.restartBooking(restartingBooking.id);
+      toast.success(res.message || `Booking #${restartingBooking.bookingCode} restarted and returned to active queue!`);
+      setRestartingBooking(null);
+      fetchBookings();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to restart booking');
+    } finally {
+      setIsRestarting(false);
     }
   };
 
@@ -786,6 +822,21 @@ export default function BookingsPage() {
                     {formatDate(b.createdAt)}
                   </span>
                   <div className="flex items-center gap-1.5">
+                    {/* Direct Restart Button ONLY for eligible Failed or Cancelled Requests with upcoming dates */}
+                    {isRestartable(b) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setRestartingBooking(b);
+                        }}
+                        className="rounded-[6px] border border-[#A7F3D0] bg-[#ECFDF5] px-2.5 py-1 text-[11.5px] font-bold text-[#065F46] hover:bg-[#D1FAE5] transition-colors flex items-center gap-1"
+                        title="Restart this booking request and return to queue"
+                      >
+                        <RotateCcw className="h-3 w-3 text-[#059669]" />
+                        <span>Restart</span>
+                      </button>
+                    )}
                     {/* Direct Cancel Button for Active/Pending Requests */}
                     {(pending || b.status === 'REQUIRES_HUMAN' || b.status === 'RETRYABLE_FAILURE' || b.status === 'WAITING_FOR_ACCOUNT') && (
                       <button
@@ -886,6 +937,72 @@ export default function BookingsPage() {
                   </>
                 ) : (
                   <span>Yes, Cancel & Refund</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restart Individual Booking Confirmation Modal */}
+      {restartingBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-[12px] bg-white p-5 shadow-modal border border-[#E6EAF0] space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0 border border-[#A7F3D0]">
+                <RotateCcw className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-[16px] font-bold text-[#172033]">
+                  Restart Booking #{restartingBooking.bookingCode}?
+                </h3>
+                <p className="text-[12.5px] text-[#667085] mt-1">
+                  This will return the booking to the active queue. Background workers will immediately monitor and snipe availability for this request.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#FAFBFD] rounded-[8px] p-3 border border-[#E6EAF0] space-y-1.5 text-[12px]">
+              <div className="flex justify-between">
+                <span className="text-[#667085]">Devotee:</span>
+                <span className="font-bold text-[#172033]">{restartingBooking.account?.label || restartingBooking.account?.username || 'Devotee'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#667085]">Darshan Date:</span>
+                <span className="font-semibold text-[#172033]">{formatDate(restartingBooking.requestedDate)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#667085]">Route:</span>
+                <span className="font-semibold text-[#172033] truncate max-w-[200px]">{restartingBooking.route}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-[#E6EAF0] text-[#065F46] font-semibold text-[11.5px]">
+                <span>Wallet Hold:</span>
+                <span>{isCancelled(restartingBooking) ? 'Re-reserves fee from wallet' : 'Deposit hold preserved'}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isRestarting}
+                onClick={() => setRestartingBooking(null)}
+                className="rounded-[7px] border border-[#D0D5DD] bg-white px-4 py-2 text-[12.5px] font-semibold text-[#344054] hover:bg-[#F9FAFB] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isRestarting}
+                onClick={handleConfirmRestart}
+                className="inline-flex items-center gap-1.5 rounded-[7px] bg-[#059669] hover:bg-[#047857] px-4 py-2 text-[12.5px] font-bold text-white transition-all shadow-subtle disabled:opacity-50"
+              >
+                {isRestarting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Restarting...</span>
+                  </>
+                ) : (
+                  <span>Yes, Restart Booking</span>
                 )}
               </button>
             </div>

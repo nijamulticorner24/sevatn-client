@@ -566,6 +566,17 @@ class ApiClient {
     return this.request(`/bookings/${id}/cancel`, { method: 'POST' });
   }
 
+  async restartBooking(id: string) {
+    return this.request(`/bookings/${id}/restart`, { method: 'POST' });
+  }
+
+  async restartAllBookings(data?: { bookingIds?: string[] }) {
+    return this.request('/bookings/restart-all', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    });
+  }
+
   async resolveHumanAction(id: string, action: string, officialReference?: string, notes?: string) {
     return this.request(`/bookings/${id}/resolve-human`, {
       method: 'POST',
@@ -1195,6 +1206,13 @@ class ApiClient {
       body: JSON.stringify({ status, reason }),
     });
   }
+
+  async regeneratePartnerDistributorPassword(id: string) {
+    return this.request(`/partner/distributors/${encodeURIComponent(id)}/regenerate-password`, {
+      method: 'POST',
+    });
+  }
+
 
   // =========================================================================
   // DISTRIBUTOR PORTAL APIS

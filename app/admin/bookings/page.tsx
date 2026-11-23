@@ -37,6 +37,7 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [restartingId, setRestartingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [confirmModalData, setConfirmModalData] = useState<{
@@ -288,6 +289,129 @@ export default function AdminBookingsPage() {
     });
   };
 
+  const isDatePassed = (b: any) => {
+    if (!b) return false;
+    const note = String(b?.requiresHumanNote || b?.failureReason || b?.errorMessage || '');
+    if (note.includes('passed') || note.includes('Auto-cancelled') || note.includes('past')) {
+      return true;
+    }
+    const dateStr = b?.requestedDateStr || (b?.requestedDate ? String(b.requestedDate).split('T')[0] : '');
+    if (!dateStr) return false;
+    let today = '';
+    try {
+      today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    } catch {
+      today = new Date().toISOString().split('T')[0];
+    }
+    return dateStr < today;
+  };
+
+  const isSuccessOrCompleted = (b: any) => {
+    if (!b) return false;
+    const status = typeof b === 'string' ? b : b.status;
+    if (['SUCCESS', 'COMPLETED', 'BOOKING_CONFIRMED', 'CONFIRMED'].includes(status)) {
+      return true;
+    }
+    const ref = typeof b === 'object' ? (b.officialBookingReference || b.officialReference) : null;
+    const isCartId = b && b.cartId && ref === b.cartId;
+    if (ref && String(ref).trim().length > 0 && !isCartId && !String(ref).startsWith('SAB-2026-')) {
+      return true;
+    }
+    return false;
+  };
+
+  const isCancelled = (b: any) => {
+    if (!b) return false;
+    const status = typeof b === 'string' ? b : b.status;
+    return status === 'CANCELLED';
+  };
+
+  const isFailed = (b: any) => {
+    if (!b) return false;
+    if (isSuccessOrCompleted(b)) return false;
+    const status = typeof b === 'string' ? b : b.status;
+    return (
+      status === 'FAILED' ||
+      status === 'LOGIN_FAILED' ||
+      status === 'SITE_UNAVAILABLE' ||
+      status === 'SITE_ERROR' ||
+      status === 'NO_AVAILABILITY' ||
+      status === 'EXPIRED' ||
+      status === 'TIMEOUT' ||
+      status === 'WORKER_ERROR' ||
+      status === 'RETRYABLE_FAILURE' ||
+      status === 'DATE_SELECTION_FAILED' ||
+      status === 'HOLD_INVALID_NOMINEE' ||
+      status.includes('FAIL') ||
+      status.includes('ERROR')
+    );
+  };
+
+  const isRestartable = (b: any) => {
+    if (!b) return false;
+    // Never restart confirmed / success passes
+    if (isSuccessOrCompleted(b)) return false;
+    // Never restart if Darshan date has passed / finished
+    if (isDatePassed(b)) return false;
+    // Only CANCELLED and FAILED bookings can be restarted
+    return isCancelled(b) || isFailed(b);
+  };
+
+  const handleRestartBooking = (id: string, bookingCode: string) => {
+    setConfirmModalData({
+      isOpen: true,
+      title: `Restart Booking #${bookingCode}`,
+      description: `Restart booking #${bookingCode} and return it to the active execution queue? If previously cancelled, deposit hold will be re-reserved from the centre wallet.`,
+      confirmLabel: 'Restart Booking',
+      isDestructive: false,
+      action: async () => {
+        setRestartingId(id);
+        try {
+          const res = await api.restartBooking(id);
+          const text = res.message || `Booking #${bookingCode} restarted successfully!`;
+          toast.success(text);
+          setStatusMessage({ type: 'success', text });
+          setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+          loadBookings(false);
+          setTimeout(() => setStatusMessage(null), 4000);
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to restart booking');
+          setStatusMessage({ type: 'error', text: err.message || 'Failed to restart booking' });
+        } finally {
+          setRestartingId(null);
+        }
+      },
+    });
+  };
+
+  const handleRestartAll = () => {
+    const restartableCount = bookings.filter(isRestartable).length;
+    setConfirmModalData({
+      isOpen: true,
+      title: 'Restart All Failed & Cancelled Bookings',
+      description: `Restart all ${restartableCount || ''} eligible failed and cancelled booking requests with upcoming dates and return them to the active dispatch queue?`,
+      confirmLabel: 'Restart All',
+      isDestructive: false,
+      action: async () => {
+        setActionLoading(true);
+        try {
+          const res = await api.restartAllBookings();
+          const text = res.message || `Restart completed: ${res.restarted} restarted, ${res.skipped} skipped.`;
+          toast.success(text);
+          setStatusMessage({ type: 'success', text });
+          setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+          loadBookings(false);
+          setTimeout(() => setStatusMessage(null), 6000);
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to restart bookings');
+          setStatusMessage({ type: 'error', text: err.message || 'Failed to restart bookings' });
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
+  };
+
   const handleRecoverStale = async () => {
     try {
       const res = await api.request('/workers/recover-stale', { method: 'POST' });
@@ -390,6 +514,23 @@ export default function AdminBookingsPage() {
             <Plus className="h-4 w-4" />
             <span>Create Booking</span>
           </Link>
+
+          {/* Restart All Failed & Cancelled Action (visible only when eligible bookings exist) */}
+          {bookings.filter(isRestartable).length > 0 && (
+            <button
+              onClick={handleRestartAll}
+              disabled={actionLoading}
+              className="flex items-center gap-1.5 rounded-btn border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 px-3.5 py-2 text-xs font-bold transition-colors shadow-subtle disabled:opacity-50 cursor-pointer"
+              title="Restart all failed and cancelled bookings with upcoming dates"
+            >
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-700" />
+              ) : (
+                <RotateCcw className="h-4 w-4 text-emerald-700" />
+              )}
+              <span>Restart All ({bookings.filter(isRestartable).length})</span>
+            </button>
+          )}
 
           {/* Clear All Queues Action */}
           <button
@@ -519,7 +660,9 @@ export default function AdminBookingsPage() {
               <tbody className="divide-y divide-border-subtle">
                 {filtered.map((b) => {
                   const canCancel = !['SUCCESS', 'CANCELLED', 'FAILED', 'COMPLETED'].includes(b.status);
+                  const canRestart = isRestartable(b);
                   const isCancelling = cancellingId === b.id;
+                  const isRestarting = restartingId === b.id;
 
                   return (
                     <tr key={b.id} className="hover:bg-neutral-50/70 transition-colors">
@@ -550,6 +693,21 @@ export default function AdminBookingsPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">
+                          {canRestart && (
+                            <button
+                              onClick={() => handleRestartBooking(b.id, b.bookingCode)}
+                              disabled={isRestarting}
+                              className="inline-flex items-center gap-1 rounded-btn border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-colors disabled:opacity-50"
+                              title="Restart this failed or cancelled booking and return to queue"
+                            >
+                              {isRestarting ? (
+                                <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
+                              ) : (
+                                <RotateCcw className="h-3 w-3 text-emerald-600" />
+                              )}
+                              <span>Restart</span>
+                            </button>
+                          )}
                           {canCancel && (
                             <button
                               onClick={() => handleCancelBooking(b.id, b.bookingCode)}

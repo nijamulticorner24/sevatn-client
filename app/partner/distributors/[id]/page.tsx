@@ -29,6 +29,8 @@ import {
   Percent,
   X,
   Save,
+  KeyRound,
+  Send,
 } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -48,6 +50,14 @@ export default function PartnerDistributorDetailsPage() {
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Generated Credentials Modal State
+  const [isCredsModalOpen, setIsCredsModalOpen] = useState(false);
+  const [credentialsData, setCredentialsData] = useState<any>(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
+  const [copiedPortalUrl, setCopiedPortalUrl] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   // Edit Modal State
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -137,6 +147,79 @@ export default function PartnerDistributorDetailsPage() {
     }
   };
 
+  const handleRegeneratePassword = async () => {
+    if (!distributor) return;
+    if (!confirm(`Are you sure you want to regenerate the login password for ${distributor.name} (${distributor.distributorCode})?\n\nA new temporary password will be created immediately.`)) {
+      return;
+    }
+    setRegenerating(true);
+    try {
+      const res: any = await api.regeneratePartnerDistributorPassword(distributor.id);
+      const portalUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/login`;
+      setCredentialsData({
+        distributorName: res?.distributor?.name || distributor.name,
+        businessName: res?.distributor?.businessName || distributor.businessName,
+        distributorCode: res?.distributor?.distributorCode || distributor.distributorCode,
+        email: res?.distributor?.email || distributor.email,
+        mobile: res?.credentials?.identifier || distributor.mobile,
+        temporaryPassword: res?.credentials?.temporaryPassword,
+        portalUrl,
+        isRegenerated: true,
+      });
+      setIsCredsModalOpen(true);
+      toast.success(`Temporary login password regenerated for ${distributor.name}!`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to regenerate distributor password');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const copyCredentials = () => {
+    if (!credentialsData) return;
+    const text = `🎉 SEVATN DISTRIBUTOR ACCESS CREDENTIALS\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Distributor Name  : ${credentialsData.distributorName}\n` +
+      (credentialsData.businessName ? `Business / Agency : ${credentialsData.businessName}\n` : '') +
+      `Distributor Code  : ${credentialsData.distributorCode}\n` +
+      `First Login URL   : ${credentialsData.portalUrl}\n` +
+      `Mobile / Username : ${credentialsData.mobile}\n` +
+      `Temporary Password: ${credentialsData.temporaryPassword}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Please login and change your password immediately upon first access.`;
+    navigator.clipboard.writeText(text);
+    setCopiedCreds(true);
+    setTimeout(() => setCopiedCreds(false), 3000);
+  };
+
+  const copyPortalUrlOnly = () => {
+    if (!credentialsData) return;
+    navigator.clipboard.writeText(credentialsData.portalUrl);
+    setCopiedPortalUrl(true);
+    setTimeout(() => setCopiedPortalUrl(false), 2000);
+  };
+
+  const copyPasswordOnly = () => {
+    if (!credentialsData?.temporaryPassword) return;
+    navigator.clipboard.writeText(credentialsData.temporaryPassword);
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2000);
+  };
+
+  const shareCredentialsViaWhatsApp = () => {
+    if (!credentialsData) return;
+    const text = `🎉 *SEVATN DISTRIBUTOR ACCESS CREDENTIALS*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `*Distributor:* ${credentialsData.distributorName} (${credentialsData.distributorCode})\n` +
+      `*First Login URL:* ${credentialsData.portalUrl}\n` +
+      `*Mobile / Username:* ${credentialsData.mobile}\n` +
+      `*Temporary Password:* *${credentialsData.temporaryPassword}*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_Please login and change your password upon first access._`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+
   const handleCopy = (text: string, id: string) => {
     const fullUrl = `${window.location.origin}/service/register/${text}`;
     navigator.clipboard.writeText(fullUrl);
@@ -223,6 +306,16 @@ export default function PartnerDistributorDetailsPage() {
           >
             <Edit2 className="h-3.5 w-3.5 text-[#667085]" />
             <span>Edit Profile / Slab</span>
+          </button>
+
+          <button
+            onClick={handleRegeneratePassword}
+            disabled={regenerating}
+            className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#F9DE9B] bg-[#FEF7E6] px-3.5 py-2 text-xs font-bold text-[#C98219] hover:bg-[#FDF0D0] transition-colors shadow-subtle disabled:opacity-50"
+            title="Regenerate temporary login password for this distributor"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            <span>{regenerating ? 'Resetting...' : 'Reset Password'}</span>
           </button>
 
           <button
@@ -746,6 +839,155 @@ export default function PartnerDistributorDetailsPage() {
         onConfirm={confirmToggleStatus}
         onCancel={() => setIsConfirmToggleOpen(false)}
       />
+
+      {/* Generated Credentials Modal */}
+      {isCredsModalOpen && credentialsData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-[12px] bg-white shadow-xl overflow-hidden border border-[#C3E6CB]">
+            {/* Header */}
+            <div className="bg-[#EAF7EE] p-5 border-b border-[#C3E6CB] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-[#198754] p-2 text-white">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#106A3B]">
+                    {credentialsData.isRegenerated ? 'Distributor Password Regenerated' : 'Distributor Account Provisioned'}
+                  </h3>
+                  <p className="text-xs text-[#198754]">
+                    {credentialsData.isRegenerated
+                      ? 'New temporary login credentials generated successfully'
+                      : 'Distributor created & ₹399 deducted from Partner Wallet'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCredsModalOpen(false)}
+                className="rounded-md p-1.5 text-[#198754] hover:bg-[#D8F3DF] transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Profile Card */}
+              <div className="rounded-[10px] border border-[#E6EAF0] bg-[#F8FAFC] p-4 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                  <span className="text-[#667085] font-medium">Distributor Name</span>
+                  <span className="font-bold text-[#172033] text-sm">{credentialsData.distributorName}</span>
+                </div>
+                {credentialsData.businessName && (
+                  <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                    <span className="text-[#667085] font-medium">Business / Agency</span>
+                    <span className="font-semibold text-[#172033]">{credentialsData.businessName}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                  <span className="text-[#667085] font-medium">Distributor Code</span>
+                  <span className="font-mono font-bold text-[#C98219] bg-[#FEF7E6] px-2 py-0.5 rounded border border-[#F9DE9B]">
+                    {credentialsData.distributorCode}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-[#E6EAF0]">
+                  <span className="text-[#667085] font-medium">Login Mobile / User ID</span>
+                  <span className="font-mono font-bold text-[#172033]">{credentialsData.mobile}</span>
+                </div>
+                {credentialsData.email && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#667085] font-medium">Email</span>
+                    <span className="font-semibold text-[#172033]">{credentialsData.email}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Temporary Password Highlight Box */}
+              <div className="rounded-[10px] border-2 border-dashed border-[#C98219] bg-[#FEF7E6] p-4 text-center space-y-2">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#8F5A0D]">
+                  <KeyRound className="h-4 w-4" />
+                  <span>TEMPORARY ACTIVATION PASSWORD</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="font-mono text-xl sm:text-2xl font-extrabold tracking-wider text-[#172033] bg-white px-4 py-1.5 rounded-[8px] border border-[#F9DE9B] select-all shadow-xs">
+                    {credentialsData.temporaryPassword || '—'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyPasswordOnly}
+                    className="rounded-[8px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs font-bold text-[#344054] hover:bg-[#F2F4F7] transition-colors flex items-center gap-1.5 shrink-0 shadow-xs"
+                    title="Copy Password"
+                  >
+                    {copiedPassword ? <Check className="h-3.5 w-3.5 text-[#198754]" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedPassword ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-[#8F5A0D]">
+                  The distributor will use this temporary password to log in and will be prompted to set their permanent password upon first access.
+                </p>
+              </div>
+
+              {/* Portal Login URL */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#172033]">
+                  Distributor First Login Portal URL:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={credentialsData.portalUrl}
+                    className="flex-1 rounded-[7px] border border-[#D0D5DD] bg-[#F8FAFC] px-3 py-2 text-xs font-mono text-[#172033] select-all focus:outline-none"
+                  />
+                  <button
+                    onClick={copyPortalUrlOnly}
+                    className="rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs font-bold text-[#344054] hover:bg-[#F2F4F7] transition-colors flex items-center gap-1 shrink-0"
+                  >
+                    {copiedPortalUrl ? <Check className="h-3.5 w-3.5 text-[#198754]" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedPortalUrl ? 'Copied' : 'Copy URL'}</span>
+                  </button>
+                  <a
+                    href={credentialsData.portalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-[7px] bg-[#172033] p-2 text-white hover:bg-[#2A374F] transition-colors shrink-0"
+                    title="Open in new tab"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={copyCredentials}
+                    className="w-full rounded-[8px] bg-[#172033] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#2A374F] transition-colors flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    {copiedCreds ? <Check className="h-4 w-4 text-[#198754]" /> : <Copy className="h-4 w-4" />}
+                    <span>{copiedCreds ? 'Copied to Clipboard!' : 'Copy All Details'}</span>
+                  </button>
+
+                  <button
+                    onClick={shareCredentialsViaWhatsApp}
+                    className="w-full rounded-[8px] bg-[#25D366] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#1EBE5D] transition-colors flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <Send className="h-4 w-4" />
+                    <span>Share on WhatsApp</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setIsCredsModalOpen(false)}
+                  className="w-full rounded-[8px] border border-[#D0D5DD] bg-white px-4 py-2 text-xs font-semibold text-[#344054] hover:bg-[#F2F4F7] transition-colors"
+                >
+                  Done & Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
