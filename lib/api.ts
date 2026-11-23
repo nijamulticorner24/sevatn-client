@@ -840,6 +840,10 @@ class ApiClient {
     return this.request('/admin/bookings/purge-all', { method: 'POST' });
   }
 
+  async notifyBookingTelegram(bookingId: string) {
+    return this.request(`/admin/bookings/${bookingId}/notify-telegram`, { method: 'POST' });
+  }
+
   // Partner Payouts & Commission APIs
   async getPartnerCentres(page = 1, district?: string, status?: string, search?: string, distributorId?: string) {
     let q = `?page=${page}`;

@@ -469,13 +469,13 @@ export default function SystemConfigPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#172033] flex items-center gap-2">
-                    <span>Telegram Payment Notifier Bot</span>
+                    <span>Telegram Notifier Bot</span>
                     <span className="text-[10px] bg-[#E0F2FE] text-[#0369A1] font-bold px-2 py-0.5 rounded-full border border-[#BAE6FD]">
-                      Instant Alerts
+                      Live Queue &amp; Payments
                     </span>
                   </h3>
                   <p className="text-[11.5px] text-[#667085]">
-                    Receive instant real-time notifications with receipt proofs on Telegram whenever a customer or centre completes an onboarding fee or wallet top-up.
+                    Receive instant real-time notifications on Telegram for <b>Central Booking Queue</b> status alerts (Action Required, Worker Error, Cancel, Success) and financial payments / wallet top-ups.
                   </p>
                 </div>
               </div>
@@ -507,6 +507,22 @@ export default function SystemConfigPage() {
 
             {config.telegramBotEnabled && (
               <div className="space-y-4 pt-1">
+                <div className="p-3 rounded-[8px] bg-[#F0F9FF] border border-[#B9E6FE] text-xs text-[#0369A1] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Megaphone className="h-4 w-4 text-[#0284C7] shrink-0" />
+                    <span className="font-medium">
+                      Active Triggers: <b>New Bookings</b> 🆕, <b>Action Required</b> ⚠️, <b>Worker Error</b> 🚨, <b>Cancelled</b> 🛑, <b>Confirmed Pass</b> ✅, and <b>Wallet Payments</b> 💳
+                    </span>
+                  </div>
+                  <Link
+                    href="/admin/bookings"
+                    className="text-[11px] font-bold text-[#0284C7] hover:underline flex items-center gap-1 shrink-0"
+                  >
+                    <span>View Booking Queue</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-[#172033] mb-1.5">

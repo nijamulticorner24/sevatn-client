@@ -23,6 +23,7 @@ import {
   Bell,
   BellRing,
   BellOff,
+  Send,
 } from 'lucide-react';
 import { EmptyState } from '../../../components/EmptyState';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -38,6 +39,8 @@ export default function AdminBookingsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [restartingId, setRestartingId] = useState<string | null>(null);
+  const [notifyingTelegramId, setNotifyingTelegramId] = useState<string | null>(null);
+  const [telegramConfig, setTelegramConfig] = useState<{ enabled: boolean; hasCreds: boolean }>({ enabled: false, hasCreds: false });
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [confirmModalData, setConfirmModalData] = useState<{
@@ -60,12 +63,40 @@ export default function AdminBookingsPage() {
   const knownConfirmedRef = useRef<Set<string>>(new Set());
   const isInitialLoadRef = useRef<boolean>(true);
 
-  // Initialize notification permission state on client mount
+  // Initialize notification permission state and Telegram config on client mount
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotificationPermission(Notification.permission);
     }
+    api.getSystemConfig()
+      .then((cfg) => {
+        if (cfg) {
+          setTelegramConfig({
+            enabled: Boolean(cfg.telegramBotEnabled),
+            hasCreds: Boolean(cfg.telegramBotToken && cfg.telegramChatId),
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const handleNotifyTelegram = async (id: string, bookingCode: string) => {
+    setNotifyingTelegramId(id);
+    try {
+      const res = await api.notifyBookingTelegram(id);
+      if (res?.success) {
+        toast.success(`Telegram notification sent for #${bookingCode}`);
+      } else if (res?.result?.skipped) {
+        toast.error(`Telegram alert skipped: ${res.result.reason || 'Bot not configured in /admin/config'}`);
+      } else {
+        toast.error(`Failed to send Telegram alert: ${res?.result?.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to dispatch Telegram alert');
+    } finally {
+      setNotifyingTelegramId(null);
+    }
+  };
 
   // Request browser notification permission
   const handleRequestNotificationPermission = async () => {
@@ -494,6 +525,26 @@ export default function AdminBookingsPage() {
             </button>
           )}
 
+          {/* Telegram Alerts Indicator */}
+          <Link
+            href="/admin/config"
+            className={`inline-flex items-center gap-1.5 rounded-btn border px-3 py-2 text-xs font-semibold shadow-subtle transition-colors ${
+              telegramConfig.enabled && telegramConfig.hasCreds
+                ? 'border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100'
+                : 'border-neutral-200 bg-white text-secondary-500 hover:bg-neutral-50'
+            }`}
+            title={
+              telegramConfig.enabled && telegramConfig.hasCreds
+                ? 'Telegram Notifier Bot is active. Notifications are dispatched for Action Required, Worker Error, Cancel, and Success.'
+                : 'Telegram Notifier Bot is disabled or missing credentials. Click to configure in /admin/config.'
+            }
+          >
+            <Send className={`h-3.5 w-3.5 ${telegramConfig.enabled && telegramConfig.hasCreds ? 'text-sky-600' : 'text-neutral-400'}`} />
+            <span>
+              {telegramConfig.enabled && telegramConfig.hasCreds ? 'Telegram Alerts Active' : 'Telegram Bot Inactive'}
+            </span>
+          </Link>
+
           {/* Live Polling Indicator */}
           <div
             className="inline-flex items-center gap-1.5 rounded-btn border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs font-semibold text-secondary-600 shadow-subtle"
@@ -601,7 +652,7 @@ export default function AdminBookingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {['ALL', 'QUEUED', 'ASSIGNED', 'WATCHING', 'AVAILABILITY_FOUND', 'BOOKING', 'SUCCESS', 'REQUIRES_HUMAN', 'CANCELLED', 'FAILED'].map((s) => (
+          {['ALL', 'QUEUED', 'ASSIGNED', 'WATCHING', 'AVAILABILITY_FOUND', 'BOOKING', 'SUCCESS', 'REQUIRES_HUMAN', 'WORKER_ERROR', 'CANCELLED', 'FAILED'].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -721,6 +772,21 @@ export default function AdminBookingsPage() {
                                 <XCircle className="h-3 w-3 text-red-600" />
                               )}
                               <span>Cancel</span>
+                            </button>
+                          )}
+                          {['NEW', 'QUEUED', 'PENDING', 'FAST_BOOKING_QUEUED', 'REQUIRES_HUMAN', 'WORKER_ERROR', 'CANCELLED', 'SUCCESS', 'COMPLETED', 'BOOKING_CONFIRMED'].includes(b.status) && (
+                            <button
+                              onClick={() => handleNotifyTelegram(b.id, b.bookingCode)}
+                              disabled={notifyingTelegramId === b.id}
+                              className="inline-flex items-center gap-1 rounded-btn border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-100 hover:text-sky-800 transition-colors disabled:opacity-50"
+                              title="Dispatch or resend alert to configured Telegram Bot"
+                            >
+                              {notifyingTelegramId === b.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin text-sky-600" />
+                              ) : (
+                                <Send className="h-3 w-3 text-sky-600" />
+                              )}
+                              <span>Telegram</span>
                             </button>
                           )}
                           <Link
