@@ -385,6 +385,28 @@ export default function BookingDetailPage() {
                     Challenge Note: {booking.requiresHumanNote}
                   </p>
                 )}
+                {booking.confirmationEvidence?.screenshot && (
+                  <div className="mt-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#992B26] mb-1.5 flex items-center gap-1.5">
+                      📸 Captured Official Portal Screenshot:
+                    </p>
+                    <a
+                      href={booking.confirmationEvidence.screenshot}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block group rounded-lg overflow-hidden border border-[#F8C4C2] bg-white shadow-sm hover:shadow-md transition-all max-w-[280px]"
+                    >
+                      <img
+                        src={booking.confirmationEvidence.screenshot}
+                        alt="Portal Challenge Screenshot"
+                        className="w-full h-auto max-h-[140px] object-cover object-top group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <span className="block text-[11px] font-semibold text-center py-1 text-[#992B26] bg-[#FDECEC] border-t border-[#F8C4C2]">
+                        Click to enlarge screenshot ↗
+                      </span>
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -411,6 +433,28 @@ export default function BookingDetailPage() {
               <p className="text-[12px] text-[#667085] mt-1">
                 Held service fee ({formatCurrency(Number(booking.transactions?.find((t: any) => t.type === 'RESERVE' || t.type === 'CAPTURE')?.amount || 100))}) has been fully released back to your centre wallet.
               </p>
+              {booking.confirmationEvidence?.screenshot && (
+                <div className="mt-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#992B26] mb-1.5 flex items-center gap-1.5">
+                    📸 Captured Official Portal Screenshot:
+                  </p>
+                  <a
+                    href={booking.confirmationEvidence.screenshot}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block group rounded-lg overflow-hidden border border-[#F8C4C2] bg-white shadow-sm hover:shadow-md transition-all max-w-[280px]"
+                  >
+                    <img
+                      src={booking.confirmationEvidence.screenshot}
+                      alt="Portal Failure Screenshot"
+                      className="w-full h-auto max-h-[140px] object-cover object-top group-hover:scale-105 transition-transform duration-200"
+                    />
+                    <span className="block text-[11px] font-semibold text-center py-1 text-[#992B26] bg-[#FDECEC] border-t border-[#F8C4C2]">
+                      Click to enlarge screenshot ↗
+                    </span>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         )}
