@@ -678,13 +678,13 @@ export default function AdminDistributorsPage() {
                         onClick={() => setWalletAdjustAmount(preset.toString())}
                         className="px-2 py-0.5 rounded bg-[#F8FAFC] hover:bg-[#F2F4F7] text-[10.5px] font-mono font-semibold text-[#475467] border border-[#D0D5DD] transition-colors"
                       >
-                        🪙 {preset}
+                        ₹ {preset}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-[#667085] font-bold">🪙</span>
+                  <span className="absolute left-3 top-2.5 text-[#667085] font-bold">₹</span>
                   <input
                     type="number"
                     min="1"

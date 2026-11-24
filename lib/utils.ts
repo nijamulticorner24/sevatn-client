@@ -11,7 +11,7 @@ export function formatChips(amount: number | string, includeLabel = false): stri
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   }).format(val || 0);
-  return includeLabel ? `🪙 ${formatted} Chips` : `🪙 ${formatted}`;
+  return includeLabel ? `${formatted} Chips` : `${formatted}`;
 }
 
 export function formatINR(amount: number | string): string {

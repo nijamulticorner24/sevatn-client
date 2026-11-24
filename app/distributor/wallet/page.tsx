@@ -148,13 +148,13 @@ export default function DistributorWalletPage() {
     }
 
     if (!shareAmount || shareAmount <= 0) {
-      setShareError('Please enter a valid transfer amount greater than 🪙 0.');
+      setShareError('Please enter a valid transfer amount greater than ₹ 0.');
       return;
     }
 
     const available = Number(wallet?.availableBalance || 0);
     if (shareAmount > available) {
-      setShareError(`Insufficient balance: Available balance is 🪙 ${available.toFixed(2)}, cannot transfer 🪙 ${shareAmount.toFixed(2)}.`);
+      setShareError(`Insufficient balance: Available balance is ₹ ${available.toFixed(2)}, cannot transfer ₹ ${shareAmount.toFixed(2)}.`);
       return;
     }
 
@@ -166,7 +166,7 @@ export default function DistributorWalletPage() {
         notes: shareNotes.trim() || undefined,
       });
 
-      setShareSuccess(res.message || `Successfully transferred 🪙 ${shareAmount} to centre!`);
+      setShareSuccess(res.message || `Successfully transferred ₹ ${shareAmount} to centre!`);
       loadData();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('wallet-refresh'));
@@ -271,7 +271,7 @@ export default function DistributorWalletPage() {
     }
 
     if (!topupAmount || topupAmount < 100) {
-      setFormError('Topup amount must be at least 🪙 100.');
+      setFormError('Topup amount must be at least ₹ 100.');
       return;
     }
 
@@ -928,7 +928,7 @@ export default function DistributorWalletPage() {
                       const cBal = c.user?.wallet?.availableBalance ? Number(c.user.wallet.availableBalance) : 0;
                       return (
                         <option key={c.id} value={c.id}>
-                          {c.centreName} ({c.centreCode || 'N/A'}) • {c.district || ''} — Current: 🪙 {cBal.toFixed(2)}
+                          {c.centreName} ({c.centreCode || 'N/A'}) • {c.district || ''} — Current: ₹ {cBal.toFixed(2)}
                         </option>
                       );
                     })}
@@ -942,7 +942,7 @@ export default function DistributorWalletPage() {
                   Transfer Amount (Chips) <span className="text-[#C2413B]">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#667085]">🪙</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#667085]">₹</span>
                   <input
                     type="number"
                     min="10"

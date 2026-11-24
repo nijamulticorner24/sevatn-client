@@ -73,7 +73,7 @@ export default function PartnerPayoutsPage() {
     const minWithdrawal = Number(data?.minWithdrawal || 100);
     const numAmount = Number(amount);
     if (!numAmount || numAmount < minWithdrawal) {
-      setErrorMsg(`Minimum withdrawal amount is 🪙 ${minWithdrawal}`);
+      setErrorMsg(`Minimum withdrawal amount is ₹ ${minWithdrawal}`);
       return;
     }
 
@@ -456,7 +456,7 @@ export default function PartnerPayoutsPage() {
                         onClick={() => setAmount(preset)}
                         className="rounded-[5px] border border-[#E6EAF0] bg-[#F8FAFC] px-2.5 py-1 text-[11px] font-bold text-[#172033] hover:border-[#C98219] hover:bg-[#FEF7E6] transition-colors"
                       >
-                        🪙 {preset}
+                        ₹ {preset}
                       </button>
                     ))}
                   <button

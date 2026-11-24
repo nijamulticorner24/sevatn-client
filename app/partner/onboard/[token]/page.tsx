@@ -401,7 +401,7 @@ export default function PartnerOnboardPage() {
             <div className="rounded-[7px] border border-[#B2DDFF] bg-white p-4 max-w-sm mx-auto text-left text-xs space-y-2">
               <div className="flex justify-between">
                 <span className="text-[#667085]">Franchise Fee:</span>
-                <span className="font-bold text-[#172033]">🪙 {getFranchiseFee().toFixed(2)}</span>
+                <span className="font-bold text-[#172033]">₹ {getFranchiseFee().toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#667085]">Transaction Ref (UTR):</span>
@@ -458,7 +458,7 @@ export default function PartnerOnboardPage() {
               <div>
                 <h3 className="text-base font-bold text-[#172033] flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-[#C98219]" />
-                  Select Payment Method — Franchise Fee 🪙 {getFranchiseFee().toFixed(2)}
+                  Select Payment Method — Franchise Fee ₹ {getFranchiseFee().toFixed(2)}
                 </h3>
                 <p className="text-xs text-[#667085] mt-1">
                   {onlineEnabled && offlineEnabled
@@ -588,7 +588,7 @@ export default function PartnerOnboardPage() {
                 <div className="rounded-[8px] border border-[#A6F4C5] bg-[#ECFDF3] p-4 text-xs space-y-2 text-[#027A48]">
                   <div className="flex justify-between font-bold text-sm">
                     <span>Franchise Fee Amount:</span>
-                    <span>🪙 {getFranchiseFee().toFixed(2)}</span>
+                    <span>₹ {getFranchiseFee().toFixed(2)}</span>
                   </div>
                   <p className="text-[11.5px] leading-relaxed">
                     ✨ <strong>Instant Activation:</strong> Once your online transaction succeeds, your partner node will be instantly activated and verified without waiting for administrator approval.
@@ -609,7 +609,7 @@ export default function PartnerOnboardPage() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      <span>Pay 🪙 {getFranchiseFee().toFixed(2)} Online (Instant Auto-Activation)</span>
+                      <span>Pay ₹ {getFranchiseFee().toFixed(2)} Online (Instant Auto-Activation)</span>
                     </>
                   )}
                 </button>
@@ -630,14 +630,14 @@ export default function PartnerOnboardPage() {
                       />
                     </div>
                     <span className="block text-[10.5px] text-[#8F5A0D] font-bold mt-1.5">
-                      {paymentConfig?.offlineQrImageUrl ? 'Official Admin QR Code' : 'Scan to Pay 🪙 599.00'}
+                      {paymentConfig?.offlineQrImageUrl ? 'Official Admin QR Code' : 'Scan to Pay ₹ 599.00'}
                     </span>
                   </div>
 
                   <div className="space-y-3 flex-1 text-center sm:text-left">
                     <div className="flex items-center justify-center sm:justify-start gap-2">
                       <span className="text-xs text-[#8F5A0D] font-bold">One-Time Franchise Fee:</span>
-                      <span className="text-lg font-extrabold text-[#172033]">🪙 {getFranchiseFee().toFixed(2)}</span>
+                      <span className="text-lg font-extrabold text-[#172033]">₹ {getFranchiseFee().toFixed(2)}</span>
                     </div>
 
                     <div className="space-y-1">

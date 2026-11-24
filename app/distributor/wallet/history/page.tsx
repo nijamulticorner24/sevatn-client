@@ -268,7 +268,7 @@ export default function DistributorWalletHistoryPage() {
               <Wallet className="h-4 w-4 text-[#C98219]" />
             </div>
             <div className="text-xl font-bold text-[#172033] tabular-nums">
-              {wallet ? formatINR(wallet.availableBalance) : '🪙 0.00'}
+              {wallet ? formatINR(wallet.availableBalance) : '₹ 0.00'}
             </div>
             <p className="text-[10.5px] text-[#667085] mt-1">Available for sharing &amp; tickets</p>
           </div>

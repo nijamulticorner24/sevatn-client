@@ -93,7 +93,7 @@ export default function PartnerOverviewPage() {
     ...distributors.map((d) => ({
       type: 'DISTRIBUTOR',
       title: `Distributor Created: ${d.name} (${d.distributorCode})`,
-      subtitle: `Distributor Markup +🪙 ${d.markup || 0} / booking`,
+      subtitle: `Distributor Markup +₹ ${d.markup || 0} / booking`,
       date: d.createdAt,
       status: d.status,
     })),
@@ -314,7 +314,7 @@ export default function PartnerOverviewPage() {
                       <p className="text-xs font-bold text-[#172033] truncate">{d.name}</p>
                     </div>
                     <p className="text-[11px] text-[#667085] mt-0.5">
-                      {d.centresCount || 0} Centres • Distributor Markup +🪙 {d.markup || 0}
+                      {d.centresCount || 0} Centres • Distributor Markup +₹ {d.markup || 0}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

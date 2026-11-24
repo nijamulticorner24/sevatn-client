@@ -31,6 +31,7 @@ import {
   Building2,
   Phone,
   PhoneCall,
+  Coins,
 } from 'lucide-react';
 
 export default function WalletPage() {
@@ -199,7 +200,7 @@ export default function WalletPage() {
     }
 
     if (!topupAmount || topupAmount < 100) {
-      setFormError('Topup amount must be at least 🪙 100.');
+      setFormError('Topup amount must be at least ₹ 100.');
       return;
     }
 
@@ -444,8 +445,9 @@ export default function WalletPage() {
               <span>Available Balance</span>
               <span className="rounded bg-[#EAF7EE] px-2 py-0.5 text-[10px] font-bold text-[#198754]">Ready to Book</span>
             </div>
-            <div className="text-2xl font-black text-[#172033] mt-2">
-              {formatINR(availableBalance)}
+            <div className="flex items-center gap-1.5 text-2xl font-black text-[#172033] mt-2">
+              <Coins className="h-5 w-5 text-[#C98219] shrink-0" />
+              <span>{formatINR(availableBalance)}</span>
             </div>
             <p className="text-[11px] text-[#667085] mt-1">Available for new ticket bookings</p>
           </div>
@@ -455,8 +457,9 @@ export default function WalletPage() {
               <span>Reserved in Escrow</span>
               <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-[10px] font-bold text-[#B7791F]">On Hold</span>
             </div>
-            <div className="text-2xl font-black text-[#B7791F] mt-2">
-              {formatINR(reservedBalance)}
+            <div className="flex items-center gap-1.5 text-2xl font-black text-[#B7791F] mt-2">
+              <Coins className="h-5 w-5 text-[#B7791F] shrink-0" />
+              <span>{formatINR(reservedBalance)}</span>
             </div>
             <p className="text-[11px] text-[#667085] mt-1">Held for active in-flight booking jobs</p>
           </div>
@@ -466,8 +469,9 @@ export default function WalletPage() {
               <span>Total Working Balance</span>
               <ShieldCheck className="h-4 w-4 text-[#175CD3]" />
             </div>
-            <div className="text-2xl font-black text-[#175CD3] mt-2">
-              {formatINR(totalBalance)}
+            <div className="flex items-center gap-1.5 text-2xl font-black text-[#175CD3] mt-2">
+              <Coins className="h-5 w-5 text-[#175CD3] shrink-0" />
+              <span>{formatINR(totalBalance)}</span>
             </div>
             <p className="text-[11px] text-[#175CD3]/80 mt-1">Available + Reserved escrow capital</p>
           </div>

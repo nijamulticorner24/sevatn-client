@@ -454,7 +454,7 @@ export default function PartnerDistributorDetailsPage() {
               </div>
             </div>
             <p className="text-[11px] text-[#667085] mt-3">
-              Formula: 🪙 {basePrice} (Base) + 🪙 {partnerMarkup} (Partner) + 🪙 {distMarkup} (Distributor) = <strong>🪙 {finalPrice} Final Ticket Price</strong>
+              Formula: ₹ {basePrice} (Base) + ₹ {partnerMarkup} (Partner) + ₹ {distMarkup} (Distributor) = <strong>₹ {finalPrice} Final Ticket Price</strong>
             </p>
           </div>
 
@@ -789,7 +789,7 @@ export default function PartnerDistributorDetailsPage() {
                 </div>
                 <div>
                   <label className="block font-bold text-[#172033] mb-1">
-                    Markup (Max 🪙 {distributor.maxAllowedMarkup || 2})
+                    Markup (Max ₹ {distributor.maxAllowedMarkup || 2})
                   </label>
                   <input
                     type="number"
@@ -857,7 +857,7 @@ export default function PartnerDistributorDetailsPage() {
                   <p className="text-xs text-[#198754]">
                     {credentialsData.isRegenerated
                       ? 'New temporary login credentials generated successfully'
-                      : 'Distributor created & 🪙 399 deducted from Partner Wallet'}
+                      : 'Distributor created & ₹ 399 deducted from Partner Wallet'}
                   </p>
                 </div>
               </div>

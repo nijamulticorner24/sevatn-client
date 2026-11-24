@@ -12,6 +12,7 @@ import {
   LocateFixed,
   Bolt,
   ChevronLeft,
+  Coins,
 } from 'lucide-react';
 
 
@@ -124,10 +125,10 @@ export const Navbar = () => {
               {/* Wallet Pill */}
               <Link
                 href="/dashboard/wallet"
-                className="flex items-center gap-2 rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] px-3 py-1.5 text-sm font-semibold text-[#8F5A0D] transition-all hover:bg-[#FAF3E7]"
+                className="flex items-center gap-1.5 rounded-[7px] border border-[#F9DE9B] bg-[#FEF7E6] px-3 py-1.5 text-sm font-semibold text-[#8F5A0D] transition-all hover:bg-[#FAF3E7]"
               >
-                <Wallet className="h-4 w-4 text-[#C98219]" />
-                <span className="tabular-nums">{wallet ? formatINR(wallet.availableBalance) : '🪙 ---'}</span>
+                <Coins className="h-4 w-4 text-[#C98219] shrink-0" />
+                <span className="tabular-nums font-bold">{wallet ? formatINR(wallet.availableBalance) : '---'}</span>
                 {wallet && Number(wallet.reservedBalance) > 0 && (
                   <span className="text-xs text-[#8F5A0D]/80 border-l border-[#F9DE9B] pl-1.5 tabular-nums">
                     ({formatINR(wallet.reservedBalance)} res)

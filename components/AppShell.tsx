@@ -36,6 +36,7 @@ import {
   UserPlus,
   History,
   DollarSign,
+  Coins,
 } from 'lucide-react';
 
 interface AppShellProps {
@@ -188,6 +189,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     {
       group: 'OPERATIONS',
       items: [
+        { name: 'New Booking', href: '/bookings/new', icon: CirclePlus, highlight: true },
         { name: 'Central Queue', href: '/admin/bookings', icon: ListOrdered },
         { name: 'Worker PC Fleet', href: '/admin/fleet', icon: MonitorDot, badge: 'Live' },
       ],
@@ -406,16 +408,17 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             <div className="flex items-center rounded-[7px] border border-[#E4E7EC] bg-[#F8FAFC] pl-3 pr-1 py-1 text-[13px] font-semibold text-[#172033] shadow-xs hover:border-[#C98219]/40 transition-colors">
               <Link
                 href={isPartner ? '/partner/wallet' : isDistributor ? '/distributor/wallet' : '/dashboard/wallet'}
-                className="flex items-center gap-2 mr-2 hover:text-[#C98219] transition-colors"
+                className="flex items-center gap-1.5 mr-2 hover:text-[#C98219] transition-colors"
                 title="View Wallet Ledger & History"
               >
-                <Wallet className="h-3.5 w-3.5 text-[#C98219] shrink-0" />
+                <Coins className="h-4 w-4 text-[#C98219] shrink-0" />
                 <span className="tabular-nums font-bold">
-                  {wallet ? formatINR(wallet.availableBalance) : '🪙 0.00'}
+                  {wallet ? formatINR(wallet.availableBalance) : '0.00'}
                 </span>
                 {wallet && Number(wallet.reservedBalance) > 0 && (
-                  <span className="hidden sm:inline-block text-[11px] font-normal text-[#667085] border-l border-[#D0D5DD] pl-2 tabular-nums">
-                    {formatINR(wallet.reservedBalance)} hold
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200/60 rounded px-1.5 py-0.5 ml-1.5 tabular-nums">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                    <span>{formatINR(wallet.reservedBalance)} hold</span>
                   </span>
                 )}
               </Link>

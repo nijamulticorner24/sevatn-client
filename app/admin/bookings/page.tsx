@@ -249,7 +249,7 @@ export default function AdminBookingsPage() {
         setActionLoading(true);
         try {
           const res = await api.clearAllQueues();
-          const text = `Queue Cleared: ${res.clearedBookings} bookings cancelled, 🪙 ${res.releasedHolds * 100} hold funds refunded.`;
+          const text = `Queue Cleared: ${res.clearedBookings} bookings cancelled, ₹ ${res.releasedHolds * 100} hold funds refunded.`;
           toast.success(text);
           setStatusMessage({ type: 'success', text });
           setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
@@ -392,7 +392,7 @@ export default function AdminBookingsPage() {
     setConfirmModalData({
       isOpen: true,
       title: `Restart Booking #${bookingCode}`,
-      description: `Restart booking #${bookingCode} and return it to the active execution queue? If previously cancelled, deposit hold will be re-reserved from the centre wallet.`,
+      description: `Restart booking #${bookingCode} and return it to availability monitoring? Once the requested date is confirmed AVAILABLE on the official portal, execution will trigger automatically. If previously cancelled, deposit hold will be re-reserved from the centre wallet.`,
       confirmLabel: 'Restart Booking',
       isDestructive: false,
       action: async () => {
@@ -420,7 +420,7 @@ export default function AdminBookingsPage() {
     setConfirmModalData({
       isOpen: true,
       title: 'Restart All Failed & Cancelled Bookings',
-      description: `Restart all ${restartableCount || ''} eligible failed and cancelled booking requests with upcoming dates and return them to the active dispatch queue?`,
+      description: `Restart all ${restartableCount || ''} eligible failed and cancelled booking requests with upcoming dates and return them to availability monitoring?`,
       confirmLabel: 'Restart All',
       isDestructive: false,
       action: async () => {
@@ -731,10 +731,70 @@ export default function AdminBookingsPage() {
                       <td className="py-3 px-4 font-mono text-secondary-700">
                         {b.pilgrimCount} Devotee{b.pilgrimCount !== 1 ? 's' : ''}
                       </td>
-                      <td className="py-3 px-4 font-mono font-semibold text-info-700">
-                        {b.assignedMachine?.machineCode || (
-                          <span className="text-secondary-400 font-normal">Cloud Queue</span>
-                        )}
+                      <td className="py-3 px-4">
+                        {(() => {
+                          if (b.status === 'CANCELLED') {
+                            return (
+                              <span className="text-secondary-400 font-normal italic text-xs">Pending Assignment</span>
+                            );
+                          }
+                          const worker = b.status === 'EXECUTING'
+                            ? (b.assignedMachine || b.monitoringWorker)
+                            : (b.monitoringWorker || b.assignedMachine);
+                          const isExecuting = b.status === 'EXECUTING' || b.executionStatus === 'RUNNING';
+                          const isDead = worker?.lastHeartbeat ? (Date.now() - new Date(worker.lastHeartbeat).getTime() > 45000) : false;
+                          const isStopped = worker?.status === 'STOPPED';
+                          const isOffline = !isStopped && isDead;
+                          const isChecking = !isExecuting && (b.isWatching || ['WAITING_FOR_DATE_AVAILABILITY', 'WATCHING', 'FAST_BOOKING_QUEUED', 'PENDING'].includes(b.status));
+                          
+                          if (worker?.machineCode) {
+                            return (
+                              <div className="flex flex-col space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono font-semibold text-text-primary text-xs">
+                                    {worker.machineCode} — {worker.machineName || worker.machineCode}
+                                  </span>
+                                  {isStopped && (
+                                    <span className="text-[9.5px] px-1.5 py-0.5 rounded font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                      Stopped
+                                    </span>
+                                  )}
+                                  {isOffline && (
+                                    <span className="text-[9.5px] px-1.5 py-0.5 rounded font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                                      Offline
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={`text-[11px] font-medium ${
+                                  isStopped
+                                    ? 'text-amber-700 font-semibold'
+                                    : isOffline
+                                    ? 'text-rose-700 font-semibold'
+                                    : isExecuting
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-teal-600'
+                                }`}>
+                                  {isStopped
+                                    ? 'Worker Stopped'
+                                    : isOffline
+                                    ? 'Worker Offline'
+                                    : isExecuting
+                                    ? 'Status: Booking Execution'
+                                    : (isChecking ? 'Status: Checking Availability' : `Status: ${b.status}`)}
+                                </span>
+                                {(b.totalRefreshCount !== undefined || b.lastRefreshResult) && (
+                                  <span className="text-[9.5px] text-secondary-500 font-mono">
+                                    Refreshes: <strong>{b.totalRefreshCount ?? 0}</strong> • {b.lastRefreshResult || 'PENDING'}
+                                    {b.lastRefreshAt && ` (${new Date(b.lastRefreshAt).toLocaleTimeString()})`}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+                          return (
+                            <span className="text-secondary-400 font-normal italic text-xs">Pending Assignment</span>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4">
                         <StateBadge status={b.status} size="sm" />
@@ -749,7 +809,7 @@ export default function AdminBookingsPage() {
                               onClick={() => handleRestartBooking(b.id, b.bookingCode)}
                               disabled={isRestarting}
                               className="inline-flex items-center gap-1 rounded-btn border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-colors disabled:opacity-50"
-                              title="Restart this failed or cancelled booking and return to queue"
+                              title="Restart this failed or cancelled booking and return to availability monitoring"
                             >
                               {isRestarting ? (
                                 <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />

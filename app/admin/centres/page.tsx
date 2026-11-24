@@ -352,7 +352,7 @@ export default function AdminCentresPage() {
 
     const currentBal = Number(walletTargetCentre.user?.wallet?.availableBalance ?? 0);
     if (walletAdjustAction === 'DEBIT' && amt > currentBal) {
-      toast.error(`Cannot deduct 🪙 ${amt}: Centre only has 🪙 ${currentBal.toFixed(2)} available.`);
+      toast.error(`Cannot deduct ₹ ${amt}: Centre only has ₹ ${currentBal.toFixed(2)} available.`);
       return;
     }
 
@@ -1429,13 +1429,13 @@ export default function AdminCentresPage() {
                         onClick={() => setWalletAdjustAmount(preset.toString())}
                         className="px-2 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-[10.5px] font-mono font-semibold text-secondary-700 border border-neutral-300 transition-colors"
                       >
-                        🪙 {preset}
+                        ₹ {preset}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-secondary-500 font-bold">🪙</span>
+                  <span className="absolute left-3 top-2.5 text-secondary-500 font-bold">₹</span>
                   <input
                     type="number"
                     min="1"

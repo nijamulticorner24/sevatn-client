@@ -149,6 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole = 'CENTRE' }) => {
 
   // Admin Links
   const adminLinks = [
+    { name: 'New Booking', href: '/bookings/new', icon: CirclePlus, highlight: true },
     { name: 'Admin Overview', href: '/admin', icon: LayoutDashboard },
     { name: 'Pricing & Markups', href: '/admin/pricing', icon: DollarSign },
     { name: 'Partners', href: '/admin/partners', icon: Users },

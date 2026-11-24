@@ -105,7 +105,7 @@ function RevenueAnalysisChart({ bookings, wallet }: { bookings: any[]; wallet: a
         <div className="flex items-center gap-6">
           <div className="text-right">
             <p className="text-[11px] text-[#64748B] font-medium">7-Day Revenue</p>
-            <p className="text-xl font-extrabold text-[#C98219] tabular-nums">🪙 {totalRevenue.toLocaleString('en-IN')}</p>
+            <p className="text-xl font-extrabold text-[#C98219] tabular-nums">₹ {totalRevenue.toLocaleString('en-IN')}</p>
           </div>
           <div className="text-right">
             <p className="text-[11px] text-[#64748B] font-medium">Passes Confirmed</p>
@@ -114,7 +114,7 @@ function RevenueAnalysisChart({ bookings, wallet }: { bookings: any[]; wallet: a
           <div className="text-right">
             <p className="text-[11px] text-[#64748B] font-medium">Wallet Balance</p>
             <p className="text-xl font-extrabold text-[#0F172A] tabular-nums">
-              🪙 {wallet ? Number(wallet.availableBalance).toLocaleString('en-IN') : '0'}
+              ₹ {wallet ? Number(wallet.availableBalance).toLocaleString('en-IN') : '0'}
             </p>
           </div>
         </div>
@@ -150,7 +150,7 @@ function RevenueAnalysisChart({ bookings, wallet }: { bookings: any[]; wallet: a
                   strokeWidth={frac === 0 ? 1.5 : 1}
                 />
                 <text x={PAD_L - 4} y={y + 3.5} textAnchor="end" fontSize="8" fill="#94A3B8" fontFamily="system-ui">
-                  🪙 {label}
+                  ₹ {label}
                 </text>
               </g>
             );
@@ -198,7 +198,7 @@ function RevenueAnalysisChart({ bookings, wallet }: { bookings: any[]; wallet: a
                     fill="#A96B12"
                     fontFamily="Inter, sans-serif"
                   >
-                    🪙 {p.revenue}
+                    ₹ {p.revenue}
                   </text>
                 )}
                 {/* Day label on x-axis */}
@@ -474,7 +474,7 @@ export default function SevaTNPlatformHomePage() {
             metrics={[
               { label: 'Active in Queue', value: activeBookingsCount },
               { label: 'Confirmed Passes', value: successfulBookingsCount },
-              { label: 'Wallet Balance', value: wallet ? formatINR(wallet.availableBalance) : '🪙 0.00' },
+              { label: 'Wallet Balance', value: wallet ? formatINR(wallet.availableBalance) : '₹ 0.00' },
             ]}
             primaryAction={{
               label: 'Open TicketAssist',
@@ -555,7 +555,7 @@ export default function SevaTNPlatformHomePage() {
             </div>
             <div>
               <p className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-[#1D4ED8] transition-colors">Wallet & Ledger</p>
-              <p className="text-xs text-[#64748B] tabular-nums">{wallet ? formatINR(wallet.availableBalance) : '🪙 0.00'} balance</p>
+              <p className="text-xs text-[#64748B] tabular-nums">{wallet ? formatINR(wallet.availableBalance) : '₹ 0.00'} balance</p>
             </div>
           </div>
           <ArrowRight className="h-4 w-4 text-[#94A3B8] group-hover:text-[#1D4ED8] group-hover:translate-x-0.5 transition-all" />

@@ -155,13 +155,13 @@ export default function PartnerWalletPage() {
     }
 
     if (!shareAmount || shareAmount <= 0) {
-      setShareError('Please enter a valid transfer amount greater than 🪙 0.');
+      setShareError('Please enter a valid transfer amount greater than ₹ 0.');
       return;
     }
 
     const available = Number(wallet?.availableBalance || 0);
     if (shareAmount > available) {
-      setShareError(`Insufficient balance: Available balance is 🪙 ${available.toFixed(2)}, cannot transfer 🪙 ${shareAmount.toFixed(2)}.`);
+      setShareError(`Insufficient balance: Available balance is ₹ ${available.toFixed(2)}, cannot transfer ₹ ${shareAmount.toFixed(2)}.`);
       return;
     }
 
@@ -174,7 +174,7 @@ export default function PartnerWalletPage() {
         notes: shareNotes.trim() || undefined,
       });
 
-      setShareSuccess(res.message || `Successfully transferred 🪙 ${shareAmount} to ${shareTargetType.toLowerCase()}!`);
+      setShareSuccess(res.message || `Successfully transferred ₹ ${shareAmount} to ${shareTargetType.toLowerCase()}!`);
       loadData();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('wallet-refresh'));
@@ -264,7 +264,7 @@ export default function PartnerWalletPage() {
     setReceiptError(null);
 
     if (topupAmount < 100) {
-      setFormError('Minimum top-up amount is 🪙 100.');
+      setFormError('Minimum top-up amount is ₹ 100.');
       return;
     }
 
@@ -811,7 +811,7 @@ export default function PartnerWalletPage() {
                       Top-Up Amount (Chips) <span className="text-[#C2413B]">*</span>
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#667085]">🪙</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#667085]">₹</span>
                       <input
                         type="number"
                         min="100"
@@ -1068,7 +1068,7 @@ export default function PartnerWalletPage() {
                       <option value="">-- Choose a Distributor --</option>
                       {distributors.map((d) => (
                         <option key={d.id} value={d.id}>
-                          {d.name} ({d.distributorCode}) • {d.district || 'TN'} — Current: 🪙 {Number(d.availableBalance || 0).toFixed(2)}
+                          {d.name} ({d.distributorCode}) • {d.district || 'TN'} — Current: ₹ {Number(d.availableBalance || 0).toFixed(2)}
                         </option>
                       ))}
                     </select>
@@ -1087,7 +1087,7 @@ export default function PartnerWalletPage() {
                       <option value="">-- Choose a Centre --</option>
                       {centres.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.centreName} ({c.centreCode || 'CSC'}) • {c.district || 'TN'}{c.distributorName ? ` [via ${c.distributorName}]` : ''} — Current: 🪙 {Number(c.availableBalance || 0).toFixed(2)}
+                          {c.centreName} ({c.centreCode || 'CSC'}) • {c.district || 'TN'}{c.distributorName ? ` [via ${c.distributorName}]` : ''} — Current: ₹ {Number(c.availableBalance || 0).toFixed(2)}
                         </option>
                       ))}
                     </select>
@@ -1101,7 +1101,7 @@ export default function PartnerWalletPage() {
                   Transfer Amount (Chips) <span className="text-[#C2413B]">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#667085]">🪙</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#667085]">₹</span>
                   <input
                     type="number"
                     min="10"

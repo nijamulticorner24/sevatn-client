@@ -584,19 +584,20 @@ export default function NewBookingPage() {
       )
       : null;
 
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const selectedRouteObj = OFFICIAL_ROUTES.find((r) => r.id === route) || OFFICIAL_ROUTES[0];
   const availableBalance = wallet ? Number(wallet.availableBalance ?? wallet.balance ?? 0) : null;
   const totalServiceFee = serviceFee * pilgrimCount;
-  const isInsufficientInitialBalance = availableBalance !== null && availableBalance < serviceFee;
-  const isInsufficientBalance = availableBalance !== null && pilgrimCount > 0 && availableBalance < totalServiceFee;
+  const isInsufficientInitialBalance = !isSuperAdmin && availableBalance !== null && availableBalance < serviceFee;
+  const isInsufficientBalance = !isSuperAdmin && availableBalance !== null && pilgrimCount > 0 && availableBalance < totalServiceFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // 0. Verify role is CENTRE or DISTRIBUTOR
-    if (!currentUser || (currentUser.role !== 'CENTRE' && currentUser.role !== 'DISTRIBUTOR')) {
-      setError('Booking creation is strictly restricted to authorized Centre operators and Distributors.');
+    // 0. Verify role is CENTRE, DISTRIBUTOR, or SUPER_ADMIN
+    if (!currentUser || (currentUser.role !== 'CENTRE' && currentUser.role !== 'DISTRIBUTOR' && currentUser.role !== 'SUPER_ADMIN')) {
+      setError('Booking creation is strictly restricted to authorized Centre operators, Distributors, and Super Admins.');
       return;
     }
 
@@ -612,8 +613,8 @@ export default function NewBookingPage() {
     }
 
     // 0b. Validate minimum wallet balance requirement
-    if (availableBalance !== null && availableBalance < totalServiceFee) {
-      setError(`Insufficient wallet balance. You need at least 🪙 ${totalServiceFee} (🪙 ${serviceFee} × ${pilgrimCount} pilgrim${pilgrimCount > 1 ? 's' : ''}) to request this service. Please recharge your wallet.`);
+    if (!isSuperAdmin && availableBalance !== null && availableBalance < totalServiceFee) {
+      setError(`Insufficient wallet balance. You need at least ₹ ${totalServiceFee} (₹ ${serviceFee} × ${pilgrimCount} pilgrim${pilgrimCount > 1 ? 's' : ''}) to request this service. Please recharge your wallet.`);
       return;
     }
 
@@ -773,8 +774,8 @@ export default function NewBookingPage() {
     }
   };
 
-  // Role Guard: Exclusively Centre operators and Distributors can access booking creation
-  if (currentUser && currentUser.role !== 'CENTRE' && currentUser.role !== 'DISTRIBUTOR') {
+  // Role Guard: Exclusively Centre operators, Distributors, and Super Admins can access booking creation
+  if (currentUser && currentUser.role !== 'CENTRE' && currentUser.role !== 'DISTRIBUTOR' && currentUser.role !== 'SUPER_ADMIN') {
     const roleRedirect =
       currentUser.role === 'SUPER_ADMIN' ? '/admin' :
         currentUser.role === 'PARTNER' ? '/partner' : currentUser.role === 'DISTRIBUTOR' ? '/distributor' : '/dashboard';
@@ -900,7 +901,7 @@ export default function NewBookingPage() {
               Wallet Balance Required to Open Booking
             </h2>
             <p className="text-[13px] text-[#667085] max-w-md mx-auto leading-relaxed">
-              This service requires a minimum wallet balance of <strong className="text-[#172033]">🪙 {serviceFee}</strong> (Booking Fee). Please recharge your wallet to open and access the new booking request form.
+              This service requires a minimum wallet balance of <strong className="text-[#172033]">₹ {serviceFee}</strong> (Booking Fee). Please recharge your wallet to open and access the new booking request form.
             </p>
           </div>
 
@@ -910,7 +911,7 @@ export default function NewBookingPage() {
                 Current Balance
               </span>
               <span className="text-base font-extrabold text-[#DC2626] tabular-nums">
-                🪙 {(availableBalance ?? 0).toLocaleString('en-IN')}
+                ₹ {(availableBalance ?? 0).toLocaleString('en-IN')}
               </span>
             </div>
             <div className="text-center pl-2">
@@ -918,13 +919,13 @@ export default function NewBookingPage() {
                 Minimum Required
               </span>
               <span className="text-base font-extrabold text-[#15803D] tabular-nums">
-                🪙 {serviceFee.toLocaleString('en-IN')}
+                ₹ {serviceFee.toLocaleString('en-IN')}
               </span>
             </div>
           </div>
 
           <p className="text-xs text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] rounded-[8px] p-2.5 max-w-sm mx-auto">
-            Once you add funds (at least <strong>🪙 {serviceFee}</strong>) to your wallet, this booking page will open immediately.
+            Once you add funds (at least <strong>₹ {serviceFee}</strong>) to your wallet, this booking page will open immediately.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -994,10 +995,10 @@ export default function NewBookingPage() {
             </div>
             <div>
               <h4 className="text-[13.5px] font-bold text-[#92400E]">
-                Minimum Wallet Balance Required (🪙 {serviceFee})
+                Minimum Wallet Balance Required (₹ {serviceFee})
               </h4>
               <p className="text-[12px] text-[#B45309] mt-0.5">
-                To create a booking request for this service, your wallet needs a minimum balance of <span className="font-bold">🪙 {serviceFee}</span>. Your current available balance is <span className="font-bold text-[#B91C1C]">🪙 {availableBalance.toLocaleString('en-IN')}</span>. Please recharge your wallet to proceed.
+                To create a booking request for this service, your wallet needs a minimum balance of <span className="font-bold">₹ {serviceFee}</span>. Your current available balance is <span className="font-bold text-[#B91C1C]">₹ {availableBalance.toLocaleString('en-IN')}</span>. Please recharge your wallet to proceed.
               </p>
             </div>
           </div>
@@ -1598,7 +1599,7 @@ export default function NewBookingPage() {
                     Number of Pilgrims (Max 5) <span className="text-[#C2413B]">*</span>
                   </label>
                   <span className="text-[11px] font-semibold text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] px-2 py-0.5 rounded">
-                    🪙 {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} = 🪙 {totalServiceFee}
+                    ₹ {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} = ₹ {totalServiceFee}
                   </span>
                 </div>
 
@@ -1884,9 +1885,9 @@ export default function NewBookingPage() {
               <div className="flex items-center justify-between py-1 border-b border-[#F0F3F8]">
                 <span className="text-[#667085]">Assistance Service Fee</span>
                 <div className="text-right">
-                  <span className="font-bold text-[#172033] tabular-nums text-[13px]">🪙 {totalServiceFee}</span>
+                  <span className="font-bold text-[#172033] tabular-nums text-[13px]">₹ {totalServiceFee}</span>
                   <div className="text-[10.5px] text-[#667085]">
-                    (🪙 {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
+                    (₹ {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
                   </div>
                 </div>
               </div>
@@ -1897,7 +1898,7 @@ export default function NewBookingPage() {
                   Wallet Available:
                 </span>
                 <span className={`font-semibold tabular-nums ${isInsufficientBalance ? 'text-[#DC2626]' : 'text-[#172033]'}`}>
-                  🪙 {wallet ? (wallet.availableBalance ?? wallet.balance ?? 0) : '...'}
+                  ₹ {wallet ? (wallet.availableBalance ?? wallet.balance ?? 0) : '...'}
                   {isInsufficientBalance && (
                     <span className="ml-1 text-[10px] font-bold text-[#DC2626] bg-[#FEF2F2] px-1.5 py-0.5 rounded border border-[#FECACA]">
                       Low
@@ -1916,18 +1917,18 @@ export default function NewBookingPage() {
                     <span>Insufficient Wallet Balance</span>
                   </span>
                   <span className="text-[10px] bg-[#FEE2E2] px-1.5 py-0.5 rounded text-[#B91C1C]">
-                    Min. 🪙 {totalServiceFee}
+                    Min. ₹ {totalServiceFee}
                   </span>
                 </div>
                 <p className="text-[11px] text-[#7F1D1D] leading-relaxed">
-                  Your wallet has 🪙 {availableBalance}. A minimum of 🪙 {totalServiceFee} (🪙 {serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is required to queue this booking.
+                  Your wallet has ₹ {availableBalance}. A minimum of ₹ {totalServiceFee} (₹ {serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is required to queue this booking.
                 </p>
                 <Link
                   href="/dashboard/wallet"
                   className="w-full flex items-center justify-center gap-1.5 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-[6px] font-bold text-[11.5px] transition-colors shadow-2xs"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  <span>Recharge Wallet (+🪙 {totalServiceFee})</span>
+                  <span>Recharge Wallet (+₹ {totalServiceFee})</span>
                 </Link>
               </div>
             )}
@@ -1939,7 +1940,7 @@ export default function NewBookingPage() {
                 <span>Fair Pricing Guarantee</span>
               </div>
               <p className="leading-relaxed text-[#7A4A12]">
-                🪙 {totalServiceFee} (🪙 {serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is temporarily held in reservation and captured <strong>only after</strong> a confirmed pass reference is positively verified.
+                ₹ {totalServiceFee} (₹ {serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is temporarily held in reservation and captured <strong>only after</strong> a confirmed pass reference is positively verified.
               </p>
             </div>
 
@@ -2026,7 +2027,7 @@ export default function NewBookingPage() {
                   : pilgrimCount < 1
                     ? 'Please select number of pilgrims (1-5)'
                     : isInsufficientBalance
-                      ? `Minimum 🪙 ${totalServiceFee} wallet balance required`
+                      ? `Minimum ₹ ${totalServiceFee} wallet balance required`
                       : !termsAccepted
                         ? 'Please accept the Terms & Conditions and Refund Policy to enable booking'
                         : undefined
@@ -2041,7 +2042,7 @@ export default function NewBookingPage() {
               ) : isInsufficientBalance ? (
                 <div className="flex items-center gap-2">
                   <Wallet className="h-4 w-4" />
-                  <span>Insufficient Balance (Min 🪙 {totalServiceFee})</span>
+                  <span>Insufficient Balance (Min ₹ {totalServiceFee})</span>
                 </div>
               ) : loading ? (
                 <>
@@ -2435,7 +2436,7 @@ export default function NewBookingPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
                     <span className="text-[#667085] font-medium">Assistance Service Fee:</span>
                     <span className="font-bold text-[#172033] sm:text-right">
-                      🪙 {totalServiceFee} (🪙 {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''})
+                      ₹ {totalServiceFee} (₹ {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''})
                     </span>
                   </div>
 
@@ -2531,7 +2532,7 @@ export default function NewBookingPage() {
             Total ({pilgrimCount} Pilgrim{pilgrimCount !== 1 ? 's' : ''})
           </p>
           <p className="text-[16px] font-extrabold text-[#172033] tabular-nums leading-tight">
-            🪙 {(pricingBreakdown?.totalPrice || serviceFee * Math.max(1, pilgrimCount)).toLocaleString('en-IN')}
+            ₹ {(pricingBreakdown?.totalPrice || serviceFee * Math.max(1, pilgrimCount)).toLocaleString('en-IN')}
           </p>
         </div>
         <button

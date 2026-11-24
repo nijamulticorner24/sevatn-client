@@ -1101,6 +1101,7 @@ class ApiClient {
     workerId: string,
     data: {
       maxConcurrentJobs?: number;
+      maxMonitoringRequests?: number;
       deploymentType?: string;
       capabilities?: string[];
       adminStatus?: string;
@@ -1110,6 +1111,17 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  async pinBookingToWorker(bookingId: string, workerMachineId: string | null) {
+    return this.request(`/admin/fleet/bookings/${encodeURIComponent(bookingId)}/pin`, {
+      method: 'POST',
+      body: JSON.stringify({ workerMachineId }),
+    });
+  }
+
+  async getFleetMonitoringStatus() {
+    return this.request('/admin/fleet/monitoring-status');
   }
 
   async triggerAllocationSweep() {

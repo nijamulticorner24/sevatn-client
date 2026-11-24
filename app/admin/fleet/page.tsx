@@ -65,6 +65,13 @@ interface FleetSummary {
   awaitingHuman?: number;
   unhealthyWorkers?: number;
   unhealthy?: number;
+  stoppedWorkers?: number;
+  stopped?: number;
+  totalRefreshes?: number;
+  totalAvailableResults?: number;
+  totalFullResults?: number;
+  totalUnknownResults?: number;
+  totalApiErrors?: number;
   queuedJobs: number;
   staleLeases: number;
 }
@@ -89,6 +96,7 @@ export default function WorkerFleetPage() {
     open: boolean;
     worker: any | null;
     maxConcurrentJobs: number;
+    maxMonitoringRequests: number;
     deploymentType: string;
     capabilities: string[];
     loading: boolean;
@@ -96,6 +104,7 @@ export default function WorkerFleetPage() {
     open: false,
     worker: null,
     maxConcurrentJobs: 1,
+    maxMonitoringRequests: 10,
     deploymentType: 'LOCAL_PC',
     capabilities: ['ACCOUNT_VERIFICATION', 'BOOKING_EXECUTION'],
     loading: false,
@@ -249,10 +258,11 @@ export default function WorkerFleetPage() {
     try {
       await api.updateWorkerCapacity(capacityModal.worker.id, {
         maxConcurrentJobs: capacityModal.maxConcurrentJobs,
+        maxMonitoringRequests: capacityModal.maxMonitoringRequests,
         deploymentType: capacityModal.deploymentType,
         capabilities: capacityModal.capabilities,
       });
-      setSuccessMsg(`Capacity updated for ${capacityModal.worker.machineCode}: Max Concurrency = ${capacityModal.maxConcurrentJobs}, Type = ${capacityModal.deploymentType}`);
+      setSuccessMsg(`Capacity updated for ${capacityModal.worker.machineCode}: Monitoring Capacity = ${capacityModal.maxMonitoringRequests}, Concurrency = ${capacityModal.maxConcurrentJobs}`);
       setCapacityModal((prev) => ({ ...prev, open: false, loading: false }));
       loadFleetData();
       setTimeout(() => setSuccessMsg(null), 4000);
@@ -740,6 +750,31 @@ export default function WorkerFleetPage() {
         </div>
       </div>
 
+      {/* Fleet Monitoring Telemetry Overview Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-card bg-slate-900 text-white shadow-subtle border border-slate-800 text-xs">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="h-4 w-4 text-emerald-400" />
+          <span className="font-semibold text-slate-200">Fleet Refresh Telemetry:</span>
+          <span className="font-mono font-bold text-white text-sm">
+            {summary?.totalRefreshes ?? workers.reduce((acc: number, w: any) => acc + (w.totalRefreshCount ?? 0), 0)} Total Refreshes
+          </span>
+        </div>
+        <div className="flex items-center gap-3 font-mono text-[11px]">
+          <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-800/80 text-emerald-300">
+            AVAIL: <strong>{summary?.totalAvailableResults ?? workers.reduce((acc: number, w: any) => acc + (w.totalAvailableResults ?? 0), 0)}</strong>
+          </span>
+          <span className="px-2 py-0.5 rounded bg-blue-950/80 border border-blue-800/80 text-blue-300">
+            FULL: <strong>{summary?.totalFullResults ?? workers.reduce((acc: number, w: any) => acc + (w.totalFullResults ?? 0), 0)}</strong>
+          </span>
+          <span className="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-800/80 text-amber-300">
+            UNKNOWN: <strong>{summary?.totalUnknownResults ?? workers.reduce((acc: number, w: any) => acc + (w.totalUnknownResults ?? 0), 0)}</strong>
+          </span>
+          <span className="px-2 py-0.5 rounded bg-rose-950/80 border border-rose-800/80 text-rose-300">
+            ERRORS: <strong>{summary?.totalApiErrors ?? workers.reduce((acc: number, w: any) => acc + (w.totalApiErrors ?? 0), 0)}</strong>
+          </span>
+        </div>
+      </div>
+
       {/* 3. Main Tabs Navigation */}
       <div className="flex items-center gap-2 border-b border-border-subtle pt-2">
         <button
@@ -1136,6 +1171,7 @@ export default function WorkerFleetPage() {
                                 open: true,
                                 worker: w,
                                 maxConcurrentJobs: w.maxConcurrentJobs ?? 1,
+                                maxMonitoringRequests: w.maxMonitoringRequests ?? 10,
                                 deploymentType: w.deploymentType || 'LOCAL_PC',
                                 capabilities:
                                   w.capabilities && w.capabilities.length > 0
@@ -1195,14 +1231,22 @@ export default function WorkerFleetPage() {
 
                           <div className="bg-neutral-50/80 p-2.5 rounded-lg border border-border-subtle">
                             <span className="text-[9.5px] font-bold text-secondary-400 uppercase tracking-wider block mb-1">
-                              Authoritative
+                              Authoritative State
                             </span>
                             <span
-                              className={`inline-flex items-center gap-1 font-bold text-[11px] px-2 py-0.5 rounded truncate max-w-full ${
-                                w.authoritativeState === 'ONLINE_BUSY' || w.actualRuntimeState === 'BUSY'
+                              className={`inline-flex items-center gap-1.5 font-bold text-[11px] px-2 py-0.5 rounded truncate max-w-full ${
+                                w.authoritativeState === 'RUNNING'
+                                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                  : w.authoritativeState === 'ONLINE_BUSY' || w.actualRuntimeState === 'BUSY'
                                   ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                   : w.authoritativeState === 'ONLINE_IDLE' || w.actualRuntimeState === 'IDLE'
-                                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                  ? 'bg-teal-100 text-teal-900 border border-teal-300'
+                                  : w.authoritativeState === 'STOPPED'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : w.authoritativeState === 'OFFLINE'
+                                  ? 'bg-rose-100 text-rose-900 border border-rose-300'
+                                  : w.authoritativeState === 'ERROR'
+                                  ? 'bg-red-100 text-red-900 border border-red-400'
                                   : w.authoritativeState === 'PAUSED'
                                   ? 'bg-amber-50 text-amber-800 border border-amber-200'
                                   : w.authoritativeState === 'DRAINING'
@@ -1211,9 +1255,15 @@ export default function WorkerFleetPage() {
                               }`}
                             >
                               <span
-                                className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                                  w.authoritativeState === 'ONLINE_IDLE'
-                                    ? 'bg-emerald-600'
+                                className={`h-2 w-2 rounded-full shrink-0 ${
+                                  w.authoritativeState === 'RUNNING'
+                                    ? 'bg-emerald-600 animate-pulse'
+                                    : w.authoritativeState === 'ONLINE_IDLE'
+                                    ? 'bg-teal-600'
+                                    : w.authoritativeState === 'STOPPED'
+                                    ? 'bg-amber-600'
+                                    : w.authoritativeState === 'OFFLINE'
+                                    ? 'bg-rose-600'
                                     : w.authoritativeState === 'ONLINE_BUSY'
                                     ? 'bg-amber-600 animate-pulse'
                                     : 'bg-neutral-500'
@@ -1231,6 +1281,27 @@ export default function WorkerFleetPage() {
                           </span>
                           {renderActivityBadge(w)}
                         </div>
+
+                        {/* Stop or Disconnect Reason if present and worker is stopped or offline */}
+                        {(w.authoritativeState === 'STOPPED' || w.authoritativeState === 'OFFLINE' || isStopped || isDisconnected) &&
+                          (w.stopReason || w.disconnectReason || w.stoppedAt) && (
+                          <div className={`p-2 rounded-lg text-[10px] leading-tight ${
+                            w.authoritativeState === 'STOPPED' || isStopped
+                              ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                              : 'bg-rose-50 border border-rose-200 text-rose-900'
+                          }`}>
+                            <div className="font-semibold flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              <span>{w.authoritativeState === 'STOPPED' || isStopped ? 'Stop Reason:' : 'Offline Reason:'}</span>
+                            </div>
+                            <div className="mt-0.5">{w.stopReason || w.disconnectReason || 'Connection lost'}</div>
+                            {w.stoppedAt && (
+                              <div className="text-[9px] text-secondary-500 mt-0.5">
+                                Stopped At: {new Date(w.stoppedAt).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {w.exclusionReason && (
                           <div className="flex items-start gap-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-[10.5px] text-amber-900 leading-tight">
@@ -1264,6 +1335,139 @@ export default function WorkerFleetPage() {
                               }}
                             />
                           </div>
+                          <div className="flex justify-between items-center text-[10px] text-secondary-500">
+                            <span>Execution: {(w.currentActiveJobs ?? 0) > 0 ? `Active (${w.currentActiveJobs} running)` : 'Idle (0 executions)'}</span>
+                            <span>{Math.max(0, (w.maxConcurrentJobs ?? 1) - (w.currentActiveJobs ?? 0))} execution slot free</span>
+                          </div>
+                        </div>
+
+                        {/* Persistent Refresh Telemetry Box */}
+                        <div className="bg-white p-2.5 rounded-lg border border-border-subtle space-y-1.5 shadow-xs">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-semibold text-secondary-600 flex items-center gap-1">
+                              <RefreshCw className="h-3 w-3 text-indigo-600" /> Total Refreshes:
+                            </span>
+                            <span className="font-mono font-bold text-text-primary text-xs">
+                              {w.totalRefreshCount ?? 0}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1 text-[9.5px] text-center font-medium">
+                            <div className="bg-emerald-50 text-emerald-800 p-1 rounded border border-emerald-100">
+                              <span className="block text-[8px] text-secondary-400 font-semibold uppercase">AVAIL</span>
+                              <span className="font-bold text-[10.5px]">{w.totalAvailableResults ?? 0}</span>
+                            </div>
+                            <div className="bg-blue-50 text-blue-800 p-1 rounded border border-blue-100">
+                              <span className="block text-[8px] text-secondary-400 font-semibold uppercase">FULL</span>
+                              <span className="font-bold text-[10.5px]">{w.totalFullResults ?? 0}</span>
+                            </div>
+                            <div className="bg-amber-50 text-amber-800 p-1 rounded border border-amber-100">
+                              <span className="block text-[8px] text-secondary-400 font-semibold uppercase">UNKNOWN</span>
+                              <span className="font-bold text-[10.5px]">{w.totalUnknownResults ?? 0}</span>
+                            </div>
+                            <div className="bg-rose-50 text-rose-800 p-1 rounded border border-rose-100">
+                              <span className="block text-[8px] text-secondary-400 font-semibold uppercase">ERRORS</span>
+                              <span className="font-bold text-[10.5px]">{w.totalApiErrors ?? 0}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-[9.5px] text-secondary-500 pt-0.5 border-t border-neutral-100">
+                            <span>Last Refresh:</span>
+                            <span className="font-mono font-medium text-text-secondary">
+                              {w.lastRefreshAt ? new Date(w.lastRefreshAt).toLocaleTimeString() : 'Never'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[9.5px] text-secondary-500">
+                            <span>Last Heartbeat:</span>
+                            <span className="font-mono font-medium text-text-secondary">
+                              {w.lastHeartbeat ? `${Math.floor((Date.now() - new Date(w.lastHeartbeat).getTime()) / 1000)}s ago` : 'Never'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Dynamic Monitoring Capacity Meter */}
+                        <div className="space-y-1.5 pt-2 border-t border-border-subtle">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-secondary-600 flex items-center gap-1.5 text-[11px]">
+                              <Radio className="h-3.5 w-3.5 text-teal-600" /> Monitoring Capacity:
+                            </span>
+                            <span className={`font-mono font-bold text-[11.5px] ${
+                              w.monitoringDraining
+                                ? 'text-amber-600'
+                                : (w.currentAssignedMonitoring ?? 0) >= (w.maxMonitoringRequests ?? 10)
+                                ? 'text-blue-600'
+                                : 'text-emerald-600'
+                            }`}>
+                              {w.currentAssignedMonitoring ?? 0} / {w.maxMonitoringRequests ?? 10} Max
+                              {w.monitoringDraining && ' (Draining)'}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-neutral-200/70 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                w.monitoringDraining
+                                  ? 'bg-amber-500'
+                                  : (w.currentAssignedMonitoring ?? 0) >= (w.maxMonitoringRequests ?? 10)
+                                  ? 'bg-blue-500'
+                                  : 'bg-teal-500'
+                              }`}
+                              style={{
+                                width: `${Math.min(100, Math.max(0, (((w.currentAssignedMonitoring ?? 0) / (w.maxMonitoringRequests ?? 10)) * 100)))}%`,
+                              }}
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 text-[10px] text-secondary-600 font-medium py-1 px-1.5 bg-neutral-50 rounded border border-neutral-100">
+                            <div><span className="text-secondary-400">Checking:</span> <span className="font-bold text-teal-700">{w.activelyCheckingCount ?? 0}</span></div>
+                            <div><span className="text-secondary-400">Executing:</span> <span className="font-bold text-amber-700">{w.executingCount ?? 0}</span></div>
+                            <div className="text-right"><span className="text-secondary-400">Available:</span> <span className="font-bold text-emerald-700">{w.availableMonitoringSlots ?? 0}</span></div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[9.5px] text-secondary-500 py-1 px-1.5 bg-neutral-50 rounded border border-neutral-100">
+                            <div><span>Waiting 1st Refresh:</span> <span className="font-bold text-secondary-700">{w.waitingForFirstRefreshCount ?? 0}</span></div>
+                            <div className="text-right"><span>Assigned (Inactive):</span> <span className="font-bold text-amber-700">{w.assignedButStoppedCount ?? 0}</span></div>
+                          </div>
+
+                          {w.assignedRequestDetails && w.assignedRequestDetails.length > 0 && (
+                            <div className="pt-2 border-t border-border-subtle">
+                              <div className="text-[10.5px] font-semibold text-secondary-600 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                                <span>Assigned Requests ({w.assignedRequestDetails.length})</span>
+                                <span className="text-[9px] lowercase font-normal text-secondary-400">persistent history preserved</span>
+                              </div>
+                              <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
+                                {w.assignedRequestDetails.map((req: any) => (
+                                  <div key={req.id} className="p-1.5 rounded-lg bg-white border border-border-subtle shadow-xs space-y-1">
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="font-mono font-bold text-text-primary">{req.bookingCode || req.id.slice(0, 8)}</span>
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                                        req.status === 'EXECUTING'
+                                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                          : req.activity?.includes('Inactive') || req.activity?.includes('Stopped') || req.activity?.includes('Offline')
+                                          ? 'bg-neutral-100 text-neutral-700 border border-neutral-200'
+                                          : 'bg-teal-100 text-teal-800 border border-teal-200'
+                                      }`}>
+                                        {req.activity || (req.status === 'EXECUTING' ? 'Booking Execution' : 'Checking Availability')}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-secondary-600">
+                                      <span>{req.date} • {req.route?.split('-')[0]?.trim() || req.route}</span>
+                                      <span className="font-mono font-medium text-secondary-700">Refreshes: <strong>{req.totalRefreshCount ?? 0}</strong> (seq #{req.lastPollSequence ?? 0})</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[9px] text-secondary-400 border-t border-neutral-100 pt-0.5">
+                                      <span>Last Result: <strong className={req.lastRefreshResult === 'AVAILABLE' ? 'text-emerald-700' : (req.lastRefreshResult === 'FULL' ? 'text-blue-700' : 'text-neutral-700')}>{req.lastRefreshResult || 'PENDING'}</strong></span>
+                                      <span>Time: {req.lastRefreshAt ? new Date(req.lastRefreshAt).toLocaleTimeString() : 'Never'}</span>
+                                    </div>
+                                    {req.lastError && (
+                                      <div className="text-[9px] text-rose-600 flex items-center gap-1 font-medium bg-rose-50 p-0.5 rounded">
+                                        <AlertTriangle className="h-2.5 w-2.5 shrink-0" /> {req.lastError}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {w.resourceWarning && (
+                            <div className="text-rose-600 font-bold flex items-center gap-0.5 text-[10px]">
+                              <AlertTriangle className="h-3 w-3" /> Saturated
+                            </div>
+                          )}
                         </div>
 
                         {/* CPU & RAM Telemetry - 2 Column Side-by-Side */}
@@ -1301,7 +1505,7 @@ export default function WorkerFleetPage() {
                           </div>
                         </div>
 
-                        {w.currentJobId && (
+                        {w.currentJobId && (w.currentActiveJobs ?? 0) > 0 && (
                           <div className="p-2 rounded-lg border border-blue-200 bg-blue-50/70 text-xs text-blue-900 font-mono space-y-0.5">
                             <div className="flex items-center justify-between">
                               <span className="text-[9.5px] uppercase font-bold text-blue-700">In-Flight:</span>
@@ -2844,6 +3048,45 @@ export default function WorkerFleetPage() {
                 </div>
                 <p className="text-[11px] text-secondary-500 mt-1">
                   Server-side enforced. When worker reaches this capacity, the allocator routes jobs elsewhere.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold text-text-primary">
+                    Dynamic Monitoring Capacity (Concurrent Watched Requests)
+                  </label>
+                  <span className="font-mono font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    {capacityModal.maxMonitoringRequests} Requests
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={capacityModal.maxMonitoringRequests}
+                    onChange={(e) => setCapacityModal((prev) => ({ ...prev, maxMonitoringRequests: parseInt(e.target.value, 10) || 10 }))}
+                    className="w-full accent-teal-600"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={capacityModal.maxMonitoringRequests}
+                    onChange={(e) => setCapacityModal((prev) => ({ ...prev, maxMonitoringRequests: parseInt(e.target.value, 10) || 10 }))}
+                    className="w-16 rounded border border-border-default px-2 py-1 text-center font-mono font-bold text-xs"
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-secondary-400 font-mono mt-0.5">
+                  <span>5 (Light)</span>
+                  <span>10 (Default)</span>
+                  <span>25 (High)</span>
+                  <span>50 (Heavy)</span>
+                </div>
+                <p className="text-[11px] text-secondary-500 mt-1">
+                  Controls how many active booking dates/requests this worker checks in background. Downscaling initiates graceful draining without abruptly terminating active checks.
                 </p>
               </div>
 
