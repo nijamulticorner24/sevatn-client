@@ -39,6 +39,8 @@ export default function AdminBookingsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [restartingId, setRestartingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedBookingIds, setSelectedBookingIds] = useState<Set<string>>(new Set());
   const [notifyingTelegramId, setNotifyingTelegramId] = useState<string | null>(null);
   const [telegramConfig, setTelegramConfig] = useState<{ enabled: boolean; hasCreds: boolean }>({ enabled: false, hasCreds: false });
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -320,6 +322,90 @@ export default function AdminBookingsPage() {
     });
   };
 
+  const handleDeleteBooking = (id: string, bookingCode: string) => {
+    setConfirmModalData({
+      isOpen: true,
+      title: `Delete Booking #${bookingCode}`,
+      description: `Permanently delete booking #${bookingCode}? Any held wallet deposit will be released back to the centre, and all associated jobs and data will be removed. This action CANNOT be undone.`,
+      confirmLabel: 'Delete Booking',
+      isDestructive: true,
+      action: async () => {
+        setDeletingId(id);
+        try {
+          const res = await api.deleteBooking(id);
+          const text = res?.message || `Booking #${bookingCode} deleted successfully.`;
+          toast.success(text);
+          setStatusMessage({ type: 'success', text });
+          setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+          setSelectedBookingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          loadBookings(false);
+          setTimeout(() => setStatusMessage(null), 4000);
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete booking');
+          setStatusMessage({ type: 'error', text: err.message || 'Failed to delete booking' });
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    const count = selectedBookingIds.size;
+    if (count === 0) return;
+
+    setConfirmModalData({
+      isOpen: true,
+      title: `Delete ${count} Selected Booking${count > 1 ? 's' : ''}`,
+      description: `Permanently delete ${count} selected booking${count > 1 ? 's' : ''}? Any held wallet deposits will be released back to centres, and all associated jobs and data will be removed. This action CANNOT be undone.`,
+      confirmLabel: `Delete ${count} Booking${count > 1 ? 's' : ''}`,
+      isDestructive: true,
+      action: async () => {
+        setActionLoading(true);
+        try {
+          const ids = Array.from(selectedBookingIds);
+          const res = await api.deleteBookings(ids);
+          const text = res?.message || `${res?.deletedCount || count} booking(s) deleted successfully.`;
+          toast.success(text);
+          setStatusMessage({ type: 'success', text });
+          setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+          setSelectedBookingIds(new Set());
+          loadBookings(false);
+          setTimeout(() => setStatusMessage(null), 4000);
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete selected bookings');
+          setStatusMessage({ type: 'error', text: err.message || 'Failed to delete selected bookings' });
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
+  };
+
+  const toggleSelectBooking = (id: string) => {
+    setSelectedBookingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (filtered.length > 0 && selectedBookingIds.size === filtered.length) {
+      setSelectedBookingIds(new Set());
+    } else {
+      setSelectedBookingIds(new Set(filtered.map((b) => b.id)));
+    }
+  };
+
   const isDatePassed = (b: any) => {
     if (!b) return false;
     const note = String(b?.requiresHumanNote || b?.failureReason || b?.errorMessage || '');
@@ -384,8 +470,10 @@ export default function AdminBookingsPage() {
     if (isSuccessOrCompleted(b)) return false;
     // Never restart if Darshan date has passed / finished
     if (isDatePassed(b)) return false;
-    // Only CANCELLED and FAILED bookings can be restarted
-    return isCancelled(b) || isFailed(b);
+    // Exclude bookings actively executing or already actively watching
+    if (b.status === 'EXECUTING' || b.status === 'WATCHING') return false;
+    // CANCELLED, FAILED, and PENDING bookings (awaiting worker assignment) can be restarted
+    return isCancelled(b) || isFailed(b) || b.status === 'PENDING';
   };
 
   const handleRestartBooking = (id: string, bookingCode: string) => {
@@ -583,6 +671,23 @@ export default function AdminBookingsPage() {
             </button>
           )}
 
+          {/* Delete Selected Bookings Action */}
+          {selectedBookingIds.size > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              disabled={actionLoading}
+              className="flex items-center gap-1.5 rounded-btn border border-red-300 bg-red-600 text-white hover:bg-red-700 px-3.5 py-2 text-xs font-bold transition-colors shadow-subtle disabled:opacity-50 cursor-pointer"
+              title={`Permanently delete ${selectedBookingIds.size} selected booking(s)`}
+            >
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              ) : (
+                <Trash2 className="h-4 w-4 text-white" />
+              )}
+              <span>Delete Selected ({selectedBookingIds.size})</span>
+            </button>
+          )}
+
           {/* Clear All Queues Action */}
           <button
             onClick={handleClearAllQueues}
@@ -698,6 +803,15 @@ export default function AdminBookingsPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border-subtle text-left text-secondary-500 bg-neutral-50/50">
+                  <th className="py-2.5 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && selectedBookingIds.size === filtered.length}
+                      onChange={toggleSelectAll}
+                      className="rounded border-secondary-300 text-red-600 focus:ring-red-500 h-4 w-4 cursor-pointer"
+                      title="Select all filtered bookings"
+                    />
+                  </th>
                   <th className="py-2.5 px-4 font-semibold">Booking ID</th>
                   <th className="py-2.5 px-4 font-semibold">Centre & Operator</th>
                   <th className="py-2.5 px-4 font-semibold">Route & Date</th>
@@ -714,9 +828,24 @@ export default function AdminBookingsPage() {
                   const canRestart = isRestartable(b);
                   const isCancelling = cancellingId === b.id;
                   const isRestarting = restartingId === b.id;
+                  const isDeleting = deletingId === b.id;
+                  const isSelected = selectedBookingIds.has(b.id);
 
                   return (
-                    <tr key={b.id} className="hover:bg-neutral-50/70 transition-colors">
+                    <tr
+                      key={b.id}
+                      className={`hover:bg-neutral-50/70 transition-colors ${
+                        isSelected ? 'bg-red-50/30' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectBooking(b.id)}
+                          className="rounded border-secondary-300 text-red-600 focus:ring-red-500 h-4 w-4 cursor-pointer"
+                        />
+                      </td>
                       <td className="py-3 px-4 font-mono font-bold text-text-primary">
                         {b.bookingCode}
                       </td>
@@ -856,6 +985,19 @@ export default function AdminBookingsPage() {
                             <Eye className="h-3 w-3 text-secondary-500" />
                             <span>Inspect</span>
                           </Link>
+                          <button
+                            onClick={() => handleDeleteBooking(b.id, b.bookingCode)}
+                            disabled={isDeleting}
+                            className="inline-flex items-center gap-1 rounded-btn border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-100 hover:text-red-800 transition-colors disabled:opacity-50 cursor-pointer"
+                            title="Permanently delete this booking"
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-red-600" />
+                            ) : (
+                              <Trash2 className="h-3 w-3 text-red-600" />
+                            )}
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -874,7 +1016,7 @@ export default function AdminBookingsPage() {
         confirmLabel={confirmModalData.confirmLabel}
         cancelLabel="Cancel"
         isDestructive={confirmModalData.isDestructive}
-        loading={actionLoading || Boolean(cancellingId)}
+        loading={actionLoading || Boolean(cancellingId) || Boolean(deletingId)}
         onConfirm={confirmModalData.action}
         onCancel={() => setConfirmModalData((prev) => ({ ...prev, isOpen: false }))}
       />

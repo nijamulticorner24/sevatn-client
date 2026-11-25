@@ -566,6 +566,17 @@ class ApiClient {
     return this.request(`/bookings/${id}/cancel`, { method: 'POST' });
   }
 
+  async deleteBooking(id: string) {
+    return this.request(`/bookings/${id}`, { method: 'DELETE' });
+  }
+
+  async deleteBookings(ids: string[]) {
+    return this.request('/bookings/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
+
   async restartBooking(id: string) {
     return this.request(`/bookings/${id}/restart`, { method: 'POST' });
   }
