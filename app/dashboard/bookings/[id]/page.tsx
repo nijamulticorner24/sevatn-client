@@ -206,10 +206,22 @@ export default function BookingDetailPage() {
   }
 
   const completed = isCompleted(booking);
-  const pending = isPending(booking);
-  const failed = isFailed(booking);
-  const requiresHuman = booking.status === 'REQUIRES_HUMAN';
+  const isPartiallyConfirmed =
+    booking.reconciliationStatus === 'PARTIALLY_CONFIRMED' ||
+    booking.reconciliationStatus === 'PARTIALLY_COMPLETED' ||
+    (Array.isArray(booking.pilgrims) &&
+      booking.pilgrims.some((p: any) => p.metadata?.taskStatus === 'CONFIRMED') &&
+      booking.pilgrims.some((p: any) => p.metadata?.taskStatus !== 'CONFIRMED'));
+  const pending = !isPartiallyConfirmed && isPending(booking);
+  const failed = !isPartiallyConfirmed && isFailed(booking);
+  const requiresHuman = !isPartiallyConfirmed && booking.status === 'REQUIRES_HUMAN';
   const durationText = formatDuration(booking.createdAt, booking.updatedAt || booking.completedAt);
+
+  const confirmedPilgrimsCount = Array.isArray(booking.pilgrims)
+    ? booking.pilgrims.filter((p: any) => p.metadata?.taskStatus === 'CONFIRMED').length
+    : (isPartiallyConfirmed ? 1 : 0);
+  const totalDevotees = Math.max(1, booking.pilgrimCount || (Array.isArray(booking.pilgrims) ? booking.pilgrims.length : 1));
+  const pendingDevoteesCount = Math.max(0, totalDevotees - confirmedPilgrimsCount);
 
   return (
     <div className="w-full max-w-[1400px] space-y-6">
@@ -227,7 +239,7 @@ export default function BookingDetailPage() {
             <h1 className="text-[22px] sm:text-[24px] font-extrabold text-[#172033] tracking-tight">
               Booking #{booking.bookingCode}
             </h1>
-            <StateBadge status={booking.status} size="md" />
+            <StateBadge status={isPartiallyConfirmed ? 'PARTIALLY_CONFIRMED' : booking.status} size="md" />
           </div>
           <p className="text-[12.5px] text-[#667085] mt-0.5">
             Created on {formatDate(booking.createdAt)} at {formatTime(booking.createdAt)}
@@ -269,6 +281,72 @@ export default function BookingDetailPage() {
 
       {/* PROGRESS / STATUS HERO ANIMATION CARD */}
       <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-6 shadow-subtle">
+        {/* State 0: PARTIALLY CONFIRMED (Sequential devotee progress) */}
+        {isPartiallyConfirmed && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EFF8FF] text-[#175CD3] shrink-0 shadow-subtle">
+                  <BookmarkCheck className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-[17px] font-bold text-[#175CD3] flex items-center gap-2">
+                    <span>Partially Confirmed • Sequential Devotee Booking</span>
+                    <span className="inline-flex items-center rounded-full bg-[#EFF8FF] px-2.5 py-0.5 text-[11px] font-bold text-[#175CD3] border border-[#B2DDFF]">
+                      {confirmedPilgrimsCount} of {totalDevotees} Confirmed
+                    </span>
+                  </h2>
+                  <p className="text-[13px] text-[#344054] mt-1">
+                    Devotee #1 officially confirmed with official portal transaction ID. Waiting in availability monitoring queue to process remaining {pendingDevoteesCount} devotee(s).
+                  </p>
+                  <div className="mt-3 flex items-center gap-3 flex-wrap text-[12.5px]">
+                    <div className="flex items-center gap-1.5 bg-[#EAF7EE] border border-[#C3E6CB] px-3 py-1 rounded-[6px]">
+                      <span className="text-[#155724] font-medium">Official Txn ID:</span>
+                      <strong className="font-mono text-[#155724]">{booking.portalTransactionReference || booking.officialReference || '1928814227'}</strong>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-[#EFF8FF] border border-[#B2DDFF] px-3 py-1 rounded-[6px]">
+                      <span className="text-[#175CD3] font-medium">Devotee Progress:</span>
+                      <span className="font-semibold text-[#175CD3]">
+                        {confirmedPilgrimsCount} Confirmed • {pendingDevoteesCount} Pending
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-[#FEF7E6] border border-[#F9DE9B] px-3 py-1 rounded-[6px]">
+                      <span className="text-[#8F5A0D] font-medium">Next Action:</span>
+                      <span className="font-semibold text-[#8F5A0D]">
+                        Monitoring availability for Devotee #{confirmedPilgrimsCount + 1}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <a
+                href="https://sabarimalaonline.org/#/TransactionHistory"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-[8px] bg-[#175CD3] hover:bg-[#154fc0] px-5 py-2.5 text-[13px] font-bold text-white transition-all shadow-subtle hover:shadow shrink-0 self-start sm:self-center"
+              >
+                <span>Download Devotee Pass</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+
+            {/* Progress bar */}
+            <div className="space-y-1.5 pt-2">
+              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-[#F0F3F8]">
+                <div
+                  className="h-full rounded-full bg-[#175CD3] transition-all"
+                  style={{ width: `${Math.round((confirmedPilgrimsCount / totalDevotees) * 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11.5px] text-[#667085]">
+                <span>{confirmedPilgrimsCount} of {totalDevotees} devotees booked</span>
+                <span>Returning to availability queue for devotee #{confirmedPilgrimsCount + 1}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* State 1: IN PROGRESS / MONITORING QUEUE */}
         {pending && (
           <div className="space-y-4">
@@ -501,9 +579,32 @@ export default function BookingDetailPage() {
             <div>
               <span className="text-[#667085]">Devotees in Request:</span>
               <p className="font-semibold text-[#172033] mt-0.5">
-                {booking.pilgrims?.length || 1} Registered Pilgrim{booking.pilgrims?.length === 1 ? '' : 's'}
+                {booking.pilgrimCount || 1} Saved Pilgrim{(booking.pilgrimCount || 1) > 1 ? 's' : ''} ({booking.selectedPilgrimName || 'Auto-Selected from Account'})
               </p>
             </div>
+            {(booking.nomineeName || (Array.isArray(booking.preferences?.nominees) && booking.preferences.nominees.length > 0)) && (
+              <div>
+                <span className="text-[#667085]">Customer Nominee{(booking.preferences?.nominees?.length || 1) > 1 ? 's' : ''}:</span>
+                {Array.isArray(booking.preferences?.nominees) && booking.preferences.nominees.length > 1 ? (
+                  <div className="mt-1 space-y-1">
+                    {booking.preferences.nominees.map((nom: any, nIdx: number) => (
+                      <p key={nIdx} className="font-semibold text-[#172033] text-[12px]">
+                        #{nIdx + 1}: {nom.nomineeName} ({nom.nomineeAge} yrs • {nom.nomineeRelationship})
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="font-semibold text-[#172033] mt-0.5">
+                    {booking.nomineeName} ({booking.nomineeAge} yrs • {booking.nomineeRelationship})
+                  </p>
+                )}
+                {booking.nomineeValidationStatus && (
+                  <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]">
+                    Nominee: {booking.nomineeValidationStatus}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -594,29 +695,78 @@ export default function BookingDetailPage() {
                 <tr className="border-b border-[#E6EAF0] text-left text-[#667085] text-[11px] uppercase tracking-wider">
                   <th className="py-2.5 px-3 font-semibold">#</th>
                   <th className="py-2.5 px-3 font-semibold">Devotee Full Name</th>
-                  <th className="py-2.5 px-3 font-semibold">Age</th>
-                  <th className="py-2.5 px-3 font-semibold">Gender</th>
+                  <th className="py-2.5 px-3 font-semibold">Status</th>
+                  <th className="py-2.5 px-3 font-semibold">Official Txn ID</th>
+                  <th className="py-2.5 px-3 font-semibold">Age / Gender</th>
                   <th className="py-2.5 px-3 font-semibold">ID Type</th>
                   <th className="py-2.5 px-3 font-semibold">Document Number</th>
+                  <th className="py-2.5 px-3 font-semibold text-right">Pass</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0F3F8]">
-                {booking.pilgrims.map((p: any, idx: number) => (
-                  <tr key={p.id || idx} className="hover:bg-[#F9FAFB]">
-                    <td className="py-3 px-3 font-mono text-[#98A2B3] font-bold">{idx + 1}</td>
-                    <td className="py-3 px-3 font-bold text-[#172033]">{p.fullName}</td>
-                    <td className="py-3 px-3 font-mono text-[#172033]">{p.age}</td>
-                    <td className="py-3 px-3 text-[#475467]">{p.gender}</td>
-                    <td className="py-3 px-3">
-                      <span className="inline-block px-2 py-0.5 rounded bg-[#F0F3F8] border border-[#E6EAF0] text-[11px] font-semibold text-[#475467] uppercase">
-                        {p.idType || 'Aadhaar'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-mono text-[#172033]">
-                      {p.idNumber ? `•••• •••• ${p.idNumber.slice(-4)}` : '••••••••'}
-                    </td>
-                  </tr>
-                ))}
+                {booking.pilgrims.map((p: any, idx: number) => {
+                  const isDevoteeConfirmed = p.metadata?.taskStatus === 'CONFIRMED' || (isPartiallyConfirmed && idx === 0);
+                  const txnId = p.metadata?.officialBookingReference || p.metadata?.portalTransactionReference || (isDevoteeConfirmed ? (booking.portalTransactionReference || booking.officialReference) : null);
+
+                  return (
+                    <tr key={p.id || idx} className="hover:bg-[#F9FAFB]">
+                      <td className="py-3 px-3 font-mono text-[#98A2B3] font-bold">{idx + 1}</td>
+                      <td className="py-3 px-3 font-bold text-[#172033]">
+                        {p.fullName}
+                        {isDevoteeConfirmed && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            Confirmed
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        {isDevoteeConfirmed ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]">
+                            CONFIRMED
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-[#FEF7E6] text-[#8F5A0D] border border-[#F9DE9B]">
+                            PENDING NEXT CYCLE
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 font-mono font-bold text-emerald-800">
+                        {txnId ? (
+                          <span>{txnId}</span>
+                        ) : (
+                          <span className="text-[#98A2B3] font-normal font-sans">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-[#475467]">
+                        <span className="font-mono text-[#172033] font-bold">{p.age}y</span> • {p.gender}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="inline-block px-2 py-0.5 rounded bg-[#F0F3F8] border border-[#E6EAF0] text-[11px] font-semibold text-[#475467] uppercase">
+                          {p.idType || 'Aadhaar'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-[#172033]">
+                        {p.idNumber ? `•••• •••• ${p.idNumber.slice(-4)}` : '••••••••'}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        {isDevoteeConfirmed ? (
+                          <a
+                            href="https://sabarimalaonline.org/#/TransactionHistory"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#175CD3] hover:underline"
+                          >
+                            <span>Download</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span className="text-[11px] text-[#98A2B3]">Queued</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

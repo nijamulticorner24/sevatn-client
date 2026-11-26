@@ -161,7 +161,7 @@ export default function NewBookingPage() {
             id: String(Date.now() + i),
             nomineeName: '',
             nomineeAge: '',
-            nomineeRelationship: i === 0 ? 'Spouse' : 'Other',
+            nomineeRelationship: 'Spouse',
             nomineePhone: '',
           });
         }
@@ -259,6 +259,7 @@ export default function NewBookingPage() {
     const first = nominees[0];
     if (!first.nomineeName.trim()) {
       setNomineeModalError('Please enter Nominee for Pilgrim #1 before copying to all.');
+      setError('Please enter Nominee for Pilgrim #1 before copying to all.');
       return;
     }
     const updated = nominees.map((n, idx) => {
@@ -268,11 +269,12 @@ export default function NewBookingPage() {
         nomineeName: first.nomineeName,
         nomineeAge: first.nomineeAge,
         nomineePhone: first.nomineePhone || '',
-        nomineeRelationship: n.nomineeRelationship || 'Relative',
+        nomineeRelationship: first.nomineeRelationship || 'Spouse',
       };
     });
     setNominees(updated);
     setNomineeModalError(null);
+    setError(null);
   };
 
   const handleRetryGPS = async () => {
@@ -587,7 +589,8 @@ export default function NewBookingPage() {
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const selectedRouteObj = OFFICIAL_ROUTES.find((r) => r.id === route) || OFFICIAL_ROUTES[0];
   const availableBalance = wallet ? Number(wallet.availableBalance ?? wallet.balance ?? 0) : null;
-  const totalServiceFee = serviceFee * pilgrimCount;
+  const unitServiceFee = Number(pricingBreakdown?.finalTicketPrice ?? serviceFee);
+  const totalServiceFee = unitServiceFee * pilgrimCount;
   const isInsufficientInitialBalance = !isSuperAdmin && availableBalance !== null && availableBalance < serviceFee;
   const isInsufficientBalance = !isSuperAdmin && availableBalance !== null && pilgrimCount > 0 && availableBalance < totalServiceFee;
 
@@ -666,10 +669,10 @@ export default function NewBookingPage() {
       return;
     }
 
-    // 2b. Validate Nominees (Mandatory Pilgrim Insurance)
+    // 2b. Validate Nominees (Mandatory Pilgrim Insurance) - Open Popup Modal if missing
     if (!nominees || nominees.length === 0 || !areNomineesFilled(nominees, pilgrimCount)) {
-      setNomineeModalError('Please complete the nominee insurance details for all pilgrims.');
-      setError('Please fill in the Nominee Details for all pilgrims in Section 3 before submitting.');
+      setNomineeModalError('Please complete the nominee insurance details for all selected pilgrims.');
+      setIsNomineeModalOpen(true);
       return;
     }
 
@@ -1592,229 +1595,72 @@ export default function NewBookingPage() {
                 </div>
               </div>
 
-              {/* DYNAMIC PILGRIM COUNT SELECTOR (MAX 5) */}
-              <div className="space-y-2 pt-2 border-t border-[#F0F3F8]">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11.5px] font-bold text-[#344054] uppercase tracking-wider">
-                    Number of Pilgrims (Max 5) <span className="text-[#C2413B]">*</span>
-                  </label>
-                  <span className="text-[11px] font-semibold text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] px-2 py-0.5 rounded">
-                    ₹ {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} = ₹ {totalServiceFee}
-                  </span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  {/* Interactive Stepper with Arrow Buttons */}
-                  <div className="inline-flex items-center rounded-[8px] border border-[#D0D5DD] bg-white p-0.5 shadow-2xs w-fit">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const current = pilgrimCount || 0;
-                        if (current > 1) {
-                          setExplicitPilgrimCount(current - 1, true);
-                        } else if (current === 1) {
-                          setExplicitPilgrimCount(0, false);
-                        }
-                      }}
-                      disabled={pilgrimCount <= 0}
-                      className="h-8 w-8 rounded-[6px] text-[#344054] hover:bg-[#F2F4F7] hover:text-[#172033] flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Decrease Pilgrims (Arrow Down)"
-                      aria-label="Decrease Pilgrims"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-
-                    <input
-                      type="number"
-                      min="0"
-                      max="5"
-                      value={pilgrimCountInput}
-                      onChange={(e) => handlePilgrimCountChange(e.target.value)}
-                      onClick={() => {
-                        const num = parseInt(pilgrimCountInput, 10);
-                        if (!isNaN(num) && num >= 1 && num <= 5) {
-                          setNomineeModalError(null);
-                          setIsNomineeModalOpen(true);
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowUp') {
-                          e.preventDefault();
-                          const current = pilgrimCount || 0;
-                          if (current < 5) setExplicitPilgrimCount(current + 1, true);
-                        } else if (e.key === 'ArrowDown') {
-                          e.preventDefault();
-                          const current = pilgrimCount || 0;
-                          if (current > 0) setExplicitPilgrimCount(current - 1, true);
-                        } else if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const num = parseInt(pilgrimCountInput, 10);
-                          if (!isNaN(num) && num >= 1 && num <= 5) {
-                            setExplicitPilgrimCount(num, true);
-                          }
-                        }
-                      }}
-                      onBlur={() => {
-                        const num = parseInt(pilgrimCountInput, 10);
-                        if (!isNaN(num) && num >= 1 && num <= 5) {
-                          setNomineeModalError(null);
-                          setIsNomineeModalOpen(true);
-                        }
-                      }}
-                      className="h-8 w-12 text-center text-[13.5px] font-extrabold text-[#172033] focus:outline-none bg-transparent cursor-pointer"
-                      placeholder="0"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const current = pilgrimCount || 0;
-                        if (current < 5) {
-                          setExplicitPilgrimCount(current + 1, true);
-                        }
-                      }}
-                      disabled={pilgrimCount >= 5}
-                      className="h-8 w-8 rounded-[6px] text-[#344054] hover:bg-[#F2F4F7] hover:text-[#172033] flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Increase Pilgrims (Arrow Up)"
-                      aria-label="Increase Pilgrims"
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </button>
+              {/* Pilgrim Quantity Selector (1 to 5 Saved Pilgrims) & Dynamic Booking Unit Display */}
+              <div className="pt-3 border-t border-[#F0F3F8] space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[#344054]">
+                      Number of Saved Pilgrims <span className="text-[#C2413B]">*</span>
+                    </label>
+                    <p className="text-[10.5px] text-[#667085]">
+                      Select 1 to 5 saved devotees from the official Sabarimala account
+                    </p>
                   </div>
 
-                  {/* Quick Select Pills 1 to 5 */}
-                  <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                    {[1, 2, 3, 4, 5].map((num) => {
-                      const isSelected = pilgrimCount === num && !pilgrimError;
+                  {/* Quantity 1..5 Selector Buttons — Clicking opens the Nominee Popup Modal */}
+                  <div className="grid grid-cols-5 gap-1.5 sm:flex sm:items-center">
+                    {[1, 2, 3, 4, 5].map((qty) => {
+                      const isActive = pilgrimCount === qty;
                       return (
                         <button
-                          key={num}
+                          key={qty}
                           type="button"
-                          onClick={() => setExplicitPilgrimCount(num, true)}
-                          className={`h-8 min-w-[32px] px-2.5 rounded-[6px] text-[12px] font-bold transition-all cursor-pointer ${isSelected
-                            ? 'bg-[#C98219] text-white shadow-2xs'
-                            : 'bg-white border border-[#D0D5DD] text-[#344054] hover:border-[#C98219] hover:bg-[#FEF7E6] hover:text-[#C98219]'
-                            }`}
+                          onClick={() => setExplicitPilgrimCount(qty, true)}
+                          aria-pressed={isActive}
+                          className={`h-9 sm:w-11 rounded-[7px] border text-[12.5px] font-bold transition-all cursor-pointer flex items-center justify-center ${
+                            isActive
+                              ? 'border-[#C98219] bg-[#C98219] text-white shadow-2xs ring-2 ring-[#C98219]/20'
+                              : 'border-[#D0D5DD] bg-white text-[#344054] hover:border-[#C98219] hover:bg-[#FEF7E6] hover:text-[#8F5A0D]'
+                          }`}
                         >
-                          {num}
+                          {qty}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Validation Error Message */}
-                {pilgrimError && (
-                  <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-[#B42318] bg-[#FEF3F2] p-2.5 rounded-[6px] border border-[#FECDCA]">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-[#D92D20]" />
-                    <span>{pilgrimError}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 3: NOMINEE DETAILS SUMMARY & ACTION CARD */}
-          <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 sm:p-5 shadow-subtle space-y-3.5">
-            <div className="flex items-center justify-between pb-2.5 border-b border-[#E6EAF0]">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219]">
-                  <HeartHandshake className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-[13.5px] font-bold text-[#172033]">
-                    3. Nominee Details ({pilgrimCount} Pilgrim{pilgrimCount !== 1 ? 's' : ''})
-                  </h2>
-                  <p className="text-[11px] text-[#667085]">
-                    Travancore Devaswom Board emergency insurance nominee for each pilgrim (18+ adult)
-                  </p>
-                </div>
-              </div>
-
-              {pilgrimCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNomineeModalError(null);
-                    setIsNomineeModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-1.5 text-[11.5px] font-bold text-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer shadow-2xs"
-                >
-                  <Edit3 className="h-3.5 w-3.5" />
-                  <span>{areNomineesFilled(nominees, pilgrimCount) ? 'Edit Nominees' : 'Fill Details'}</span>
-                </button>
-              )}
-            </div>
-
-            {pilgrimCount === 0 ? (
-              <div className="p-4 rounded-[8px] border border-dashed border-[#D0D5DD] bg-[#FAFBFD] text-center space-y-1">
-                <p className="text-[12.5px] font-semibold text-[#475467]">
-                  Pilgrims Not Selected
-                </p>
-                <p className="text-[11px] text-[#667085]">
-                  Select 1 to 10 pilgrims in Section 2 above. A popup will open to enter nominee insurance details.
-                </p>
-              </div>
-            ) : areNomineesFilled(nominees, pilgrimCount) ? (
-              <div className="p-3.5 rounded-[8px] border border-[#C3E6CB] bg-[#F4FBF6] space-y-2.5">
-                <div className="flex items-center justify-between">
+                {/* Dynamic Booking Unit & Popup Nominee Trigger Row */}
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-[7px] bg-[#FAFBFD] border border-[#E6EAF0] px-3 py-2 text-[11.5px] text-[#475467]">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-[#198754]" />
-                    <span className="text-[12px] font-bold text-[#155724]">
-                      Nominee Details Confirmed ({pilgrimCount} Pilgrim{pilgrimCount > 1 ? 's' : ''})
+                    <span className="font-semibold text-[#344054]">Booking Unit:</span>
+                    <span className="font-bold text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] px-2.5 py-0.5 rounded tabular-nums">
+                      {pilgrimCount} {pilgrimCount === 1 ? 'Pilgrim' : 'Pilgrims'} × ₹{unitServiceFee} = ₹{totalServiceFee}
                     </span>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => {
                       setNomineeModalError(null);
                       setIsNomineeModalOpen(true);
                     }}
-                    className="text-[11px] font-bold text-[#155724] underline hover:text-[#0f3d19] cursor-pointer"
+                    className={`inline-flex items-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                      areNomineesFilled(nominees, pilgrimCount)
+                        ? 'border-[#C3E6CB] bg-[#EAF7EE] text-[#155724] hover:bg-[#D4EDDA]'
+                        : 'border-[#C98219] bg-[#C98219] text-white hover:bg-[#B57414] shadow-2xs'
+                    }`}
                   >
-                    Edit in Popup
+                    <HeartHandshake className="h-3.5 w-3.5" />
+                    <span>
+                      {areNomineesFilled(nominees, pilgrimCount)
+                        ? `Edit Nominee Details (${pilgrimCount}/${pilgrimCount} Saved)`
+                        : `Enter Nominee Details (${pilgrimCount} ${pilgrimCount === 1 ? 'Pilgrim' : 'Pilgrims'})`}
+                    </span>
                   </button>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11.5px]">
-                  {nominees.map((n, idx) => (
-                    <div key={n.id || idx} className="p-2.5 rounded-[6px] bg-white border border-[#D0E7D6] flex items-center justify-between shadow-2xs">
-                      <span className="font-semibold text-[#172033] truncate">
-                        #{idx + 1}: {n.nomineeName}
-                      </span>
-                      <span className="text-[10.5px] text-[#667085] shrink-0 ml-1">
-                        {n.nomineeAge} yrs • {n.nomineeRelationship}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
-            ) : (
-              <div className="p-4 rounded-[8px] border border-[#FDE68A] bg-[#FEFCE8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <AlertCircle className="h-4 w-4 text-[#D97706] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[12px] font-bold text-[#92400E]">
-                      Nominee Details Required
-                    </p>
-                    <p className="text-[11px] text-[#B45309]">
-                      Emergency insurance nominee information is required for {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNomineeModalError(null);
-                    setIsNomineeModalOpen(true);
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-[7px] bg-[#C98219] hover:bg-[#B57414] px-4 py-2 text-[12px] font-bold text-white transition-all shadow-subtle shrink-0 cursor-pointer"
-                >
-                  <HeartHandshake className="h-4 w-4" />
-                  <span>Fill Nominee Details ({pilgrimCount} Pilgrim{pilgrimCount > 1 ? 's' : ''})</span>
-                </button>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -2086,10 +1932,10 @@ export default function NewBookingPage() {
 
       {/* NOMINEE DETAILS POPUP MODAL */}
       {isNomineeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="relative w-full max-w-4xl lg:max-w-5xl rounded-[14px] bg-white shadow-2xl border border-[#E6EAF0] my-8 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div className="relative w-full max-w-[96vw] sm:max-w-[94vw] xl:max-w-[1440px] rounded-[14px] bg-white shadow-2xl border border-[#E6EAF0] my-6 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3.5 border-b border-[#E6EAF0] bg-white sticky top-0 z-10 gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-[#E6EAF0] bg-white sticky top-0 z-10 gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#FEF7E6] text-[#C98219] shrink-0">
                   <HeartHandshake className="h-4 w-4" />
@@ -2163,35 +2009,35 @@ export default function NewBookingPage() {
             )}
 
             {/* Modal Body */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
               {nominees.length > 1 && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-[8px] bg-[#FDF7ED] border border-[#E8D5B7] text-[#7A4A12]">
-                  <div className="text-[12px] leading-relaxed">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-[8px] bg-[#FDF7ED] border border-[#E8D5B7] text-[#7A4A12]">
+                  <div className="text-[12.5px] leading-relaxed">
                     <span className="font-bold">Group / Family Quick-Fill:</span> Apply Nominee #1 details to all remaining pilgrims in one tap.
                   </div>
                   <button
                     type="button"
                     onClick={handleCopyNominee1ToAll}
-                    className="shrink-0 self-start sm:self-center rounded-[6px] bg-[#C98219] hover:bg-[#B57414] text-white px-3 py-1.5 text-[11.5px] font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                    className="shrink-0 self-start sm:self-center rounded-[6px] bg-[#C98219] hover:bg-[#B57414] text-white px-3.5 py-1.5 text-[12px] font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
                   >
                     Copy #1 to All
                   </button>
                 </div>
               )}
 
-              {/* 2-Column Grid Layout for Nominee Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Wide Grid Layout for Nominee Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {nominees.map((nominee, idx) => (
                   <div
                     key={nominee.id || idx}
-                    className="p-3.5 rounded-[9px] border border-[#E6EAF0] bg-[#FAFBFD] space-y-2.5 relative flex flex-col justify-between shadow-2xs hover:border-[#D0D5DD] transition-colors"
+                    className="p-4 rounded-[10px] border border-[#E6EAF0] bg-[#FAFBFD] space-y-3 relative flex flex-col justify-between shadow-2xs hover:border-[#D0D5DD] transition-colors"
                   >
-                    <div className="flex items-center justify-between pb-1.5 border-b border-[#F0F3F8]">
-                      <div className="flex items-center gap-1.5">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#C98219] text-white text-[10px] font-black">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#F0F3F8]">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#C98219] text-white text-[10.5px] font-black">
                           {idx + 1}
                         </span>
-                        <span className="text-[11.5px] font-bold text-[#172033] uppercase tracking-wider">
+                        <span className="text-[12px] font-bold text-[#172033] uppercase tracking-wider">
                           Nominee for Pilgrim #{idx + 1} {idx === 0 ? '(Primary)' : ''}
                         </span>
                       </div>
@@ -2208,9 +2054,9 @@ export default function NewBookingPage() {
                       )}
                     </div>
 
-                    <div className="space-y-2.5">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-[#475467] mb-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                      <div className="sm:col-span-6">
+                        <label className="block text-[11.5px] font-semibold text-[#475467] mb-1">
                           Nominee Full Name <span className="text-[#C2413B]">*</span>
                         </label>
                         <input
@@ -2218,49 +2064,43 @@ export default function NewBookingPage() {
                           value={nominee.nomineeName}
                           onChange={(e) => handleNomineeChange(idx, 'nomineeName', e.target.value)}
                           placeholder="e.g. Lakshmi S"
-                          className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                          className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-2 text-[13px] text-[#172033] focus:border-[#C98219] focus:outline-none"
                           autoFocus={idx === 0}
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-semibold text-[#475467] mb-1">
-                            Age (18+) <span className="text-[#C2413B]">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            min="18"
-                            max="120"
-                            value={nominee.nomineeAge}
-                            onChange={(e) => handleNomineeChange(idx, 'nomineeAge', e.target.value)}
-                            placeholder="18+"
-                            className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
-                          />
-                        </div>
+                      <div className="sm:col-span-3">
+                        <label className="block text-[11.5px] font-semibold text-[#475467] mb-1">
+                          Age (18+) <span className="text-[#C2413B]">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="18"
+                          max="120"
+                          value={nominee.nomineeAge}
+                          onChange={(e) => handleNomineeChange(idx, 'nomineeAge', e.target.value)}
+                          placeholder="18+"
+                          className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-2 text-[13px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                        />
+                      </div>
 
-                        <div>
-                          <label className="block text-[11px] font-semibold text-[#475467] mb-1">
-                            Relationship <span className="text-[#C2413B]">*</span>
-                          </label>
-                          <select
-                            value={nominee.nomineeRelationship}
-                            onChange={(e) => handleNomineeChange(idx, 'nomineeRelationship', e.target.value)}
-                            className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2.5 py-1.5 text-[12.5px] text-[#172033] focus:border-[#C98219] focus:outline-none"
-                          >
-                            <option value="Spouse">Spouse</option>
-                            <option value="Father">Father</option>
-                            <option value="Mother">Mother</option>
-                            <option value="Son">Son</option>
-                            <option value="Daughter">Daughter</option>
-                            <option value="Brother">Brother</option>
-                            <option value="Sister">Sister</option>
-                            <option value="Guardian">Guardian</option>
-                            <option value="Friend">Friend</option>
-                            <option value="Relative">Relative</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
+                      <div className="sm:col-span-3">
+                        <label className="block text-[11.5px] font-semibold text-[#475467] mb-1">
+                          Relationship <span className="text-[#C2413B]">*</span>
+                        </label>
+                        <select
+                          value={nominee.nomineeRelationship}
+                          onChange={(e) => handleNomineeChange(idx, 'nomineeRelationship', e.target.value)}
+                          className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-2 text-[13px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                        >
+                          <option value="Spouse">Spouse</option>
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Son">Son</option>
+                          <option value="Daughter">Daughter</option>
+                          <option value="Brother">Brother</option>
+                          <option value="Sister">Sister</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -2543,7 +2383,8 @@ export default function NewBookingPage() {
               return;
             }
             if (!areNomineesFilled(nominees, pilgrimCount)) {
-              setError('Please fill in the Nominee Details for all pilgrims before submitting.');
+              setNomineeModalError('Please complete the nominee insurance details for all selected pilgrims.');
+              setIsNomineeModalOpen(true);
               return;
             }
             if (accountMode === 'saved' && selectedAccountId && !revealedPasswords[selectedAccountId]) {

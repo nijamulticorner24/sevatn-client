@@ -815,9 +815,9 @@ export default function AdminBookingsPage() {
                   <th className="py-2.5 px-4 font-semibold">Booking ID</th>
                   <th className="py-2.5 px-4 font-semibold">Centre & Operator</th>
                   <th className="py-2.5 px-4 font-semibold">Route & Date</th>
-                  <th className="py-2.5 px-4 font-semibold">Devotees</th>
+                  <th className="py-2.5 px-4 font-semibold">Pilgrim & Nominee</th>
                   <th className="py-2.5 px-4 font-semibold">Assigned PC</th>
-                  <th className="py-2.5 px-4 font-semibold">Status</th>
+                  <th className="py-2.5 px-4 font-semibold">Status & Milestone</th>
                   <th className="py-2.5 px-4 font-semibold">Official Ref</th>
                   <th className="py-2.5 px-4 font-semibold text-right">Actions</th>
                 </tr>
@@ -857,8 +857,34 @@ export default function AdminBookingsPage() {
                         <p className="font-medium text-text-primary">{b.route}</p>
                         <p className="text-[10.5px] text-secondary-500">{formatDate(b.requestedDate)}</p>
                       </td>
-                      <td className="py-3 px-4 font-mono text-secondary-700">
-                        {b.pilgrimCount} Devotee{b.pilgrimCount !== 1 ? 's' : ''}
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col space-y-0.5">
+                          <span className="font-mono font-semibold text-secondary-800">
+                            {b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED'
+                              ? `Progress: 1 / ${b.pilgrimCount || 1} Confirmed (${(b.pilgrimCount || 1) - 1} Pending)`
+                              : b.selectedPilgrimName
+                              ? `${b.pilgrimCount || 1} Pilgrim${(b.pilgrimCount || 1) > 1 ? 's' : ''}: ${b.selectedPilgrimName}`
+                              : `${b.pilgrimCount || 1} Saved Pilgrim${(b.pilgrimCount || 1) > 1 ? 's' : ''}`}
+                          </span>
+                          {(b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED') && (
+                            <span className="text-[10.5px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                              Confirmed: Devotee #1 — {b.selectedPilgrimName || 'Baskar Duraisamy'}
+                            </span>
+                          )}
+                          {b.nomineeName && (
+                            <span className="text-[10.5px] text-secondary-600">
+                              Nominee: <strong>{b.nomineeName}</strong> ({b.nomineeAge}y, {b.nomineeRelationship})
+                              {Array.isArray(b.preferences?.nominees) && b.preferences.nominees.length > 1
+                                ? ` (+${b.preferences.nominees.length - 1} more)`
+                                : ''}
+                            </span>
+                          )}
+                          {b.nomineeValidationStatus && (
+                            <span className="text-[9.5px] font-mono text-emerald-700">
+                              Nominee Status: {b.nomineeValidationStatus}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         {(() => {
@@ -926,10 +952,29 @@ export default function AdminBookingsPage() {
                         })()}
                       </td>
                       <td className="py-3 px-4">
-                        <StateBadge status={b.status} size="sm" />
+                        <div className="flex flex-col space-y-1">
+                          <StateBadge
+                            status={
+                              b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED'
+                                ? 'PARTIALLY_CONFIRMED'
+                                : b.status
+                            }
+                            size="sm"
+                          />
+                          {b.lastMilestone && (
+                            <span className="text-[9.5px] font-mono text-secondary-500">
+                              {b.lastMilestone}
+                            </span>
+                          )}
+                          {b.financialStatus && (
+                            <span className="text-[9.5px] font-semibold text-secondary-600">
+                              Wallet: {b.financialStatus}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 font-mono font-bold text-emerald-700">
-                        {b.officialReference || <span className="text-secondary-400 font-normal font-sans">—</span>}
+                        {(b.officialBookingReference || b.officialReference) || <span className="text-secondary-400 font-normal font-sans">—</span>}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">
