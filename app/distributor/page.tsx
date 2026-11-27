@@ -83,10 +83,6 @@ export default function DistributorOverviewPage() {
               <span className="text-[#667085]">Network License:</span>
               <span className="font-bold text-[#7F56D9]">Authorized Distributor</span>
             </div>
-            <div className="flex items-center justify-between gap-3 border-t border-[#E6EAF0] pt-1.5">
-              <span className="text-[#667085]">Commission Slab:</span>
-              <span className="font-bold text-[#172033]">{distributor?.commissionSlab || 'STANDARD'}</span>
-            </div>
           </div>
         </div>
       </div>

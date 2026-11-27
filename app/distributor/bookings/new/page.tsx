@@ -311,13 +311,17 @@ export default function NewBookingPage() {
     const u = api.getUser();
     
     Promise.all([
+      api.getBookingPricingPreview(1).catch(() => null),
       api.getBookingConfig().catch(() => null),
       api.getAccounts().catch(() => []),
       api.getWallet().catch(() => null),
       api.ensureLocationCoordinates().catch(() => null),
       api.getBookings(undefined, 1, undefined).catch(() => null),
-    ]).then(([cfg, aData, wData, loc, bData]) => {
-      if (cfg && cfg.serviceFee !== undefined) {
+    ]).then(([pricing, cfg, aData, wData, loc, bData]) => {
+      if (pricing && pricing.finalTicketPrice !== undefined) {
+        setPricingBreakdown(pricing);
+        setServiceFee(Number(pricing.finalTicketPrice));
+      } else if (cfg && cfg.serviceFee !== undefined) {
         setServiceFee(Number(cfg.serviceFee));
       }
       if (bData && bData.bookings) {
@@ -348,8 +352,8 @@ export default function NewBookingPage() {
       .then((res) => {
         if (res) {
           setPricingBreakdown(res);
-          if (res.finalTicketPrice) {
-            setServiceFee(res.finalTicketPrice);
+          if (res.finalTicketPrice !== undefined) {
+            setServiceFee(Number(res.finalTicketPrice));
           }
         }
       })
@@ -544,8 +548,9 @@ export default function NewBookingPage() {
 
   const selectedRouteObj = OFFICIAL_ROUTES.find((r) => r.id === route) || OFFICIAL_ROUTES[0];
   const availableBalance = wallet ? Number(wallet.availableBalance ?? wallet.balance ?? 0) : null;
-  const totalServiceFee = serviceFee * pilgrimCount;
-  const isInsufficientInitialBalance = availableBalance !== null && availableBalance < serviceFee;
+  const unitServiceFee = Number(pricingBreakdown?.finalTicketPrice ?? serviceFee);
+  const totalServiceFee = unitServiceFee * pilgrimCount;
+  const isInsufficientInitialBalance = availableBalance !== null && availableBalance < unitServiceFee;
   const isInsufficientBalance = availableBalance !== null && pilgrimCount > 0 && availableBalance < totalServiceFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -643,9 +648,10 @@ export default function NewBookingPage() {
     try {
       // 3. Validate current dynamically calculated fee with the backend
       try {
-        const cfg = await api.getBookingConfig();
-        if (cfg && cfg.serviceFee !== undefined) {
-          setServiceFee(Number(cfg.serviceFee));
+        const pricing = await api.getBookingPricingPreview(pilgrimCount);
+        if (pricing && pricing.finalTicketPrice !== undefined) {
+          setPricingBreakdown(pricing);
+          setServiceFee(Number(pricing.finalTicketPrice));
         }
       } catch (_) {
         // Fallback to currently loaded service fee
@@ -1546,7 +1552,7 @@ export default function NewBookingPage() {
                     Number of Pilgrims (Max 5) <span className="text-[#C2413B]">*</span>
                   </label>
                   <span className="text-[11px] font-semibold text-[#8F5A0D] bg-[#FEF7E6] border border-[#F9DE9B] px-2 py-0.5 rounded">
-                    ₹ {serviceFee} × {pilgrimCount} = ₹ {totalServiceFee}
+                    ₹ {unitServiceFee} × {pilgrimCount} = ₹ {totalServiceFee}
                   </span>
                 </div>
 
@@ -1828,12 +1834,15 @@ export default function NewBookingPage() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-[#F0F3F8]">
-                <span className="text-[#667085]">Assistance Service Fee</span>
-                <div className="text-right">
-                  <span className="font-bold text-[#172033] tabular-nums text-[13px]">₹ {totalServiceFee}</span>
-                  <div className="text-[10.5px] text-[#667085]">
-                    (₹ {serviceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
+              {/* Ticket Fee */}
+              <div className="py-1.5 border-b border-[#F0F3F8] space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#667085]">Ticket Fee</span>
+                  <div className="text-right">
+                    <span className="font-bold text-[#172033] tabular-nums text-[13px]">₹ {totalServiceFee}</span>
+                    <div className="text-[10.5px] text-[#667085]">
+                      (₹ {unitServiceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1867,7 +1876,7 @@ export default function NewBookingPage() {
                   </span>
                 </div>
                 <p className="text-[11px] text-[#7F1D1D] leading-relaxed">
-                  Your wallet has ₹ {availableBalance}. A minimum of ₹ {totalServiceFee} (₹ {serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is required to queue this booking.
+                  Your wallet has ₹ {availableBalance}. A minimum of ₹ {totalServiceFee} (₹ {unitServiceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is required to queue this booking.
                 </p>
                 <Link
                   href="/distributor/wallet"
@@ -1886,7 +1895,7 @@ export default function NewBookingPage() {
                 <span>Fair Pricing Guarantee</span>
               </div>
               <p className="leading-relaxed text-[#7A4A12]">
-                ₹ {totalServiceFee} (₹ {serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is temporarily held in reservation and captured <strong>only after</strong> a confirmed pass reference is positively verified.
+                ₹ {totalServiceFee} (₹ {unitServiceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''}) is temporarily held in reservation and captured <strong>only after</strong> a confirmed pass reference is positively verified.
               </p>
             </div>
 

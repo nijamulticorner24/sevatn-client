@@ -194,17 +194,6 @@ export default function PartnerProfilePage() {
             </p>
           </div>
         </div>
-
-        {/* Commission Terms */}
-        <div className="rounded-[8px] border border-[#F9DE9B] bg-[#FEF7E6] p-4 text-xs">
-          <p className="font-bold text-[#172033] flex items-center gap-1.5">
-            <ShieldCheck className="h-4 w-4 text-[#C98219]" />
-            Official Franchise Agreement &amp; Terms
-          </p>
-          <p className="text-[#8F5A0D] mt-1 leading-relaxed">
-            As an Authorized Partner enrolled on the <strong>{partner?.commissionSlab || 'STANDARD'}</strong> slab, you receive a franchise commission of <strong>{partner?.commissionPercentage || 20}%</strong> (currently ₹ {Number(partner?.commissionRate || 20).toFixed(2)} based on the booking service fee) for every Virtual-Q Darshan booking executed by booking centres in your network. Settlements are processed directly to your registered bank account.
-          </p>
-        </div>
       </div>
 
       {/* Email Change Modal */}

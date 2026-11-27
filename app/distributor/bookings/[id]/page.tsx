@@ -377,7 +377,7 @@ export default function DistributorBookingDetailPage() {
                 Reason: {booking.failureReason || 'Slots unavailable or session expired.'}
               </p>
               <p className="text-[12px] text-[#667085] mt-1">
-                Held service fee has been fully refunded back to your distributor wallet.
+                Held ticket fee has been fully refunded back to your distributor wallet.
               </p>
             </div>
           </div>

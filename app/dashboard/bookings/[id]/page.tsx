@@ -239,7 +239,7 @@ export default function BookingDetailPage() {
   const isPartiallyConfirmed = summary.isPartiallyConfirmed;
   const pending = !isPartiallyConfirmed && !isFullyConfirmed && isPending(booking);
   const failed = !isPartiallyConfirmed && !isFullyConfirmed && isFailed(booking);
-  const requiresHuman = !isPartiallyConfirmed && !isFullyConfirmed && booking.status === 'REQUIRES_HUMAN';
+  const requiresHuman = false;
   const durationText = formatDuration(booking.createdAt, booking.updatedAt || booking.completedAt);
 
   const nextDevoteeSequence = summary.nextPilgrim
@@ -428,7 +428,7 @@ export default function BookingDetailPage() {
                   </span>
                 </h2>
                 <p className="text-[13px] text-[#285e3a] mt-1">
-                  Pass positively registered on official portal. Booking service fee captured.
+                  Pass positively registered on official portal. Ticket fee captured.
                 </p>
                 <div className="mt-3 flex items-center gap-3 flex-wrap text-[12.5px]">
                   <div className="flex items-center gap-1.5 bg-[#EAF7EE] border border-[#C3E6CB] px-3 py-1 rounded-[6px]">
@@ -442,7 +442,7 @@ export default function BookingDetailPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-1.5 bg-[#F7F9FC] border border-[#E6EAF0] px-3 py-1 rounded-[6px]">
-                    <span className="text-[#475467] font-medium">Service Fee:</span>
+                    <span className="text-[#475467] font-medium">Ticket Fee:</span>
                     <span className={`font-semibold ${booking.financialStatus === 'CAPTURED' ? 'text-[#155724]' : 'text-[#8F5A0D]'}`}>
                       {booking.financialStatus === 'CAPTURED' ? '₹ 100.00 Captured' : (booking.financialStatus || 'Reserved')}
                     </span>
@@ -469,59 +469,8 @@ export default function BookingDetailPage() {
           </div>
         )}
 
-        {/* State 3: ACTION REQUIRED / CHALLENGE */}
-        {requiresHuman && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FDECEC] text-[#C2413B] shrink-0 shadow-subtle animate-bounce">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-              <div>
-                <h2 className="text-[17px] font-bold text-[#992B26]">Action Required: Official Portal Challenge</h2>
-                <p className="text-[13px] text-[#A8322B] mt-1 leading-relaxed">
-                  Automated process safely paused because the official portal presented an OTP or verification challenge. Complete it manually and confirm below.
-                </p>
-                {booking.requiresHumanNote && (
-                  <p className="mt-2 text-[12px] font-semibold text-[#992B26] bg-[#FDECEC] p-2.5 rounded border border-[#F8C4C2]">
-                    Challenge Note: {booking.requiresHumanNote}
-                  </p>
-                )}
-                {booking.confirmationEvidence?.screenshot && (
-                  <div className="mt-3">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#992B26] mb-1.5 flex items-center gap-1.5">
-                      📸 Captured Official Portal Screenshot:
-                    </p>
-                    <a
-                      href={booking.confirmationEvidence.screenshot}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block group rounded-lg overflow-hidden border border-[#F8C4C2] bg-white shadow-sm hover:shadow-md transition-all max-w-[280px]"
-                    >
-                      <img
-                        src={booking.confirmationEvidence.screenshot}
-                        alt="Portal Challenge Screenshot"
-                        className="w-full h-auto max-h-[140px] object-cover object-top group-hover:scale-105 transition-transform duration-200"
-                      />
-                      <span className="block text-[11px] font-semibold text-center py-1 text-[#992B26] bg-[#FDECEC] border-t border-[#F8C4C2]">
-                        Click to enlarge screenshot ↗
-                      </span>
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => setHumanModalOpen(true)}
-              className="rounded-[8px] bg-[#C2413B] hover:bg-[#A8322B] px-5 py-2.5 text-[13px] font-bold text-white transition-all shadow-subtle shrink-0 self-start sm:self-center"
-            >
-              Resolve Challenge
-            </button>
-          </div>
-        )}
-
         {/* State 4: FAILED / CANCELLED */}
-        {failed && !requiresHuman && (
+        {failed && (
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FDECEC] text-[#C2413B] shrink-0 shadow-subtle">
               <AlertTriangle className="h-6 w-6" />
@@ -532,7 +481,7 @@ export default function BookingDetailPage() {
                 Reason: {booking.failureReason || 'Slots unavailable or session expired.'}
               </p>
               <p className="text-[12px] text-[#667085] mt-1">
-                Held service fee ({formatCurrency(Number(booking.transactions?.find((t: any) => t.type === 'RESERVE' || t.type === 'CAPTURE')?.amount || 100))}) has been fully released back to your centre wallet.
+                Held ticket fee ({formatCurrency(Number(booking.transactions?.find((t: any) => t.type === 'RESERVE' || t.type === 'CAPTURE')?.amount || 100))}) has been fully released back to your centre wallet.
               </p>
               {booking.confirmationEvidence?.screenshot && (
                 <div className="mt-3">
@@ -672,7 +621,7 @@ export default function BookingDetailPage() {
           </div>
           <div className="space-y-2 text-[12.5px]">
             <div>
-              <span className="text-[#667085]">Assistance Service Fee:</span>
+              <span className="text-[#667085]">Ticket Fee:</span>
               <p className="font-mono font-bold text-[#172033] mt-0.5">
                 {formatCurrency(Number(booking.transactions?.find((t: any) => t.type === 'RESERVE' || t.type === 'CAPTURE')?.amount || 100))}
               </p>

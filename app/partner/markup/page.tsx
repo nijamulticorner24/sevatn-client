@@ -77,7 +77,7 @@ export default function PartnerMarkupPage() {
     return <LoadingSkeleton rows={3} />;
   }
 
-  const baseTicket = Number(data?.baseTicketPrice || 10);
+  const baseTicket = Number(data?.baseTicketPrice ?? 0);
   const maxCap = Number(data?.maxAllowedMarkup || 2);
   const currentMarkup = Number(markupInput || 0);
   const effectivePrice = baseTicket + currentMarkup;
@@ -115,16 +115,11 @@ export default function PartnerMarkupPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-5 shadow-subtle">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[#667085]">Base Ticket Price</span>
-            {data?.isCustomRate && (
-              <span className="rounded bg-[#EFF8FF] px-1.5 py-0.5 text-[10px] font-bold text-[#175CD3] border border-[#B2DDFF]">
-                Custom Partner Rate
-              </span>
-            )}
+            <span className="text-[11px] font-semibold text-[#667085]">Franchise Base Price</span>
           </div>
           <div className="text-2xl font-black text-[#172033] mt-1">{formatINR(baseTicket)}</div>
           <span className="text-[10.5px] text-[#667085]">
-            {data?.isCustomRate ? 'Configured by Admin in /admin/partners' : 'Standard Base Rate'}
+            Configured by Super Admin in /admin/partners
           </span>
         </div>
 

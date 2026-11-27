@@ -37,16 +37,13 @@ import { useToast } from '@/components/ui/Toast';
 
 const FILTER_TABS = [
   { key: 'ALL', label: 'All Requests' },
-  { key: 'ACTION_REQUIRED', label: 'Action Needed' },
   { key: 'PENDING', label: 'Watching & Queued' },
   { key: 'COMPLETED', label: 'Confirmed Passes' },
   { key: 'FAILED', label: 'Failed' },
 ];
 
 function isActionRequired(b: any) {
-  if (!b) return false;
-  const status = typeof b === 'string' ? b : b.status;
-  return status === 'REQUIRES_HUMAN' || status === 'OTP_REQUIRED' || status === 'CAPTCHA_REQUIRED';
+  return false;
 }
 
 function isDevoteeCompleted(p: any): boolean {
@@ -402,35 +399,19 @@ export default function BookingsPage() {
         if (res?.bookings) {
           const newBookings = res.bookings;
 
-          // Check for newly completed or action-required bookings
+          // Check for newly completed bookings
           if (!isInitialLoad.current) {
             newBookings.forEach((b: any) => {
               if (isCompleted(b) && !knownCompletedIds.current.has(b.id)) {
                 knownCompletedIds.current.add(b.id);
                 triggerDesktopAlert(b);
               }
-              if (isActionRequired(b) && !knownActionRequiredIds.current.has(b.id)) {
-                knownActionRequiredIds.current.add(b.id);
-                if (soundEnabled) playAttentionChime();
-                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                  try {
-                    new Notification(`⚠️ Action Required: #${b.bookingCode}`, {
-                      body: `Official portal presented an OTP or verification challenge for devotee ${b.account?.username || 'Devotee'}!`,
-                      icon: '/favicon.ico',
-                      tag: `action-${b.id}`,
-                    });
-                  } catch (err) {}
-                }
-              }
             });
           } else {
-            // Seed known completed and action-required IDs on initial fetch
+            // Seed known completed IDs on initial fetch
             newBookings.forEach((b: any) => {
               if (isCompleted(b)) {
                 knownCompletedIds.current.add(b.id);
-              }
-              if (isActionRequired(b)) {
-                knownActionRequiredIds.current.add(b.id);
               }
             });
             isInitialLoad.current = false;
@@ -481,9 +462,7 @@ export default function BookingsPage() {
   }, [search]);
 
   // Statistics
-  const urgentBookings = bookings.filter((b) => isActionRequired(b));
   const totalCount = bookings.length;
-  const actionRequiredCount = urgentBookings.length;
   const completedCount = bookings.filter((b) => isCompleted(b)).length;
   const partiallyConfirmedCount = bookings.filter((b) => isPartiallyConfirmed(b)).length;
   // Monitoring Queue: bookings actively in queue (pure pending + partially confirmed waiting for remaining devotees)
@@ -492,7 +471,6 @@ export default function BookingsPage() {
 
   const currentTabs = [
     { key: 'ALL', label: 'All Requests' },
-    { key: 'ACTION_REQUIRED', label: 'Action Needed' },
     { key: 'PENDING', label: 'Watching & Queued' },
     ...(partiallyConfirmedCount > 0 ? [{ key: 'PARTIAL', label: 'Partially Confirmed' }] : []),
     { key: 'COMPLETED', label: 'Confirmed Passes' },
@@ -501,7 +479,6 @@ export default function BookingsPage() {
 
   // Filter bookings according to activeTab
   const filteredBookings = bookings.filter((b) => {
-    if (activeTab === 'ACTION_REQUIRED') return isActionRequired(b);
     if (activeTab === 'PENDING') return isPending(b);
     if (activeTab === 'PARTIAL') return isPartiallyConfirmed(b);
     if (activeTab === 'COMPLETED') return isCompleted(b);
@@ -619,40 +596,6 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Urgent Action Required Banner */}
-      {urgentBookings.length > 0 && (
-        <div className="rounded-[10px] border border-[#F5C6CB] bg-[#FDECEC] p-4 text-[#992B26] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
-          <div className="flex items-start gap-3">
-            <div className="h-8 w-8 rounded-full bg-[#F8D7DA] text-[#C2413B] flex items-center justify-center shrink-0 animate-pulse mt-0.5">
-              <AlertCircle className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-[13.5px] font-bold">
-                Action Required: {urgentBookings.length} Booking{urgentBookings.length !== 1 ? 's' : ''} Need Immediate Attention
-              </p>
-              <p className="text-[12px] text-[#A8322B] mt-0.5">
-                The official portal presented an OTP or verification challenge. Complete it now before the session times out.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('ACTION_REQUIRED')}
-              className="rounded-[6px] border border-[#F5C6CB] bg-white text-[#C2413B] hover:bg-[#FDECEC] px-3 py-1.5 text-[12px] font-bold transition-colors"
-            >
-              Filter Action Items
-            </button>
-            <Link
-              href={`/dashboard/bookings/${urgentBookings[0].id}`}
-              className="rounded-[6px] bg-[#C2413B] text-white px-3.5 py-1.5 text-[12px] font-bold hover:bg-[#A8322B] transition-colors shadow-subtle shrink-0"
-            >
-              Resolve #{urgentBookings[0].bookingCode}
-            </Link>
-          </div>
-        </div>
-      )}
-
       {/* 4 Metric Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle">
@@ -689,20 +632,15 @@ export default function BookingsPage() {
 
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle">
           <div className="flex items-center justify-between text-[#667085]">
-            <span className="text-[11.5px] font-bold uppercase tracking-wider">Action Needed / Failed</span>
+            <span className="text-[11.5px] font-bold uppercase tracking-wider">Failed / Cancelled</span>
             <AlertCircle className="h-4 w-4 text-[#C2413B]" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <p className="text-[24px] font-bold text-[#C2413B] tabular-nums">
-              {actionRequiredCount > 0 ? `${actionRequiredCount} Action` : failedCount}
+              {failedCount}
             </p>
-            {actionRequiredCount > 0 && (
-              <span className="text-[11px] font-bold text-[#C2413B] bg-[#FDECEC] px-1.5 py-0.5 rounded border border-[#F5C6CB] animate-pulse">
-                Urgent
-              </span>
-            )}
           </div>
-          <p className="text-[11.5px] text-[#667085] mt-0.5">Human OTP or quota full</p>
+          <p className="text-[11.5px] text-[#667085] mt-0.5">Past date or aborted</p>
         </div>
       </div>
 
@@ -714,8 +652,6 @@ export default function BookingsPage() {
             const count =
               tab.key === 'ALL'
                 ? totalCount
-                : tab.key === 'ACTION_REQUIRED'
-                ? actionRequiredCount
                 : tab.key === 'PENDING'
                 ? pendingCount
                 : tab.key === 'PARTIAL'
@@ -849,7 +785,7 @@ export default function BookingsPage() {
                     {failed && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FDECEC] text-[#992B26] border border-[#F8C4C2]">
                         <AlertCircle className="h-3 w-3 text-[#C2413B]" />
-                        <span>{b.status === 'REQUIRES_HUMAN' ? 'Action Required' : 'Failed'}</span>
+                        <span>Failed</span>
                       </span>
                     )}
 

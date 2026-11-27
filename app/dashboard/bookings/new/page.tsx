@@ -904,7 +904,7 @@ export default function NewBookingPage() {
               Wallet Balance Required to Open Booking
             </h2>
             <p className="text-[13px] text-[#667085] max-w-md mx-auto leading-relaxed">
-              This service requires a minimum wallet balance of <strong className="text-[#172033]">₹ {serviceFee}</strong> (Booking Fee). Please recharge your wallet to open and access the new booking request form.
+              This service requires a minimum wallet balance of <strong className="text-[#172033]">₹ {serviceFee}</strong> (Ticket Fee). Please recharge your wallet to open and access the new booking request form.
             </p>
           </div>
 
@@ -1727,13 +1727,15 @@ export default function NewBookingPage() {
                 </span>
               </div>
 
-              {/* Assistance Service Fee */}
-              <div className="flex items-center justify-between py-1 border-b border-[#F0F3F8]">
-                <span className="text-[#667085]">Assistance Service Fee</span>
-                <div className="text-right">
-                  <span className="font-bold text-[#172033] tabular-nums text-[13px]">₹ {totalServiceFee}</span>
-                  <div className="text-[10.5px] text-[#667085]">
-                    (₹ {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
+              {/* Ticket Fee */}
+              <div className="py-1.5 border-b border-[#F0F3F8] space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#667085]">Ticket Fee</span>
+                  <div className="text-right">
+                    <span className="font-bold text-[#172033] tabular-nums text-[13px]">₹ {totalServiceFee}</span>
+                    <div className="text-[10.5px] text-[#667085]">
+                      (₹ {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount !== 1 ? 's' : ''})
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2272,9 +2274,9 @@ export default function NewBookingPage() {
                     </span>
                   </div>
 
-                  {/* Assistance Service Fee */}
+                  {/* Ticket Fee */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 border-b border-[#F0F3F8] gap-1">
-                    <span className="text-[#667085] font-medium">Assistance Service Fee:</span>
+                    <span className="text-[#667085] font-medium">Ticket Fee:</span>
                     <span className="font-bold text-[#172033] sm:text-right">
                       ₹ {totalServiceFee} (₹ {pricingBreakdown?.finalTicketPrice ?? serviceFee} × {pilgrimCount} pilgrim{pilgrimCount > 1 ? 's' : ''})
                     </span>

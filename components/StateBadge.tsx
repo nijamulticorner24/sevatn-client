@@ -228,11 +228,11 @@ export const StateBadge: React.FC<StateBadgeProps> = ({
       label: 'Cycle Expired',
     },
     REQUIRES_HUMAN: {
-      bg: 'bg-[#FEF3F2]',
-      text: 'text-[#B42318]',
-      border: 'border-[#FECDCA]',
-      dot: 'bg-[#F04438]',
-      label: 'Action Required',
+      bg: 'bg-[#FEF7E6]',
+      text: 'text-[#8F5A0D]',
+      border: 'border-[#F9DE9B]',
+      dot: 'bg-[#C98219]',
+      label: 'Watching / Retrying',
       pulse: true,
     },
 

@@ -341,7 +341,7 @@ export default function PartnerDistributorDetailsPage() {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle">
           <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Total Centres</p>
           <p className="text-2xl font-black text-[#172033] mt-1">{distributor.totalCentres || 0}</p>
@@ -360,12 +360,6 @@ export default function PartnerDistributorDetailsPage() {
           <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Distributor Markup</p>
           <p className="text-2xl font-black text-[#175CD3] mt-1">+{formatINR(distMarkup)}</p>
           <p className="text-[11px] text-[#667085] mt-0.5">Max allowed: +{formatINR(distributor.maxAllowedMarkup || 2)}</p>
-        </div>
-
-        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-subtle">
-          <p className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Commission Slab</p>
-          <p className="text-2xl font-black text-[#172033] mt-1">{distributor.commissionPercentage || 10}%</p>
-          <p className="text-[11px] text-[#667085] mt-0.5">{distributor.commissionSlab || 'STANDARD'}</p>
         </div>
       </div>
 
@@ -499,14 +493,6 @@ export default function PartnerDistributorDetailsPage() {
                 <span>Commercial Configuration</span>
               </h3>
               <div className="space-y-2 text-xs text-[#475467]">
-                <div className="flex items-center justify-between py-1.5 border-b border-[#F0F3F7]">
-                  <span className="text-[#667085]">Commission Slab:</span>
-                  <span className="font-bold text-[#172033]">{distributor.commissionSlab || 'STANDARD'}</span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 border-b border-[#F0F3F7]">
-                  <span className="text-[#667085]">Commission Percentage:</span>
-                  <span className="font-bold text-[#198754]">{distributor.commissionPercentage || 10}%</span>
-                </div>
                 <div className="flex items-center justify-between py-1.5 border-b border-[#F0F3F7]">
                   <span className="text-[#667085]">Assigned Markup:</span>
                   <span className="font-bold text-[#C98219]">+{formatINR(distMarkup)}</span>
@@ -770,36 +756,18 @@ export default function PartnerDistributorDetailsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#172033] mb-1">Commission Slab</label>
-                  <select
-                    value={editForm.commissionSlab}
-                    onChange={(e) => {
-                      const slab = e.target.value;
-                      const pct = slab === 'PREMIUM' ? 15 : slab === 'GROWTH' ? 12 : 10;
-                      setEditForm({ ...editForm, commissionSlab: slab, commissionPercentage: pct });
-                    }}
-                    className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs focus:border-[#C98219] focus:outline-none"
-                  >
-                    <option value="STANDARD">Standard (10%)</option>
-                    <option value="GROWTH">Growth (12%)</option>
-                    <option value="PREMIUM">Premium (15%)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-[#172033] mb-1">
-                    Markup (Max ₹ {distributor.maxAllowedMarkup || 2})
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={distributor.maxAllowedMarkup || 2}
-                    value={editForm.markup}
-                    onChange={(e) => setEditForm({ ...editForm, markup: Number(e.target.value) })}
-                    className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs focus:border-[#C98219] focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block font-bold text-[#172033] mb-1">
+                  Markup (Max ₹ {distributor.maxAllowedMarkup || 2})
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={distributor.maxAllowedMarkup || 2}
+                  value={editForm.markup}
+                  onChange={(e) => setEditForm({ ...editForm, markup: Number(e.target.value) })}
+                  className="w-full rounded-[8px] border border-[#E6EAF0] px-3 py-2 text-xs focus:border-[#C98219] focus:outline-none"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E6EAF0]">

@@ -27,6 +27,19 @@ import {
   X,
   Loader2,
   Trash2,
+  Receipt,
+  History,
+  FileText,
+  SlidersHorizontal,
+  ChevronRight,
+  ChevronLeft,
+  Lock,
+  RotateCcw,
+  Filter,
+  RefreshCw,
+  Eye,
+  Plus,
+  Coins,
 } from 'lucide-react';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -39,6 +52,26 @@ export default function AdminDistributorsPage() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'DIRECTORY' | 'ALL_WALLETS'>('DIRECTORY');
+
+  // Single Distributor Wallet History Modal State
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyDistributor, setHistoryDistributor] = useState<any>(null);
+  const [distributorHistoryData, setDistributorHistoryData] = useState<any>(null);
+  const [distributorHistoryLoading, setDistributorHistoryLoading] = useState(false);
+  const [distributorHistoryType, setDistributorHistoryType] = useState<string>('ALL');
+  const [distributorHistoryPage, setDistributorHistoryPage] = useState<number>(1);
+
+  // All Distributors Wallet History Ledger State
+  const [ledgerData, setLedgerData] = useState<any>(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerPage, setLedgerPage] = useState<number>(1);
+  const [ledgerLimit] = useState<number>(20);
+  const [ledgerType, setLedgerType] = useState<string>('ALL');
+  const [ledgerStatus, setLedgerStatus] = useState<string>('ALL');
+  const [ledgerSearch, setLedgerSearch] = useState<string>('');
+  const [ledgerDateFrom, setLedgerDateFrom] = useState<string>('');
+  const [ledgerDateTo, setLedgerDateTo] = useState<string>('');
 
   // Wallet Adjustment Modal State
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
@@ -80,6 +113,55 @@ export default function AdminDistributorsPage() {
       setLoading(false);
     }
   };
+
+  const loadDistributorHistory = async (distributorId: string, page = 1, type = 'ALL') => {
+    try {
+      setDistributorHistoryLoading(true);
+      const res = await api.getDistributorWalletHistory(distributorId, { page, limit: 15, type });
+      setDistributorHistoryData(res);
+      setDistributorHistoryLoading(false);
+    } catch (err: any) {
+      console.error('Failed to load distributor wallet history:', err);
+      toast.error(err.message || 'Failed to load distributor wallet history.');
+      setDistributorHistoryLoading(false);
+    }
+  };
+
+  const openDistributorHistoryModal = (distributor: any) => {
+    setHistoryDistributor(distributor);
+    setDistributorHistoryType('ALL');
+    setDistributorHistoryPage(1);
+    setIsHistoryModalOpen(true);
+    loadDistributorHistory(distributor.id, 1, 'ALL');
+  };
+
+  const loadAllDistributorsWalletHistory = async (page = 1) => {
+    try {
+      setLedgerLoading(true);
+      const res = await api.getLedgerTransactions({
+        page,
+        limit: ledgerLimit,
+        type: ledgerType,
+        status: ledgerStatus,
+        search: ledgerSearch,
+        dateFrom: ledgerDateFrom || undefined,
+        dateTo: ledgerDateTo || undefined,
+        onlyDistributors: true,
+      });
+      setLedgerData(res);
+      setLedgerPage(page);
+      setLedgerLoading(false);
+    } catch (err: any) {
+      console.error('Failed to load all distributors wallet history:', err);
+      setLedgerLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'ALL_WALLETS') {
+      loadAllDistributorsWalletHistory(1);
+    }
+  }, [activeTab, ledgerType, ledgerStatus, ledgerDateFrom, ledgerDateTo]);
 
   const openWalletAdjustModal = (distributor: any) => {
     setWalletTargetDistributor(distributor);
@@ -159,6 +241,11 @@ export default function AdminDistributorsPage() {
     );
   });
 
+  const totalDistributorBalance = distributors.reduce(
+    (sum, d) => sum + Number(d.availableBalance ?? d.user?.wallet?.availableBalance ?? 0),
+    0
+  );
+
   if (loading) {
     return <LoadingSkeleton rows={4} />;
   }
@@ -180,48 +267,90 @@ export default function AdminDistributorsPage() {
           </p>
         </div>
 
-        {/* Search & View Toggle */}
-        <div className="flex items-center gap-2.5 self-start sm:self-auto w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-72">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#667085]" />
-            <input
-              type="text"
-              placeholder="Search code, name, phone, email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-[8px] border border-[#E6EAF0] bg-white pl-9 pr-3 py-2 text-xs text-[#172033] focus:border-[#C98219] focus:outline-none"
-            />
-          </div>
+        {activeTab === 'DIRECTORY' && (
+          /* Search & View Toggle */
+          <div className="flex items-center gap-2.5 self-start sm:self-auto w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-72">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#667085]" />
+              <input
+                type="text"
+                placeholder="Search code, name, phone, email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-[8px] border border-[#E6EAF0] bg-white pl-9 pr-3 py-2 text-xs text-[#172033] focus:border-[#C98219] focus:outline-none"
+              />
+            </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center rounded-[8px] border border-[#E6EAF0] bg-white p-1 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-[6px] transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-[#FEF7E6] text-[#C98219]'
-                  : 'text-[#667085] hover:text-[#172033]'
-              }`}
-              title="Table View"
-            >
-              <List className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('cards')}
-              className={`p-1.5 rounded-[6px] transition-colors ${
-                viewMode === 'cards'
-                  ? 'bg-[#FEF7E6] text-[#C98219]'
-                  : 'text-[#667085] hover:text-[#172033]'
-              }`}
-              title="Cards Grid View"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
+            {/* View Mode Toggle */}
+            <div className="flex items-center rounded-[8px] border border-[#E6EAF0] bg-white p-1 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-[6px] transition-colors ${
+                  viewMode === 'table'
+                    ? 'bg-[#FEF7E6] text-[#C98219]'
+                    : 'text-[#667085] hover:text-[#172033]'
+                }`}
+                title="Table View"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`p-1.5 rounded-[6px] transition-colors ${
+                  viewMode === 'cards'
+                    ? 'bg-[#FEF7E6] text-[#C98219]'
+                    : 'text-[#667085] hover:text-[#172033]'
+                }`}
+                title="Cards Grid View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Primary Navigation Tabs */}
+      <div className="flex border-b border-[#E6EAF0] gap-6 text-xs font-bold">
+        <button
+          type="button"
+          onClick={() => setActiveTab('DIRECTORY')}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'DIRECTORY'
+              ? 'border-[#C98219] text-[#172033]'
+              : 'border-transparent text-[#667085] hover:text-[#172033]'
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          <span>Distributors Directory</span>
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600">
+            {distributors.length}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('ALL_WALLETS');
+            loadAllDistributorsWalletHistory(1);
+          }}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'ALL_WALLETS'
+              ? 'border-[#C98219] text-[#172033]'
+              : 'border-transparent text-[#667085] hover:text-[#172033]'
+          }`}
+        >
+          <History className="h-4 w-4" />
+          <span>All Distributors Wallet History</span>
+          <span className="rounded-full bg-[#FEF7E6] px-2 py-0.5 text-[10px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
+            Ledger
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'DIRECTORY' ? (
+        <>
 
       {/* Empty State */}
       {filtered.length === 0 ? (
@@ -241,7 +370,6 @@ export default function AdminDistributorsPage() {
                   <th className="py-2.5 px-2.5">Contact</th>
                   <th className="py-2.5 px-2.5">Partner</th>
                   <th className="py-2.5 px-2">Jurisdiction</th>
-                  <th className="py-2.5 px-2 text-center">Comm.</th>
                   <th className="py-2.5 px-2 text-center">Markup</th>
                   <th className="py-2.5 px-2.5">Wallet Balance</th>
                   <th className="py-2.5 px-2 text-center">Centres</th>
@@ -322,13 +450,6 @@ export default function AdminDistributorsPage() {
                       </div>
                     </td>
 
-                    {/* Commission Slab */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                      <span className="rounded bg-[#F8FAFC] px-1.5 py-0.5 text-[10px] font-semibold text-[#475467] border border-[#E6EAF0]">
-                        {d.commissionPercentage}%
-                      </span>
-                    </td>
-
                     {/* Current Markup */}
                     <td className="py-2.5 px-2 text-center font-bold text-[#172033] text-[11.5px] whitespace-nowrap">
                       +{formatINR(d.markup || 0)}
@@ -344,6 +465,14 @@ export default function AdminDistributorsPage() {
                           Res: {formatINR(d.reservedBalance ?? d.user?.wallet?.reservedBalance ?? 0)}
                         </div>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => openDistributorHistoryModal(d)}
+                        className="text-[10px] text-[#175CD3] hover:underline font-bold flex items-center gap-1 cursor-pointer mt-0.5"
+                      >
+                        <Receipt className="h-2.5 w-2.5" />
+                        <span>View Ledger ↗</span>
+                      </button>
                     </td>
 
                     {/* Centres Count */}
@@ -376,13 +505,22 @@ export default function AdminDistributorsPage() {
                       {formatDate(d.createdAt)}
                     </td>
 
-                    {/* Actions: Adjust Wallet & Delete */}
+                    {/* Actions: History, Adjust Wallet & Delete */}
                     <td className="py-2.5 px-2 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
+                          onClick={() => openDistributorHistoryModal(d)}
+                          className="p-1.5 rounded-[6px] border border-[#B2DDFF] bg-[#EFF8FF] text-[#175CD3] hover:bg-[#D1E9FF] transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
+                          title="View Wallet Transaction History"
+                          aria-label="Wallet History"
+                        >
+                          <History className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openWalletAdjustModal(d)}
-                          className="p-1.5 rounded-[6px] border border-[#F9DE9B] bg-[#FEF7E6] text-[#C98219] hover:bg-[#FCE0A6] hover:text-[#8F5A0D] transition-colors shadow-2xs inline-flex items-center justify-center"
+                          className="p-1.5 rounded-[6px] border border-[#F9DE9B] bg-[#FEF7E6] text-[#C98219] hover:bg-[#FCE0A6] hover:text-[#8F5A0D] transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
                           title="Adjust Wallet (Increase / Decrease Funds)"
                           aria-label="Adjust Wallet"
                         >
@@ -391,7 +529,7 @@ export default function AdminDistributorsPage() {
                         <button
                           type="button"
                           onClick={() => handleDeleteDistributor(d)}
-                          className="p-1.5 rounded-[6px] border border-red-200 bg-white text-red-600 hover:text-white hover:bg-red-600 hover:border-red-600 transition-colors shadow-2xs inline-flex items-center justify-center"
+                          className="p-1.5 rounded-[6px] border border-red-200 bg-white text-red-600 hover:text-white hover:bg-red-600 hover:border-red-600 transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
                           title="Delete Distributor Permanently"
                           aria-label="Delete Distributor"
                         >
@@ -520,13 +658,6 @@ export default function AdminDistributorsPage() {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-[#667085]">Commission Slab:</span>
-                    <span className="font-mono font-bold text-[#8F5A0D]">
-                      {d.commissionSlab || 'STANDARD'} ({d.commissionPercentage}%)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
                     <span className="text-[#667085]">Ticket Markup:</span>
                     <span className="font-bold text-[#C98219]">+{formatINR(d.markup || 0)}</span>
                   </div>
@@ -552,6 +683,15 @@ export default function AdminDistributorsPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openDistributorHistoryModal(d)}
+                        className="p-1.5 rounded-[6px] border border-[#B2DDFF] bg-[#EFF8FF] text-[#175CD3] hover:bg-[#D1E9FF] transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
+                        title="View Wallet Ledger History"
+                        aria-label="Wallet History"
+                      >
+                        <History className="h-4 w-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => openWalletAdjustModal(d)}
@@ -582,6 +722,291 @@ export default function AdminDistributorsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+        </>
+      ) : (
+        /* ALL DISTRIBUTORS WALLET HISTORY VIEW */
+        <div className="space-y-6">
+          {/* Summary Metric Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+            <div className="rounded-[10px] border border-[#B2DDFF] bg-[#F5FAFF] p-4 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#175CD3]">
+                Total Distributor Holdings
+              </span>
+              <div className="mt-2 text-2xl font-black text-[#175CD3]">
+                {formatINR(totalDistributorBalance)}
+              </div>
+              <div className="mt-1 text-[11px] text-[#667085] font-medium">
+                Combined available liquid balance
+              </div>
+            </div>
+
+            <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#667085]">
+                Total Transactions
+              </span>
+              <div className="mt-2 text-2xl font-black text-[#172033]">
+                {ledgerData?.counts?.all ?? ledgerData?.pagination?.total ?? 0}
+              </div>
+              <div className="mt-1 text-[11px] text-[#667085] font-medium">
+                Audited distributor ledger records
+              </div>
+            </div>
+
+            <div className="rounded-[10px] border border-[#A6F4C5] bg-[#ECFDF3] p-4 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#027A48]">
+                Completed
+              </span>
+              <div className="mt-2 text-2xl font-black text-[#027A48]">
+                {ledgerData?.counts?.completed ?? 0}
+              </div>
+              <div className="mt-1 text-[11px] text-[#027A48] font-medium">
+                Settled transactions
+              </div>
+            </div>
+
+            <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FEF7E6] p-4 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#8F5A0D]">
+                Pending / In-Flight
+              </span>
+              <div className="mt-2 text-2xl font-black text-[#8F5A0D]">
+                {ledgerData?.counts?.pending ?? 0}
+              </div>
+              <div className="mt-1 text-[11px] text-[#8F5A0D] font-medium">
+                Awaiting clearance
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Ledger Section */}
+          <div className="rounded-[12px] border border-[#E6EAF0] bg-white p-5 shadow-subtle space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-[#E6EAF0]">
+              <div>
+                <h2 className="text-base font-bold text-[#172033] flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-[#C98219]" />
+                  <span>All Distributor Wallet Transactions ({ledgerData?.pagination?.total ?? 0})</span>
+                </h2>
+                <p className="text-[11px] text-[#667085] mt-0.5">
+                  Complete real-time ledger of topups, manual adjustments, markups, and transfers across Tamil Nadu distributors
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => loadAllDistributorsWalletHistory(ledgerPage)}
+                  disabled={ledgerLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-[#D0D5DD] bg-white text-xs font-bold text-[#344054] hover:bg-[#F8FAFC] cursor-pointer"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${ledgerLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* Search */}
+              <div className="lg:col-span-2 relative">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#98A2B3]" />
+                <input
+                  type="text"
+                  placeholder="Search distributor, code, ref, tx ID..."
+                  value={ledgerSearch}
+                  onChange={(e) => setLedgerSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') loadAllDistributorsWalletHistory(1);
+                  }}
+                  className="w-full rounded-[6px] border border-[#D0D5DD] bg-white pl-9 pr-3 py-1.5 text-xs text-[#172033] focus:border-[#C98219] focus:outline-none"
+                />
+              </div>
+
+              {/* Type Filter */}
+              <div>
+                <select
+                  value={ledgerType}
+                  onChange={(e) => {
+                    setLedgerType(e.target.value);
+                  }}
+                  className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-1.5 text-xs text-[#172033] focus:border-[#C98219] focus:outline-none"
+                >
+                  <option value="ALL">All Types</option>
+                  <option value="TOPUP">Topup Deposits (TOPUP)</option>
+                  <option value="ADJUSTMENT">Admin Adjustments (ADJUSTMENT)</option>
+                  <option value="RESERVE">Slot Reservations (RESERVE)</option>
+                  <option value="CAPTURE">Ticket Fee Captures (CAPTURE)</option>
+                  <option value="RELEASE">Reservation Releases (RELEASE)</option>
+                  <option value="REFUND">Refunds (REFUND)</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={ledgerStatus}
+                  onChange={(e) => {
+                    setLedgerStatus(e.target.value);
+                  }}
+                  className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-3 py-1.5 text-xs text-[#172033] focus:border-[#C98219] focus:outline-none"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
+
+              {/* Date From */}
+              <div>
+                <input
+                  type="date"
+                  value={ledgerDateFrom}
+                  onChange={(e) => setLedgerDateFrom(e.target.value)}
+                  className="w-full rounded-[6px] border border-[#D0D5DD] bg-white px-2 py-1.5 text-[11px] text-[#172033] focus:border-[#C98219] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Transactions Table */}
+            {ledgerLoading ? (
+              <div className="p-8 text-center">
+                <Loader2 className="h-8 w-8 mx-auto animate-spin text-[#C98219]" />
+                <p className="text-xs text-[#667085] mt-2">Loading distributor wallet ledger...</p>
+              </div>
+            ) : !ledgerData?.transactions || ledgerData.transactions.length === 0 ? (
+              <div className="p-12 text-center bg-[#F8FAFC] rounded-[8px] border border-dashed border-[#D0D5DD] space-y-2">
+                <Receipt className="h-8 w-8 mx-auto text-[#98A2B3]" />
+                <p className="font-bold text-[#172033] text-sm">No Distributor Wallet Transactions Found</p>
+                <p className="text-xs text-[#667085]">
+                  {ledgerSearch || ledgerType !== 'ALL' || ledgerStatus !== 'ALL' || ledgerDateFrom
+                    ? 'Try adjusting your filters or search keywords.'
+                    : 'Distributor transactions will appear here as wallets are credited, debited, or adjusted.'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-[8px] border border-[#E6EAF0]">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#F8FAFC] text-[#667085] uppercase tracking-wider font-semibold border-b border-[#E6EAF0] text-[10.5px]">
+                    <tr>
+                      <th className="py-2.5 px-3">Date & Time</th>
+                      <th className="py-2.5 px-3">Distributor</th>
+                      <th className="py-2.5 px-3">Tx ID / Ref</th>
+                      <th className="py-2.5 px-2.5 text-center">Type</th>
+                      <th className="py-2.5 px-2.5 text-center">Status</th>
+                      <th className="py-2.5 px-3 text-right">Amount</th>
+                      <th className="py-2.5 px-3">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E6EAF0]">
+                    {ledgerData.transactions.map((tx: any) => {
+                      const isCredit = Number(tx.amount) > 0;
+                      const distCode = tx.user?.distributorProfile?.distributorCode || 'DT';
+                      const distName = tx.user?.distributorProfile?.name || tx.user?.name || 'Distributor';
+                      const notes = tx.metadata?.notes || tx.metadata?.reason || tx.reference || '—';
+
+                      return (
+                        <tr key={tx.id} className="hover:bg-[#F8FAFC] transition-colors">
+                          <td className="py-2.5 px-3 whitespace-nowrap text-[#667085] font-mono text-[11px]">
+                            {formatDate(tx.createdAt)}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-[#172033] truncate max-w-[160px]" title={distName}>
+                              {distName}
+                            </div>
+                            <span className="font-mono text-[10px] text-[#C98219] font-bold">
+                              {distCode}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-[#475467] truncate max-w-[150px]" title={tx.id}>
+                            {tx.reference || tx.id.slice(0, 16)}
+                          </td>
+                          <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold ${
+                              tx.type === 'TOPUP'
+                                ? 'bg-[#ECFDF3] text-[#027A48] border border-[#A6F4C5]'
+                                : tx.type === 'ADJUSTMENT'
+                                ? isCredit
+                                  ? 'bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]'
+                                  : 'bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]'
+                                : tx.type === 'CAPTURE'
+                                ? 'bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]'
+                                : tx.type === 'RESERVE'
+                                ? 'bg-[#FEF7E6] text-[#8F5A0D] border border-[#F9DE9B]'
+                                : tx.type === 'REFUND'
+                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                : 'bg-neutral-100 text-neutral-700'
+                            }`}>
+                              {tx.type === 'TOPUP' ? (
+                                <Plus className="h-3 w-3" />
+                              ) : tx.type === 'ADJUSTMENT' ? (
+                                <SlidersHorizontal className="h-3 w-3" />
+                              ) : tx.type === 'CAPTURE' ? (
+                                <Receipt className="h-3 w-3" />
+                              ) : tx.type === 'RESERVE' ? (
+                                <Lock className="h-3 w-3" />
+                              ) : tx.type === 'REFUND' ? (
+                                <Coins className="h-3 w-3" />
+                              ) : null}
+                              {tx.type}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10.5px] font-bold ${
+                              tx.status === 'COMPLETED'
+                                ? 'bg-[#ECFDF3] text-[#027A48]'
+                                : tx.status === 'PENDING'
+                                ? 'bg-[#FEF7E6] text-[#8F5A0D]'
+                                : 'bg-[#FEF3F2] text-[#B42318]'
+                            }`}>
+                              {tx.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap">
+                            <span className={isCredit ? 'text-[#027A48]' : 'text-[#D92D20]'}>
+                              {isCredit ? '+' : ''}{formatINR(tx.amount)}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-[11px] text-[#667085] truncate max-w-[200px]" title={notes}>
+                            {notes}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {ledgerData?.pagination && ledgerData.pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between pt-3 border-t border-[#E6EAF0] text-xs">
+                <span className="text-[#667085]">
+                  Showing Page <strong className="text-[#172033]">{ledgerPage}</strong> of{' '}
+                  <strong className="text-[#172033]">{ledgerData.pagination.totalPages}</strong> (
+                  {ledgerData.pagination.total} total transactions)
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={ledgerPage <= 1 || ledgerLoading}
+                    onClick={() => loadAllDistributorsWalletHistory(ledgerPage - 1)}
+                    className="p-1.5 rounded-[6px] border border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F8FAFC] disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={ledgerPage >= ledgerData.pagination.totalPages || ledgerLoading}
+                    onClick={() => loadAllDistributorsWalletHistory(ledgerPage + 1)}
+                    className="p-1.5 rounded-[6px] border border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F8FAFC] disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -805,6 +1230,245 @@ export default function AdminDistributorsPage() {
         onConfirm={confirmAction.action}
         onCancel={() => setConfirmAction((prev) => ({ ...prev, isOpen: false }))}
       />
+
+      {/* SINGLE DISTRIBUTOR WALLET HISTORY MODAL */}
+      {isHistoryModalOpen && historyDistributor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/50 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="w-full max-w-4xl rounded-[14px] border border-[#E6EAF0] bg-white p-6 shadow-modal flex flex-col my-auto max-h-[90vh] animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3.5 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+                  <History className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-xs font-mono font-bold text-[#8F5A0D] border border-[#F9DE9B]">
+                      {historyDistributor.distributorCode}
+                    </span>
+                    <h3 className="text-base sm:text-lg font-bold text-[#172033]">
+                      {historyDistributor.name} — Wallet Ledger History
+                    </h3>
+                  </div>
+                  <p className="text-xs text-[#667085] mt-0.5">
+                    {historyDistributor.district || 'Tamil Nadu'} • {historyDistributor.mobile} • Audited wallet transaction ledger
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHistoryModalOpen(false)}
+                className="rounded-[6px] p-1.5 text-[#667085] hover:bg-[#F0F3F8] hover:text-[#172033] transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Distributor Balance Overview & Adjust Shortcut */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className="rounded-[8px] border border-[#B2DDFF] bg-[#F5FAFF] p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-[10.5px] uppercase font-bold text-[#175CD3] block">Available Balance</span>
+                  <span className="font-mono text-lg font-black text-[#0B4FBA]">
+                    {formatINR(distributorHistoryData?.distributor?.availableBalance ?? historyDistributor.availableBalance ?? historyDistributor.user?.wallet?.availableBalance ?? 0)}
+                  </span>
+                </div>
+                <Wallet className="h-5 w-5 text-[#175CD3]" />
+              </div>
+
+              <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-[10.5px] uppercase font-bold text-[#667085] block">Reserved Balance</span>
+                  <span className="font-mono text-lg font-black text-[#475467]">
+                    {formatINR(distributorHistoryData?.distributor?.reservedBalance ?? historyDistributor.reservedBalance ?? historyDistributor.user?.wallet?.reservedBalance ?? 0)}
+                  </span>
+                </div>
+                <Lock className="h-5 w-5 text-[#98A2B3]" />
+              </div>
+
+              <div className="rounded-[8px] border border-[#F9DE9B] bg-[#FEF7E6] p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-[10.5px] uppercase font-bold text-[#8F5A0D] block">Admin Adjust</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHistoryModalOpen(false);
+                      openWalletAdjustModal(historyDistributor);
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 rounded-[6px] bg-[#C98219] px-2.5 py-1 text-xs font-bold text-white hover:bg-[#B57414] shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>Credit / Debit</span>
+                  </button>
+                </div>
+                <SlidersHorizontal className="h-5 w-5 text-[#C98219]" />
+              </div>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-[#E6EAF0] overflow-x-auto">
+              <div className="flex items-center gap-1.5 shrink-0">
+                {[
+                  { id: 'ALL', label: 'All Transactions' },
+                  { id: 'TOPUP', label: 'Topups / Credits' },
+                  { id: 'ADJUSTMENT', label: 'Admin Adjustments' },
+                  { id: 'CAPTURE', label: 'Ticket Fees' },
+                  { id: 'RESERVE', label: 'Reserves' },
+                  { id: 'REFUND', label: 'Refunds' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => {
+                      setDistributorHistoryType(f.id);
+                      setDistributorHistoryPage(1);
+                      loadDistributorHistory(historyDistributor.id, 1, f.id);
+                    }}
+                    className={`rounded-[6px] px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                      distributorHistoryType === f.id
+                        ? 'bg-[#C98219] text-white shadow-2xs'
+                        : 'bg-[#F8FAFC] text-[#475467] hover:bg-[#E6EAF0]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => loadDistributorHistory(historyDistributor.id, distributorHistoryPage, distributorHistoryType)}
+                disabled={distributorHistoryLoading}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] border border-[#D0D5DD] bg-white text-[11px] font-bold text-[#344054] hover:bg-[#F8FAFC] cursor-pointer shrink-0"
+              >
+                <RefreshCw className={`h-3 w-3 ${distributorHistoryLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            {/* Transactions List */}
+            <div className="overflow-y-auto flex-1 pr-1">
+              {distributorHistoryLoading ? (
+                <div className="py-12 text-center">
+                  <Loader2 className="h-8 w-8 mx-auto animate-spin text-[#C98219]" />
+                  <p className="text-xs text-[#667085] mt-2">Loading distributor ledger records...</p>
+                </div>
+              ) : !distributorHistoryData?.transactions || distributorHistoryData.transactions.length === 0 ? (
+                <div className="p-8 text-center bg-[#F8FAFC] rounded-[8px] border border-dashed border-[#D0D5DD] space-y-2">
+                  <Receipt className="h-8 w-8 mx-auto text-[#98A2B3]" />
+                  <p className="font-bold text-[#172033] text-xs">No transactions recorded for this distributor</p>
+                  <p className="text-[11px] text-[#667085]">
+                    Wallet credits, debits, and transfers will appear here in chronological order.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-[8px] border border-[#E6EAF0]">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#F8FAFC] text-[#667085] uppercase tracking-wider font-semibold border-b border-[#E6EAF0] text-[10px]">
+                      <tr>
+                        <th className="py-2.5 px-3">Date & Time</th>
+                        <th className="py-2.5 px-3">Reference / Tx ID</th>
+                        <th className="py-2.5 px-2 text-center">Type</th>
+                        <th className="py-2.5 px-2 text-center">Status</th>
+                        <th className="py-2.5 px-3 text-right">Amount</th>
+                        <th className="py-2.5 px-3">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E6EAF0]">
+                      {distributorHistoryData.transactions.map((tx: any) => {
+                        const isCredit = Number(tx.amount) > 0;
+                        const notes = tx.metadata?.notes || tx.metadata?.reason || tx.reference || '—';
+
+                        return (
+                          <tr key={tx.id} className="hover:bg-[#F8FAFC]">
+                            <td className="py-2.5 px-3 whitespace-nowrap text-[#667085] font-mono text-[11px]">
+                              {formatDate(tx.createdAt)}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[10.5px] text-[#475467] truncate max-w-[140px]" title={tx.id}>
+                              {tx.reference || tx.id.slice(0, 16)}
+                            </td>
+                            <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                tx.type === 'TOPUP'
+                                  ? 'bg-[#ECFDF3] text-[#027A48]'
+                                  : tx.type === 'ADJUSTMENT'
+                                  ? isCredit
+                                    ? 'bg-[#EFF8FF] text-[#175CD3]'
+                                    : 'bg-[#FEF3F2] text-[#B42318]'
+                                  : tx.type === 'CAPTURE'
+                                  ? 'bg-[#FEF3F2] text-[#B42318]'
+                                  : 'bg-neutral-100 text-neutral-700'
+                              }`}>
+                                {tx.type}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                tx.status === 'COMPLETED'
+                                  ? 'bg-[#ECFDF3] text-[#027A48]'
+                                  : tx.status === 'PENDING'
+                                  ? 'bg-[#FEF7E6] text-[#8F5A0D]'
+                                  : 'bg-[#FEF3F2] text-[#B42318]'
+                              }`}>
+                                {tx.status}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap">
+                              <span className={isCredit ? 'text-[#027A48]' : 'text-[#D92D20]'}>
+                                {isCredit ? '+' : ''}{formatINR(tx.amount)}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-[11px] text-[#667085] truncate max-w-[180px]" title={notes}>
+                              {notes}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Pagination */}
+            {distributorHistoryData?.pagination && distributorHistoryData.pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-[#E6EAF0] text-xs">
+                <span className="text-[#667085]">
+                  Page <strong>{distributorHistoryPage}</strong> of{' '}
+                  <strong>{distributorHistoryData.pagination.totalPages}</strong> ({distributorHistoryData.pagination.total} total)
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={distributorHistoryPage <= 1 || distributorHistoryLoading}
+                    onClick={() => {
+                      const prev = distributorHistoryPage - 1;
+                      setDistributorHistoryPage(prev);
+                      loadDistributorHistory(historyDistributor.id, prev, distributorHistoryType);
+                    }}
+                    className="p-1 rounded border border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F8FAFC] disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={distributorHistoryPage >= distributorHistoryData.pagination.totalPages || distributorHistoryLoading}
+                    onClick={() => {
+                      const next = distributorHistoryPage + 1;
+                      setDistributorHistoryPage(next);
+                      loadDistributorHistory(historyDistributor.id, next, distributorHistoryType);
+                    }}
+                    className="p-1 rounded border border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F8FAFC] disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -210,7 +210,7 @@ export default function PartnerPayoutsPage() {
               {loading ? '—' : formatINR(totalEarned)}
             </p>
             <p className="text-[11px] text-[#667085] mt-0.5">
-              Franchise commissions & passes
+              Franchise completed passes & settlements
             </p>
           </div>
         </div>

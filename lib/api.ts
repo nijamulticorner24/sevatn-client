@@ -629,6 +629,12 @@ class ApiClient {
     search?: string;
     dateFrom?: string;
     dateTo?: string;
+    centreId?: string;
+    onlyCentres?: boolean;
+    partnerId?: string;
+    onlyPartners?: boolean;
+    distributorId?: string;
+    onlyDistributors?: boolean;
   } = {}) {
     const q = new URLSearchParams();
     if (params.page) q.set('page', params.page.toString());
@@ -638,6 +644,12 @@ class ApiClient {
     if (params.search && params.search.trim()) q.set('search', params.search.trim());
     if (params.dateFrom) q.set('dateFrom', params.dateFrom);
     if (params.dateTo) q.set('dateTo', params.dateTo);
+    if (params.centreId) q.set('centreId', params.centreId);
+    if (params.onlyCentres) q.set('onlyCentres', 'true');
+    if (params.partnerId) q.set('partnerId', params.partnerId);
+    if (params.onlyPartners) q.set('onlyPartners', 'true');
+    if (params.distributorId) q.set('distributorId', params.distributorId);
+    if (params.onlyDistributors) q.set('onlyDistributors', 'true');
 
     const queryString = q.toString();
     return this.request(`/admin/ledger/transactions${queryString ? `?${queryString}` : ''}`);
@@ -752,6 +764,15 @@ class ApiClient {
     });
   }
 
+  async getCentreWalletHistory(id: string, params: { page?: number; limit?: number; type?: string } = {}) {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', params.page.toString());
+    if (params.limit) q.set('limit', params.limit.toString());
+    if (params.type && params.type !== 'ALL') q.set('type', params.type);
+    const qs = q.toString();
+    return this.request(`/admin/centres/${id}/wallet-transactions${qs ? `?${qs}` : ''}`);
+  }
+
   async deleteCentre(id: string) {
     return this.request(`/admin/centres/${encodeURIComponent(id)}`, {
       method: 'DELETE',
@@ -765,11 +786,29 @@ class ApiClient {
     });
   }
 
+  async getDistributorWalletHistory(id: string, params: { page?: number; limit?: number; type?: string } = {}) {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', params.page.toString());
+    if (params.limit) q.set('limit', params.limit.toString());
+    if (params.type && params.type !== 'ALL') q.set('type', params.type);
+    const qs = q.toString();
+    return this.request(`/admin/distributors/${encodeURIComponent(id)}/wallet-transactions${qs ? `?${qs}` : ''}`);
+  }
+
   async adjustPartnerWallet(id: string, data: { amount: number; action: 'CREDIT' | 'DEBIT'; reason?: string }) {
     return this.request(`/admin/partners/${encodeURIComponent(id)}/wallet-adjust`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async getPartnerWalletHistory(id: string, params: { page?: number; limit?: number; type?: string } = {}) {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', params.page.toString());
+    if (params.limit) q.set('limit', params.limit.toString());
+    if (params.type && params.type !== 'ALL') q.set('type', params.type);
+    const qs = q.toString();
+    return this.request(`/admin/partners/${encodeURIComponent(id)}/wallet-transactions${qs ? `?${qs}` : ''}`);
   }
 
   async getNetworkStats() {
@@ -869,7 +908,7 @@ class ApiClient {
     return this.request(`/admin/bookings/${bookingId}/notify-telegram`, { method: 'POST' });
   }
 
-  // Partner Payouts & Commission APIs
+  // Partner Payouts & Financial APIs
   async getPartnerCentres(page = 1, district?: string, status?: string, search?: string, distributorId?: string) {
     let q = `?page=${page}`;
     if (district && district !== 'ALL') q += `&district=${encodeURIComponent(district)}`;

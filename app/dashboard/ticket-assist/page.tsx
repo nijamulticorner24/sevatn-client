@@ -64,11 +64,7 @@ export default function TicketAssistDashboardPage() {
         (b.status === 'WATCHING' || b.status === 'QUEUED' || b.status === 'PENDING' || b.status === 'EXECUTING'),
     ).length,
     success: bookings.filter(isCompletedBooking).length,
-    actionRequired: bookings.filter(
-      (b) =>
-        !isCompletedBooking(b) &&
-        (b.status === 'REQUIRES_HUMAN' || b.status === 'OTP_REQUIRED' || b.status === 'CAPTCHA_REQUIRED'),
-    ).length,
+    actionRequired: 0,
   };
 
   const getTimeGreeting = () => {

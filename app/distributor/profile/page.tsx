@@ -41,10 +41,10 @@ export default function DistributorProfilePage() {
           <span>Distributor Profile &amp; Governance</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#172033]">
-          Account &amp; Commission Configuration
+          Account Configuration
         </h1>
         <p className="text-xs sm:text-sm text-[#667085] mt-1">
-          Review your registered business details, parent Partner franchise, and assigned commission slab.
+          Review your registered business details and parent Partner franchise.
         </p>
       </div>
 

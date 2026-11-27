@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
-import { formatDate, formatINR } from '../../../lib/utils';
+import { formatDate, formatTime, formatINR } from '../../../lib/utils';
 import {
   Building2,
   MapPin,
@@ -33,6 +33,19 @@ import {
   ArrowDown,
   ArrowUp,
   Trash2,
+  Receipt,
+  History,
+  FileText,
+  ArrowDownLeft,
+  ArrowUpRight,
+  ChevronRight,
+  ChevronLeft,
+  Coins,
+  CreditCard,
+  SlidersHorizontal,
+  Eye,
+  Filter,
+  RotateCcw,
 } from 'lucide-react';
 import { MetricBlock } from '../../../components/MetricBlock';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -77,6 +90,28 @@ export default function AdminCentresPage() {
   const [walletAdjustAmount, setWalletAdjustAmount] = useState<string>('500');
   const [walletAdjustReason, setWalletAdjustReason] = useState<string>('');
   const [walletSubmitting, setWalletSubmitting] = useState(false);
+
+  // Active Tab: Directory vs All Centre Wallet History
+  const [activeTab, setActiveTab] = useState<'DIRECTORY' | 'ALL_WALLETS'>('DIRECTORY');
+
+  // Single Centre Wallet History Modal State
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyCentre, setHistoryCentre] = useState<any>(null);
+  const [centreHistoryLoading, setCentreHistoryLoading] = useState(false);
+  const [centreHistoryData, setCentreHistoryData] = useState<any>(null);
+  const [centreHistoryType, setCentreHistoryType] = useState('ALL');
+  const [centreHistoryPage, setCentreHistoryPage] = useState(1);
+
+  // All Centres Wallet History View State
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerData, setLedgerData] = useState<any>(null);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerLimit, setLedgerLimit] = useState(25);
+  const [ledgerType, setLedgerType] = useState('ALL');
+  const [ledgerStatus, setLedgerStatus] = useState('ALL');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerDateFrom, setLedgerDateFrom] = useState('');
+  const [ledgerDateTo, setLedgerDateTo] = useState('');
 
   // Create Form State
   const [createForm, setCreateForm] = useState({
@@ -144,9 +179,56 @@ export default function AdminCentresPage() {
     });
   };
 
+  const loadCentreHistory = async (centreId: string, page = 1, type = 'ALL') => {
+    setCentreHistoryLoading(true);
+    try {
+      const data: any = await api.getCentreWalletHistory(centreId, { page, limit: 25, type });
+      setCentreHistoryData(data);
+      setCentreHistoryPage(page);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load centre wallet history');
+    } finally {
+      setCentreHistoryLoading(false);
+    }
+  };
+
+  const openCentreHistoryModal = (centre: any) => {
+    setHistoryCentre(centre);
+    setCentreHistoryType('ALL');
+    setCentreHistoryPage(1);
+    setIsHistoryModalOpen(true);
+    loadCentreHistory(centre.id, 1, 'ALL');
+  };
+
+  const loadAllCentresWalletHistory = () => {
+    setLedgerLoading(true);
+    api.getLedgerTransactions({
+      onlyCentres: true,
+      page: ledgerPage,
+      limit: ledgerLimit,
+      type: ledgerType,
+      status: ledgerStatus,
+      search: ledgerSearch,
+      dateFrom: ledgerDateFrom || undefined,
+      dateTo: ledgerDateTo || undefined,
+    }).then((data: any) => {
+      setLedgerData(data);
+      setLedgerLoading(false);
+    }).catch((err: any) => {
+      console.error(err);
+      setLedgerLoading(false);
+    });
+  };
+
   useEffect(() => {
     loadData();
   }, [filterDistrict, filterStatus, searchQuery]);
+
+  useEffect(() => {
+    if (activeTab === 'ALL_WALLETS') {
+      loadAllCentresWalletHistory();
+    }
+  }, [activeTab, ledgerPage, ledgerLimit, ledgerType, ledgerStatus, ledgerSearch, ledgerDateFrom, ledgerDateTo]);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -366,6 +448,12 @@ export default function AdminCentresPage() {
       toast.success(res.message || `Wallet balance successfully ${walletAdjustAction === 'CREDIT' ? 'credited' : 'deducted'}.`);
       setIsWalletModalOpen(false);
       loadData();
+      if (historyCentre && historyCentre.id === walletTargetCentre.id && isHistoryModalOpen) {
+        loadCentreHistory(walletTargetCentre.id, centreHistoryPage, centreHistoryType);
+      }
+      if (activeTab === 'ALL_WALLETS') {
+        loadAllCentresWalletHistory();
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to adjust wallet balance');
     } finally {
@@ -422,38 +510,77 @@ export default function AdminCentresPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border-subtle">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-text-primary">Admin Centre Management</h1>
+            <h1 className="text-xl font-bold text-text-primary">Admin Centre Management & Network Wallets</h1>
             <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-[10.5px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
               Admin-Controlled Network
             </span>
           </div>
           <p className="text-xs text-secondary-500 mt-0.5">
-            Provision, authorize, and audit statewide booking and computer centres across Tamil Nadu
+            Provision, authorize, and audit statewide centres and inspect complete network wallet transaction histories
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={loadData}
+            onClick={() => (activeTab === 'DIRECTORY' ? loadData() : loadAllCentresWalletHistory())}
             className="flex h-9 w-9 items-center justify-center rounded-btn border border-border-default bg-white text-secondary-600 hover:bg-neutral-50 hover:text-text-primary transition-colors shadow-subtle cursor-pointer"
-            title="Refresh Directory"
+            title="Refresh View"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${loading || ledgerLoading ? 'animate-spin' : ''}`} />
           </button>
 
-          <button
-            onClick={() => {
-              setActionError(null);
-              setIsCreateModalOpen(true);
-            }}
-            className="flex items-center gap-2 rounded-btn bg-[#C98219] px-4 py-2 text-xs font-bold text-white hover:bg-[#B57414] transition-colors shadow-subtle cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Create Centre</span>
-          </button>
+          {activeTab === 'DIRECTORY' && (
+            <button
+              onClick={() => {
+                setActionError(null);
+                setIsCreateModalOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-btn bg-[#C98219] px-4 py-2 text-xs font-bold text-white hover:bg-[#B57414] transition-colors shadow-subtle cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Centre</span>
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Main Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-[#E6EAF0]">
+        <button
+          type="button"
+          onClick={() => setActiveTab('DIRECTORY')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'DIRECTORY'
+              ? 'border-[#C98219] text-[#172033] bg-white'
+              : 'border-transparent text-[#667085] hover:text-[#172033] hover:border-[#D0D5DD]'
+          }`}
+        >
+          <Building2 className={`h-4 w-4 ${activeTab === 'DIRECTORY' ? 'text-[#C98219]' : 'text-[#667085]'}`} />
+          <span>Centres Directory</span>
+          <span className="rounded-full bg-[#F0F3F8] px-2 py-0.2 text-[10.5px] font-bold text-[#475467]">
+            {centres.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('ALL_WALLETS')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'ALL_WALLETS'
+              ? 'border-[#198754] text-[#155724] bg-white'
+              : 'border-transparent text-[#667085] hover:text-[#155724] hover:border-[#D0D5DD]'
+          }`}
+        >
+          <Receipt className={`h-4 w-4 ${activeTab === 'ALL_WALLETS' ? 'text-[#198754]' : 'text-[#667085]'}`} />
+          <span>All Centres Wallet History</span>
+          <span className="rounded-full bg-[#EAF7EE] border border-[#C3E6CB] px-2 py-0.2 text-[10.5px] font-bold text-[#155724]">
+            Live Ledger
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'DIRECTORY' && (
+        <div className="space-y-5">
       {/* Overview Metrics (Real operational counts, no demo constants) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricBlock
@@ -617,11 +744,24 @@ export default function AdminCentresPage() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
-                          <span className={`font-mono font-bold text-xs ${
-                            Number(c.user?.wallet?.availableBalance ?? 0) > 0 ? 'text-emerald-700' : 'text-neutral-600'
-                          }`}>
-                            {formatINR(c.user?.wallet?.availableBalance ?? 0)}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openCentreHistoryModal(c)}
+                            className="text-left font-mono font-bold text-xs hover:underline cursor-pointer"
+                            title="Click to view centre wallet history"
+                          >
+                            <span className={Number(c.user?.wallet?.availableBalance ?? 0) > 0 ? 'text-emerald-700' : 'text-neutral-600'}>
+                              {formatINR(c.user?.wallet?.availableBalance ?? 0)}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openCentreHistoryModal(c)}
+                            className="p-1 rounded hover:bg-emerald-50 text-[#155724] hover:text-[#198754] transition-colors cursor-pointer"
+                            title="View Centre Wallet History"
+                          >
+                            <Receipt className="h-3.5 w-3.5 text-[#198754]" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => openWalletAdjustModal(c)}
@@ -631,9 +771,13 @@ export default function AdminCentresPage() {
                             <Wallet className="h-3.5 w-3.5 text-brand-600" />
                           </button>
                         </div>
-                        <span className="text-[10px] text-secondary-400 font-mono block">
-                          Ledger Active
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openCentreHistoryModal(c)}
+                          className="text-[10px] text-secondary-500 hover:text-emerald-700 font-mono block hover:underline cursor-pointer text-left"
+                        >
+                          View Ledger History ↗
+                        </button>
                       </td>
                       <td className="py-3 px-4">
                         {isActive && (
@@ -662,6 +806,16 @@ export default function AdminCentresPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Wallet History Button */}
+                          <button
+                            onClick={() => openCentreHistoryModal(c)}
+                            className="flex h-7 px-2 items-center gap-1 rounded border border-[#C3E6CB] bg-[#F4FBF6] text-[#155724] hover:bg-[#EAF7EE] transition-colors"
+                            title="View Centre Wallet Transaction History"
+                          >
+                            <Receipt className="h-3.5 w-3.5 text-[#198754]" />
+                            <span className="text-[11px] font-semibold">History</span>
+                          </button>
+
                           {/* Wallet Adjust Button */}
                           <button
                             onClick={() => openWalletAdjustModal(c)}
@@ -669,7 +823,7 @@ export default function AdminCentresPage() {
                             title="Credit or Debit Centre Wallet"
                           >
                             <Wallet className="h-3.5 w-3.5 text-brand-600" />
-                            <span className="text-[11px] font-semibold">Wallet</span>
+                            <span className="text-[11px] font-semibold">Adjust</span>
                           </button>
 
                           {/* Edit Button */}
@@ -721,6 +875,437 @@ export default function AdminCentresPage() {
           </div>
         )}
       </div>
+      </div>
+      )}
+
+      {/* VIEW 2: ALL CENTRES WALLET HISTORY */}
+      {activeTab === 'ALL_WALLETS' && (
+        <div className="space-y-5">
+          {/* Centre Wallets Overview Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricBlock
+              label="TOTAL CENTRES WALLET HOLDINGS"
+              value={formatINR(
+                centres.reduce((sum, c) => sum + Number(c.user?.wallet?.availableBalance || 0), 0)
+              )}
+              helper="Combined liquid balance across all centre wallets"
+              icon={Wallet}
+            />
+            <MetricBlock
+              label="TOTAL TRANSACTIONS"
+              value={String(ledgerData?.counts?.all ?? ledgerData?.pagination?.total ?? 0)}
+              helper="Audit ledger entries across network"
+              icon={Receipt}
+            />
+            <MetricBlock
+              label="COMPLETED SETTLEMENTS"
+              value={String(ledgerData?.counts?.completed ?? 0)}
+              helper="Successfully posted wallet ledger transactions"
+              icon={CheckCircle2}
+            />
+            <MetricBlock
+              label="PENDING VERIFICATIONS"
+              value={String(ledgerData?.counts?.pending ?? 0)}
+              helper="Pending manual topup verifications"
+              icon={Clock}
+            />
+          </div>
+
+          {/* Filters & Transaction Ledger Card */}
+          <div className="rounded-card border border-border-default bg-white shadow-subtle overflow-hidden">
+            <div className="p-4 border-b border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
+              <div>
+                <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-[#198754]" />
+                  <span>All Centre Wallet Transactions ({ledgerData?.pagination?.total ?? 0})</span>
+                </h2>
+                <p className="text-[11px] text-secondary-500 mt-0.5">
+                  Complete real-time ledger of topups, manual adjustments, ticket fees, and escrow reserves across Tamil Nadu centres
+                </p>
+              </div>
+
+              {/* Action shortcuts */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerSearch('');
+                    setLedgerType('ALL');
+                    setLedgerStatus('ALL');
+                    setLedgerDateFrom('');
+                    setLedgerDateTo('');
+                    setLedgerPage(1);
+                  }}
+                  className="px-3 py-1.5 rounded text-xs font-semibold border border-border-default hover:bg-neutral-50 text-secondary-600 transition-colors cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Controls Bar */}
+            <div className="p-4 bg-[#F8FAFC] border-b border-border-subtle grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+              {/* Search */}
+              <div className="relative lg:col-span-2">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-secondary-400" />
+                <input
+                  type="text"
+                  placeholder="Search centre, code, ref, UTR, mobile..."
+                  value={ledgerSearch}
+                  onChange={(e) => {
+                    setLedgerSearch(e.target.value);
+                    setLedgerPage(1);
+                  }}
+                  className="w-full rounded-input border border-border-default bg-white pl-8 pr-3 py-1.5 text-xs text-text-primary focus:border-brand-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Type Filter */}
+              <div>
+                <select
+                  value={ledgerType}
+                  onChange={(e) => {
+                    setLedgerType(e.target.value);
+                    setLedgerPage(1);
+                  }}
+                  className="w-full rounded-input border border-border-default bg-white px-3 py-1.5 text-xs text-text-primary focus:border-brand-500 focus:outline-none"
+                >
+                  <option value="ALL">All Types</option>
+                  <option value="TOPUP">Topup Deposits (TOPUP)</option>
+                  <option value="ADJUSTMENT">Admin Adjustments (ADJUSTMENT)</option>
+                  <option value="RESERVE">Slot Reservations (RESERVE)</option>
+                  <option value="CAPTURE">Ticket Fee Captures (CAPTURE)</option>
+                  <option value="RELEASE">Reservation Releases (RELEASE)</option>
+                  <option value="REFUND">Refunds (REFUND)</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={ledgerStatus}
+                  onChange={(e) => {
+                    setLedgerStatus(e.target.value);
+                    setLedgerPage(1);
+                  }}
+                  className="w-full rounded-input border border-border-default bg-white px-3 py-1.5 text-xs text-text-primary focus:border-brand-500 focus:outline-none"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
+
+              {/* Date From & To */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={ledgerDateFrom}
+                  onChange={(e) => {
+                    setLedgerDateFrom(e.target.value);
+                    setLedgerPage(1);
+                  }}
+                  title="From Date"
+                  className="w-full rounded-input border border-border-default bg-white px-2 py-1.5 text-[11px] text-text-primary focus:border-brand-500 focus:outline-none"
+                />
+                <span className="text-secondary-400 text-xs">to</span>
+                <input
+                  type="date"
+                  value={ledgerDateTo}
+                  onChange={(e) => {
+                    setLedgerDateTo(e.target.value);
+                    setLedgerPage(1);
+                  }}
+                  title="To Date"
+                  className="w-full rounded-input border border-border-default bg-white px-2 py-1.5 text-[11px] text-text-primary focus:border-brand-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Transactions Table */}
+            {ledgerLoading ? (
+              <div className="p-8">
+                <LoadingSkeleton rows={8} className="h-10" />
+              </div>
+            ) : !ledgerData?.transactions || ledgerData.transactions.length === 0 ? (
+              <EmptyState
+                icon={Receipt}
+                title="No Wallet Transactions Found"
+                description={
+                  ledgerSearch || ledgerType !== 'ALL' || ledgerStatus !== 'ALL' || ledgerDateFrom || ledgerDateTo
+                    ? 'No transactions match the selected filter criteria. Try clearing search or date filters.'
+                    : 'There are no wallet ledger transactions recorded for registered centres yet.'
+                }
+                actionLabel={ledgerSearch || ledgerType !== 'ALL' ? 'Reset Filters' : undefined}
+                onAction={() => {
+                  setLedgerSearch('');
+                  setLedgerType('ALL');
+                  setLedgerStatus('ALL');
+                  setLedgerDateFrom('');
+                  setLedgerDateTo('');
+                  setLedgerPage(1);
+                }}
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-border-subtle bg-neutral-50/75 text-secondary-500 uppercase tracking-wider text-[11px]">
+                      <th className="py-3 px-4 font-bold">Date & Time</th>
+                      <th className="py-3 px-4 font-bold">Centre Details</th>
+                      <th className="py-3 px-4 font-bold">Type</th>
+                      <th className="py-3 px-4 font-bold">Reference / Txn ID</th>
+                      <th className="py-3 px-4 font-bold">Amount</th>
+                      <th className="py-3 px-4 font-bold">Status</th>
+                      <th className="py-3 px-4 font-bold">Details / Reason</th>
+                      <th className="py-3 px-4 font-bold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle">
+                    {ledgerData.transactions.map((tx: any) => {
+                      const amt = Number(tx.amount || 0);
+                      const isCredit = amt > 0;
+                      const centreInfo = tx.user?.centre;
+
+                      return (
+                        <tr key={tx.id} className="hover:bg-neutral-50/80 transition-colors">
+                          {/* Date & Time */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="font-mono text-text-primary block font-medium">
+                              {formatDate(tx.createdAt)}
+                            </span>
+                            <span className="text-[10.5px] text-secondary-400 font-mono block">
+                              {formatTime(tx.createdAt)}
+                            </span>
+                          </td>
+
+                          {/* Centre Details */}
+                          <td className="py-3 px-4">
+                            {centreInfo ? (
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={() => openCentreHistoryModal({ ...centreInfo, user: tx.user })}
+                                  className="font-bold text-text-primary hover:text-brand-700 hover:underline text-left block"
+                                  title="Click to view full centre ledger"
+                                >
+                                  {centreInfo.centreName}
+                                </button>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="font-mono text-[10.5px] text-brand-700 font-semibold bg-brand-50 px-1 rounded">
+                                    {centreInfo.centreCode}
+                                  </span>
+                                  {centreInfo.district && (
+                                    <span className="text-[10px] text-secondary-500">
+                                      • {centreInfo.district}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="font-semibold text-text-primary">{tx.user?.name || 'Authorized Centre User'}</span>
+                                <span className="text-[10.5px] text-secondary-400 block font-mono">{tx.user?.email}</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Transaction Type */}
+                          <td className="py-3 px-4">
+                            {tx.type === 'TOPUP' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]">
+                                <ArrowDownLeft className="h-3 w-3 text-[#198754]" />
+                                Topup Deposit
+                              </span>
+                            ) : tx.type === 'ADJUSTMENT' ? (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold ${
+                                isCredit
+                                  ? 'bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]'
+                                  : 'bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]'
+                              }`}>
+                                <SlidersHorizontal className="h-3 w-3" />
+                                {isCredit ? 'Admin Credit' : 'Admin Deduction'}
+                              </span>
+                            ) : tx.type === 'CAPTURE' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]">
+                                <Receipt className="h-3 w-3 text-[#D92D20]" />
+                                Ticket Fee Capture
+                              </span>
+                            ) : tx.type === 'RESERVE' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#FEF7E6] text-[#8F5A0D] border border-[#F9DE9B]">
+                                <Lock className="h-3 w-3 text-[#C98219]" />
+                                Slot Reserve
+                              </span>
+                            ) : tx.type === 'RELEASE' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+                                <RotateCcw className="h-3 w-3" />
+                                Reserve Release
+                              </span>
+                            ) : tx.type === 'REFUND' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                <Coins className="h-3 w-3 text-purple-600" />
+                                Refund
+                              </span>
+                            ) : (
+                              <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-neutral-100 text-neutral-700">
+                                {tx.type}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Reference / Txn ID */}
+                          <td className="py-3 px-4 font-mono">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] text-text-primary font-semibold max-w-[150px] truncate" title={tx.reference || tx.id}>
+                                {tx.reference || tx.id}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(tx.reference || tx.id);
+                                  toast.success('Reference copied to clipboard');
+                                }}
+                                className="text-secondary-400 hover:text-brand-700 p-0.5 rounded transition-colors"
+                                title="Copy Reference"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                            {tx.metadata?.utr && (
+                              <span className="text-[10px] text-secondary-500 block">
+                                UTR: {tx.metadata.utr}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Amount */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className={`font-mono font-extrabold text-[12.5px] ${
+                              tx.type === 'RESERVE'
+                                ? 'text-[#8F5A0D]'
+                                : isCredit
+                                ? 'text-[#155724]'
+                                : 'text-[#B42318]'
+                            }`}>
+                              {tx.type === 'RESERVE'
+                                ? `₹ ${formatINR(Math.abs(amt))}`
+                                : isCredit
+                                ? `+ ₹ ${formatINR(amt)}`
+                                : `- ₹ ${formatINR(Math.abs(amt))}`}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3 px-4">
+                            {tx.status === 'COMPLETED' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]">
+                                <Check className="h-3 w-3" />
+                                COMPLETED
+                              </span>
+                            ) : tx.status === 'PENDING' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#FEF7E6] text-[#8F5A0D] border border-[#F9DE9B]">
+                                <Clock className="h-3 w-3" />
+                                PENDING
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]">
+                                <X className="h-3 w-3" />
+                                {tx.status}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Details / Notes / Booking */}
+                          <td className="py-3 px-4 max-w-[220px]">
+                            {tx.booking && (
+                              <div className="mb-0.5">
+                                <span className="text-[11px] font-semibold text-[#175CD3] bg-[#EFF8FF] border border-[#B2DDFF] px-1.5 py-0.2 rounded inline-block font-mono">
+                                  #{tx.booking.bookingCode}
+                                </span>
+                                {tx.booking.route && (
+                                  <span className="text-[10px] text-secondary-500 block truncate">
+                                    {tx.booking.route}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {tx.metadata?.reason && (
+                              <p className="text-[11px] text-[#344054] truncate italic" title={tx.metadata.reason}>
+                                {tx.metadata.reason}
+                              </p>
+                            )}
+                            {tx.metadata?.adminEmail && (
+                              <span className="text-[10px] text-secondary-400 block font-mono">
+                                By: {tx.metadata.adminEmail}
+                              </span>
+                            )}
+                            {!tx.booking && !tx.metadata?.reason && !tx.metadata?.adminEmail && (
+                              <span className="text-secondary-400 text-[11px]">—</span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            {centreInfo && (
+                              <button
+                                type="button"
+                                onClick={() => openCentreHistoryModal({ ...centreInfo, user: tx.user })}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[#C3E6CB] bg-[#F4FBF6] hover:bg-[#EAF7EE] text-[#155724] text-[11px] font-semibold transition-colors"
+                                title="View this centre's complete wallet ledger"
+                              >
+                                <Receipt className="h-3 w-3" />
+                                <span>Centre Ledger</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {ledgerData?.pagination && ledgerData.pagination.totalPages > 1 && (
+              <div className="p-4 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-3 bg-white text-xs text-secondary-600">
+                <div>
+                  Showing Page <strong className="text-text-primary">{ledgerData.pagination.page}</strong> of{' '}
+                  <strong className="text-text-primary">{ledgerData.pagination.totalPages}</strong> (
+                  {ledgerData.pagination.total} total transactions)
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={ledgerData.pagination.page <= 1 || ledgerLoading}
+                    onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded border border-border-default hover:bg-neutral-50 disabled:opacity-50 text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    <span>Previous</span>
+                  </button>
+
+                  <span className="px-3 py-1 font-mono font-bold text-text-primary bg-neutral-100 rounded">
+                    {ledgerData.pagination.page}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={ledgerData.pagination.page >= ledgerData.pagination.totalPages || ledgerLoading}
+                    onClick={() => setLedgerPage((p) => p + 1)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded border border-border-default hover:bg-neutral-50 disabled:opacity-50 text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* MODAL 1: CREATE NEW CENTRE */}
       {isCreateModalOpen && (
@@ -1535,6 +2120,346 @@ export default function AdminCentresPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: SINGLE CENTRE WALLET HISTORY MODAL */}
+      {isHistoryModalOpen && historyCentre && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-4xl rounded-[12px] border border-[#E6EAF0] bg-white shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#E6EAF0] flex items-center justify-between bg-[#F8FAFC] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#198754] text-white shadow-sm">
+                  <Receipt className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#172033] tracking-tight flex items-center gap-2">
+                    <span>{historyCentre.centreName}</span>
+                    <span className="font-mono text-xs bg-neutral-200/70 text-text-primary px-1.5 py-0.5 rounded font-bold">
+                      {historyCentre.centreCode}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-[#667085]">
+                    Wallet Ledger & Audit History • {historyCentre.district || 'District Centre'}
+                    {historyCentre.user?.mobile ? ` • Mobile: ${historyCentre.user.mobile}` : ''}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsHistoryModalOpen(false);
+                  setHistoryCentre(null);
+                }}
+                className="p-1.5 rounded-lg text-[#98A2B3] hover:text-[#172033] hover:bg-[#F2F4F7] transition-colors"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
+              {/* Centre Balance & Action Summary Card */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-[10px] bg-gradient-to-br from-emerald-50/50 via-white to-neutral-50 border border-emerald-200/60 shadow-sm">
+                <div>
+                  <span className="text-[11px] font-bold text-secondary-500 uppercase tracking-wider block">
+                    Available Liquid Balance
+                  </span>
+                  <p className="text-2xl font-extrabold text-emerald-800 font-mono mt-1">
+                    {formatINR(
+                      historyCentre.user?.wallet?.availableBalance ??
+                      centreHistoryData?.wallet?.availableBalance ??
+                      0
+                    )}
+                  </p>
+                  <span className="text-[10px] text-emerald-700 block mt-0.5">
+                    Ready for booking slot allocations
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[11px] font-bold text-secondary-500 uppercase tracking-wider block">
+                    Escrow Reserved Balance
+                  </span>
+                  <p className="text-xl font-bold text-[#8F5A0D] font-mono mt-1">
+                    {formatINR(
+                      historyCentre.user?.wallet?.reservedBalance ??
+                      centreHistoryData?.wallet?.reservedBalance ??
+                      0
+                    )}
+                  </p>
+                  <span className="text-[10px] text-secondary-400 block mt-0.5">
+                    Held in active slot reservation queues
+                  </span>
+                </div>
+
+                <div className="flex items-center sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWalletTargetCentre(historyCentre);
+                      setWalletAdjustAction('CREDIT');
+                      setWalletAdjustAmount('500');
+                      setWalletAdjustReason('');
+                      setIsWalletModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-[7px] bg-[#198754] hover:bg-[#146c43] text-white font-bold text-xs shadow-subtle transition-all cursor-pointer"
+                  >
+                    <Wallet className="h-3.5 w-3.5" />
+                    <span>Credit / Debit Balance</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-secondary-500 text-[11px] font-bold mr-1">Filter Type:</span>
+                  {[
+                    { id: 'ALL', label: 'All Transactions' },
+                    { id: 'TOPUP', label: 'Topups / Deposits' },
+                    { id: 'ADJUSTMENT', label: 'Admin Adjustments' },
+                    { id: 'CAPTURE', label: 'Ticket Fees' },
+                    { id: 'RESERVE', label: 'Slot Reserves' },
+                    { id: 'REFUND', label: 'Refunds' },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        setCentreHistoryType(f.id);
+                        loadCentreHistory(historyCentre.id, 1, f.id);
+                      }}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
+                        centreHistoryType === f.id
+                          ? 'bg-[#198754] text-white shadow-xs'
+                          : 'bg-[#F2F4F7] text-[#475467] hover:bg-[#E4E7EC]'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => loadCentreHistory(historyCentre.id, centreHistoryPage, centreHistoryType)}
+                  className="flex items-center gap-1 text-[11.5px] font-semibold text-secondary-600 hover:text-brand-700 p-1 cursor-pointer"
+                  title="Reload Transactions"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${centreHistoryLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh Ledger</span>
+                </button>
+              </div>
+
+              {/* Transactions List */}
+              {centreHistoryLoading ? (
+                <div className="py-8">
+                  <LoadingSkeleton rows={6} className="h-10" />
+                </div>
+              ) : !centreHistoryData?.transactions || centreHistoryData.transactions.length === 0 ? (
+                <div className="p-8 text-center bg-neutral-50 rounded-[8px] border border-dashed border-border-default space-y-2">
+                  <Receipt className="h-8 w-8 mx-auto text-secondary-400" />
+                  <p className="font-bold text-text-primary text-xs">No transactions found</p>
+                  <p className="text-[11px] text-secondary-500">
+                    {centreHistoryType !== 'ALL'
+                      ? 'No transactions match this type filter.'
+                      : 'This centre has not performed any wallet transactions yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-[8px] border border-border-default overflow-hidden">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-border-subtle bg-neutral-50/75 text-secondary-500 uppercase tracking-wider text-[10.5px]">
+                        <th className="py-2.5 px-3 font-bold">Date & Time</th>
+                        <th className="py-2.5 px-3 font-bold">Type</th>
+                        <th className="py-2.5 px-3 font-bold">Reference / ID</th>
+                        <th className="py-2.5 px-3 font-bold">Amount</th>
+                        <th className="py-2.5 px-3 font-bold">Status</th>
+                        <th className="py-2.5 px-3 font-bold">Details / Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                      {centreHistoryData.transactions.map((tx: any) => {
+                        const amt = Number(tx.amount || 0);
+                        const isCredit = amt > 0;
+
+                        return (
+                          <tr key={tx.id} className="hover:bg-neutral-50/80 transition-colors">
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <span className="font-mono text-text-primary block font-medium">
+                                {formatDate(tx.createdAt)}
+                              </span>
+                              <span className="text-[10px] text-secondary-400 font-mono block">
+                                {formatTime(tx.createdAt)}
+                              </span>
+                            </td>
+
+                            <td className="py-2.5 px-3">
+                              {tx.type === 'TOPUP' ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]">
+                                  <ArrowDownLeft className="h-3 w-3 text-[#198754]" />
+                                  Topup
+                                </span>
+                              ) : tx.type === 'ADJUSTMENT' ? (
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  isCredit
+                                    ? 'bg-[#EAF7EE] text-[#155724] border border-[#C3E6CB]'
+                                    : 'bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]'
+                                }`}>
+                                  <SlidersHorizontal className="h-3 w-3" />
+                                  {isCredit ? 'Credit' : 'Debit'}
+                                </span>
+                              ) : tx.type === 'CAPTURE' ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]">
+                                  <Receipt className="h-3 w-3 text-[#D92D20]" />
+                                  Booking Fee
+                                </span>
+                              ) : tx.type === 'RESERVE' ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FEF7E6] text-[#8F5A0D] border border-[#F9DE9B]">
+                                  <Lock className="h-3 w-3 text-[#C98219]" />
+                                  Reserve
+                                </span>
+                              ) : (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-neutral-100 text-neutral-700">
+                                  {tx.type}
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-2.5 px-3 font-mono">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10.5px] text-text-primary font-semibold max-w-[140px] truncate" title={tx.reference || tx.id}>
+                                  {tx.reference || tx.id}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(tx.reference || tx.id);
+                                    toast.success('Reference copied');
+                                  }}
+                                  className="text-secondary-400 hover:text-brand-700 p-0.5 rounded"
+                                  title="Copy"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
+                              {tx.metadata?.utr && (
+                                <span className="text-[9.5px] text-secondary-500 block">
+                                  UTR: {tx.metadata.utr}
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <span className={`font-mono font-extrabold text-[12px] ${
+                                tx.type === 'RESERVE'
+                                  ? 'text-[#8F5A0D]'
+                                  : isCredit
+                                  ? 'text-[#155724]'
+                                  : 'text-[#B42318]'
+                              }`}>
+                                {tx.type === 'RESERVE'
+                                  ? `₹ ${formatINR(Math.abs(amt))}`
+                                  : isCredit
+                                  ? `+ ₹ ${formatINR(amt)}`
+                                  : `- ₹ ${formatINR(Math.abs(amt))}`}
+                              </span>
+                            </td>
+
+                            <td className="py-2.5 px-3">
+                              {tx.status === 'COMPLETED' ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#EAF7EE] text-[#155724]">
+                                  <Check className="h-2.5 w-2.5" />
+                                  COMPLETED
+                                </span>
+                              ) : tx.status === 'PENDING' ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#FEF7E6] text-[#8F5A0D]">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  PENDING
+                                </span>
+                              ) : (
+                                <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#FEF3F2] text-[#B42318]">
+                                  {tx.status}
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-2.5 px-3 max-w-[200px]">
+                              {tx.booking && (
+                                <span className="text-[10px] font-semibold text-[#175CD3] font-mono block">
+                                  Booking #{tx.booking.bookingCode}
+                                </span>
+                              )}
+                              {tx.metadata?.reason && (
+                                <p className="text-[10.5px] text-[#344054] truncate italic" title={tx.metadata.reason}>
+                                  {tx.metadata.reason}
+                                </p>
+                              )}
+                              {tx.metadata?.adminEmail && (
+                                <span className="text-[9.5px] text-secondary-400 font-mono block">
+                                  By: {tx.metadata.adminEmail}
+                                </span>
+                              )}
+                              {!tx.booking && !tx.metadata?.reason && !tx.metadata?.adminEmail && (
+                                <span className="text-secondary-400 text-[10px]">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Centre Pagination */}
+              {centreHistoryData?.totalPages > 1 && (
+                <div className="flex items-center justify-between pt-2 border-t border-border-subtle text-xs text-secondary-600">
+                  <span>
+                    Page {centreHistoryData.page} of {centreHistoryData.totalPages} ({centreHistoryData.total} transactions)
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={centreHistoryData.page <= 1 || centreHistoryLoading}
+                      onClick={() => loadCentreHistory(historyCentre.id, centreHistoryData.page - 1, centreHistoryType)}
+                      className="px-2.5 py-1 rounded border border-border-default hover:bg-neutral-50 disabled:opacity-50 text-xs font-semibold cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      disabled={centreHistoryData.page >= centreHistoryData.totalPages || centreHistoryLoading}
+                      onClick={() => loadCentreHistory(historyCentre.id, centreHistoryData.page + 1, centreHistoryType)}
+                      className="px-2.5 py-1 rounded border border-border-default hover:bg-neutral-50 disabled:opacity-50 text-xs font-semibold cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3 border-t border-[#E6EAF0] bg-[#F8FAFC] flex items-center justify-between">
+              <span className="text-[11px] text-[#667085] font-mono">
+                Centre ID: {historyCentre.id}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHistoryModalOpen(false);
+                  setHistoryCentre(null);
+                }}
+                className="px-4 py-1.5 rounded-[7px] border border-[#D0D5DD] bg-white text-[#344054] hover:bg-[#F2F4F7] text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -176,7 +176,7 @@ export default function AdminPricingConfigPage() {
             Pricing, Markups &amp; Financial Architecture
           </h1>
           <p className="text-xs sm:text-sm text-[#667085] mt-1 max-w-2xl">
-            Unified management of customer-facing Three-Level Ticket Markups, Platform Service Fees, Franchise License Fees, and Centre Onboarding rates.
+            Unified management of customer-facing Three-Level Ticket Markups, Franchise License Fees, and Centre Onboarding rates.
           </p>
         </div>
 
@@ -342,7 +342,7 @@ export default function AdminPricingConfigPage() {
                 2. Platform Financial Fee &amp; License Architecture
               </h2>
               <p className="text-xs text-[#667085]">
-                Configure standard booking service fees, one-time onboarding licenses, and partner withdrawal limits.
+                Configure one-time onboarding licenses, franchise network fees, and partner withdrawal limits.
               </p>
             </div>
           </div>
@@ -352,13 +352,7 @@ export default function AdminPricingConfigPage() {
         </div>
 
         {/* Fee Architecture Quick Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-          <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5">
-            <span className="text-[11px] font-semibold text-[#667085]">Booking Service Fee</span>
-            <div className="text-2xl font-black text-[#172033] mt-1">{formatINR(feeConfig.serviceFee || 100)}</div>
-            <p className="text-[10.5px] text-[#667085] mt-1">Debited from centre wallet</p>
-          </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5">
             <span className="text-[11px] font-semibold text-[#667085]">Centre Onboarding Fee</span>
             <div className="text-2xl font-black text-[#175CD3] mt-1">{formatINR(feeConfig.registrationFee || 249)}</div>
@@ -385,25 +379,7 @@ export default function AdminPricingConfigPage() {
         </div>
 
         {/* Input Fields for Platform Fees */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
-          <div>
-            <label className="block text-xs font-bold text-[#172033] mb-1.5">
-              Service Fee per Booking (Chips) *
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
-              <input
-                type="number"
-                min="0"
-                value={feeConfig.serviceFee}
-                onChange={(e) => setFeeConfig({ ...feeConfig, serviceFee: Number(e.target.value) })}
-                className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-xs font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
-                required
-              />
-            </div>
-            <p className="text-[11px] text-[#667085] mt-1">Standard fee debited on confirmed pass booking.</p>
-          </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
           <div>
             <label className="block text-xs font-bold text-[#172033] mb-1.5">
               Centre Onboarding Fee (Chips) *

@@ -854,7 +854,7 @@ export default function FinancialLedgerPage() {
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-[#F2F4F7]">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#475467]">
-                Service Fee Captures
+                Ticket Fee Captures
               </span>
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
             </div>

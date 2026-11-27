@@ -343,7 +343,7 @@ export default function PartnerDistributorsPage() {
             My Distributors ({distributors.length})
           </h1>
           <p className="text-xs sm:text-sm text-[#667085] mt-1">
-            Create, configure markup commission (Chips), and manage subordinate Distributors managing your regional Centres.
+            Create, configure ticket markup (Chips), and manage subordinate Distributors managing your regional Centres.
           </p>
         </div>
 
@@ -495,7 +495,7 @@ export default function PartnerDistributorsPage() {
                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#475467] hover:text-[#172033]"
                   >
                     <Edit2 className="h-3 w-3" />
-                    <span>Edit Slab</span>
+                    <span>Edit Markup</span>
                   </button>
 
                   <button
@@ -678,7 +678,7 @@ export default function PartnerDistributorsPage() {
               <div className="border-t border-[#F0F3F7] pt-3">
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-bold text-[#172033]">
-                    Distributor Markup (Chips) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
+                    Distributor Markup (Chips) <span className="font-normal text-[#667085]">(Markup per Booking)</span>
                   </label>
                   <span className="text-[11px] text-[#667085]">
                     Max allowed: ₹ 2.00
@@ -698,7 +698,7 @@ export default function PartnerDistributorsPage() {
                   />
                 </div>
                 <p className="text-[11px] text-[#667085] mt-1">
-                  This markup is the distributor's commission, credited automatically on every confirmed booking from their centres.
+                  This markup is credited automatically on every confirmed booking from their centres.
                 </p>
               </div>
 
@@ -764,7 +764,7 @@ export default function PartnerDistributorsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-bold text-[#172033]">
-                    Distributor Markup (Chips) <span className="font-normal text-[#667085]">(Commission per Booking)</span>
+                    Distributor Markup (Chips) <span className="font-normal text-[#667085]">(Markup per Booking)</span>
                   </label>
                   <span className="text-[11px] text-[#667085]">
                     Max allowed: ₹ {editingDistributor.maxAllowedMarkup || 2}
@@ -785,7 +785,7 @@ export default function PartnerDistributorsPage() {
                   />
                 </div>
                 <p className="text-[11px] text-[#667085] mt-1">
-                  Distributor commission earned per confirmed booking processed by managed centres.
+                  Distributor markup earned per confirmed booking processed by managed centres.
                 </p>
               </div>
 

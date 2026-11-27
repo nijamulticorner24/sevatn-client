@@ -670,7 +670,7 @@ export default function DiagnosticsPage() {
                     </span>
                     <span className="text-[10px] font-mono text-[#667085]">Per pass</span>
                   </div>
-                  <span className="text-[11px] text-[#667085] mt-1 block">Mean confirmed service fee</span>
+                  <span className="text-[11px] text-[#667085] mt-1 block">Mean confirmed ticket fee</span>
                 </div>
 
                 {/* 12. Repeat Booking Rate */}

@@ -738,7 +738,7 @@ export default function SystemConfigPage() {
                   Platform Financial Fee &amp; License Architecture Moved
                 </h4>
                 <p className="text-xs text-[#475467] mt-0.5">
-                  Platform Service Fees, Centre Onboarding Fees, Franchise License Fees, and Three-Level Ticket Markups are now centrally managed in <strong>Pricing &amp; Markups Hub</strong>.
+                  Three-Level Ticket Pricing &amp; Markups, Centre Onboarding Fees, and Franchise License Fees are now centrally managed in <strong>Pricing &amp; Markups Hub</strong>.
                 </p>
               </div>
             </div>
