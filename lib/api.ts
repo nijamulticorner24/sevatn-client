@@ -595,6 +595,13 @@ class ApiClient {
     });
   }
 
+  async completePilgrimManually(bookingId: string, pilgrimId: string, reason: string) {
+    return this.request(`/bookings/${encodeURIComponent(bookingId)}/pilgrims/${encodeURIComponent(pilgrimId)}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
   async getBookingConfig() {
     return this.request('/bookings/config');
   }
@@ -753,6 +760,13 @@ class ApiClient {
 
   async adjustDistributorWallet(id: string, data: { amount: number; action: 'CREDIT' | 'DEBIT'; reason?: string }) {
     return this.request(`/admin/distributors/${id}/wallet-adjust`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async adjustPartnerWallet(id: string, data: { amount: number; action: 'CREDIT' | 'DEBIT'; reason?: string }) {
+    return this.request(`/admin/partners/${encodeURIComponent(id)}/wallet-adjust`, {
       method: 'POST',
       body: JSON.stringify(data),
     });

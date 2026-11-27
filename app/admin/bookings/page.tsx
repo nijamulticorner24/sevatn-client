@@ -183,15 +183,39 @@ export default function AdminBookingsPage() {
     loadBookings(false);
   }, [loadBookings]);
 
-  // Polling every 5 seconds (only when the browser tab is visible)
+  // Polling every 4 seconds + immediate refresh on tab focus / visibility
   useEffect(() => {
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadBookings(true);
+      }
+    };
+    const handleFocus = () => {
+      loadBookings(true);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
+
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         loadBookings(true);
       }
-    }, 5000);
+    }, 4000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibility);
+      }
+      clearInterval(interval);
+    };
   }, [loadBookings]);
 
   // Real-time WebSocket connection to events gateway
@@ -858,36 +882,105 @@ export default function AdminBookingsPage() {
                         <p className="text-[10.5px] text-secondary-500">{formatDate(b.requestedDate)}</p>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex flex-col space-y-0.5">
-                          <span className="font-mono font-semibold text-secondary-800">
-                            {b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED'
-                              ? `Progress: 1 / ${b.pilgrimCount || 1} Confirmed (${(b.pilgrimCount || 1) - 1} Pending)`
-                              : b.selectedPilgrimName
-                              ? `${b.pilgrimCount || 1} Pilgrim${(b.pilgrimCount || 1) > 1 ? 's' : ''}: ${b.selectedPilgrimName}`
-                              : `${b.pilgrimCount || 1} Saved Pilgrim${(b.pilgrimCount || 1) > 1 ? 's' : ''}`}
-                          </span>
-                          {(b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED') && (
-                            <span className="text-[10.5px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                              Confirmed: Devotee #1 — {b.selectedPilgrimName || 'Baskar Duraisamy'}
-                            </span>
-                          )}
-                          {b.nomineeName && (
-                            <span className="text-[10.5px] text-secondary-600">
-                              Nominee: <strong>{b.nomineeName}</strong> ({b.nomineeAge}y, {b.nomineeRelationship})
-                              {Array.isArray(b.preferences?.nominees) && b.preferences.nominees.length > 1
-                                ? ` (+${b.preferences.nominees.length - 1} more)`
-                                : ''}
-                            </span>
-                          )}
-                          {b.nomineeValidationStatus && (
-                            <span className="text-[9.5px] font-mono text-emerald-700">
-                              Nominee Status: {b.nomineeValidationStatus}
-                            </span>
-                          )}
-                        </div>
+                        {(() => {
+                          const isDevoteeDone = (p: any) => {
+                            const m = typeof p?.metadata === 'string' ? (() => {
+                              try { return JSON.parse(p.metadata); } catch { return {}; }
+                            })() : (p?.metadata || {});
+                            return (
+                              m.taskStatus === 'CONFIRMED' ||
+                              m.taskStatus === 'ADMIN_COMPLETED' ||
+                              m.status === 'CONFIRMED' ||
+                              m.status === 'ADMIN_COMPLETED' ||
+                              !!m.officialBookingReference ||
+                              !!m.portalTransactionReference ||
+                              !!m.transactionId
+                            );
+                          };
+                          const totalPilgrims = Math.max(1, b.pilgrimCount || (Array.isArray(b.pilgrims) ? b.pilgrims.length : 1));
+                          const confirmedPilgrims = Array.isArray(b.pilgrims) ? b.pilgrims.filter(isDevoteeDone).length : 0;
+                          const isFullyDone = b.status === 'SUCCESS' || b.status === 'COMPLETED' || b.status === 'BOOKING_CONFIRMED' || (totalPilgrims > 0 && confirmedPilgrims >= totalPilgrims);
+                          const isPartial = !isFullyDone && (
+                            b.reconciliationStatus === 'PARTIALLY_CONFIRMED' ||
+                            b.reconciliationStatus === 'PARTIALLY_COMPLETED' ||
+                            (confirmedPilgrims > 0 && confirmedPilgrims < totalPilgrims)
+                          );
+                          const effectiveConfirmedCount = isFullyDone ? totalPilgrims : Math.max(isPartial ? 1 : 0, confirmedPilgrims);
+                          const pendingCount = Math.max(0, totalPilgrims - effectiveConfirmedCount);
+
+                          return (
+                            <div className="flex flex-col space-y-0.5">
+                              <span className="font-mono font-semibold text-secondary-800">
+                                {isFullyDone && totalPilgrims > 1
+                                  ? `All ${totalPilgrims} Devotees Confirmed`
+                                  : isPartial
+                                  ? `Progress: ${effectiveConfirmedCount} / ${totalPilgrims} Confirmed (${pendingCount} Pending)`
+                                  : b.selectedPilgrimName
+                                  ? `${totalPilgrims} Pilgrim${totalPilgrims > 1 ? 's' : ''}: ${b.selectedPilgrimName}`
+                                  : `${totalPilgrims} Saved Pilgrim${totalPilgrims > 1 ? 's' : ''}`}
+                              </span>
+                              {isPartial && pendingCount > 0 && (() => {
+                                const nextPendingIdx = Array.isArray(b.pilgrims)
+                                  ? b.pilgrims.findIndex((p: any) => !isDevoteeDone(p)) + 1
+                                  : effectiveConfirmedCount + 1;
+                                const nextDevoteeSequence = nextPendingIdx > 0 ? nextPendingIdx : Math.min(totalPilgrims, effectiveConfirmedCount + 1);
+                                return (
+                                  <span className="text-[10.5px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                    Next: Devotee #{nextDevoteeSequence}
+                                  </span>
+                                );
+                              })()}
+                              {b.nomineeName && (
+                                <span className="text-[10.5px] text-secondary-600">
+                                  Nominee: <strong>{b.nomineeName}</strong> ({b.nomineeAge}y, {b.nomineeRelationship})
+                                  {Array.isArray(b.preferences?.nominees) && b.preferences.nominees.length > 1
+                                    ? ` (+${b.preferences.nominees.length - 1} more)`
+                                    : ''}
+                                </span>
+                              )}
+                              {b.nomineeValidationStatus && (
+                                <span className="text-[9.5px] font-mono text-emerald-700">
+                                  Nominee Status: {b.nomineeValidationStatus}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4">
                         {(() => {
+                          const isDevoteeDone = (p: any) => {
+                            const m = typeof p?.metadata === 'string' ? (() => {
+                              try { return JSON.parse(p.metadata); } catch { return {}; }
+                            })() : (p?.metadata || {});
+                            return (
+                              m.taskStatus === 'CONFIRMED' ||
+                              m.taskStatus === 'ADMIN_COMPLETED' ||
+                              m.status === 'CONFIRMED' ||
+                              m.status === 'ADMIN_COMPLETED' ||
+                              !!m.officialBookingReference ||
+                              !!m.portalTransactionReference ||
+                              !!m.transactionId
+                            );
+                          };
+                          const totalPilgrims = Math.max(1, b.pilgrimCount || (Array.isArray(b.pilgrims) ? b.pilgrims.length : 1));
+                          const confirmedPilgrims = Array.isArray(b.pilgrims) ? b.pilgrims.filter(isDevoteeDone).length : 0;
+                          const isFullyDone = b.status === 'SUCCESS' || b.status === 'COMPLETED' || b.status === 'BOOKING_CONFIRMED' || (totalPilgrims > 0 && confirmedPilgrims >= totalPilgrims);
+
+                          if (isFullyDone) {
+                            return (
+                              <div className="flex flex-col space-y-0.5">
+                                <span className="inline-flex items-center gap-1 font-semibold text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 w-fit">
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                  Confirmed Passes Ready
+                                </span>
+                                <span className="text-[10.5px] text-secondary-500 font-mono">
+                                  {totalPilgrims} / {totalPilgrims} Devotees Completed
+                                </span>
+                              </div>
+                            );
+                          }
+
                           if (b.status === 'CANCELLED') {
                             return (
                               <span className="text-secondary-400 font-normal italic text-xs">Pending Assignment</span>
@@ -952,29 +1045,58 @@ export default function AdminBookingsPage() {
                         })()}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex flex-col space-y-1">
-                          <StateBadge
-                            status={
-                              b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED'
-                                ? 'PARTIALLY_CONFIRMED'
-                                : b.status
-                            }
-                            size="sm"
-                          />
-                          {b.lastMilestone && (
-                            <span className="text-[9.5px] font-mono text-secondary-500">
-                              {b.lastMilestone}
-                            </span>
-                          )}
-                          {b.financialStatus && (
-                            <span className="text-[9.5px] font-semibold text-secondary-600">
-                              Wallet: {b.financialStatus}
-                            </span>
-                          )}
-                        </div>
+                        {(() => {
+                          const isDevoteeDone = (p: any) => {
+                            const m = typeof p?.metadata === 'string' ? (() => {
+                              try { return JSON.parse(p.metadata); } catch { return {}; }
+                            })() : (p?.metadata || {});
+                            return (
+                              m.taskStatus === 'CONFIRMED' ||
+                              m.taskStatus === 'ADMIN_COMPLETED' ||
+                              m.status === 'CONFIRMED' ||
+                              m.status === 'ADMIN_COMPLETED' ||
+                              !!m.officialBookingReference ||
+                              !!m.portalTransactionReference ||
+                              !!m.transactionId
+                            );
+                          };
+                          const totalPilgrims = Math.max(1, b.pilgrimCount || (Array.isArray(b.pilgrims) ? b.pilgrims.length : 1));
+                          const confirmedPilgrims = Array.isArray(b.pilgrims) ? b.pilgrims.filter(isDevoteeDone).length : 0;
+                          const isFullyDone = b.status === 'SUCCESS' || b.status === 'COMPLETED' || b.status === 'BOOKING_CONFIRMED' || (totalPilgrims > 0 && confirmedPilgrims >= totalPilgrims);
+                          const isPartial = !isFullyDone && (
+                            b.reconciliationStatus === 'PARTIALLY_CONFIRMED' ||
+                            b.reconciliationStatus === 'PARTIALLY_COMPLETED' ||
+                            (confirmedPilgrims > 0 && confirmedPilgrims < totalPilgrims)
+                          );
+
+                          return (
+                            <div className="flex flex-col space-y-1">
+                              <StateBadge
+                                status={
+                                  isFullyDone
+                                    ? 'SUCCESS'
+                                    : isPartial
+                                    ? 'PARTIALLY_CONFIRMED'
+                                    : b.status
+                                }
+                                size="sm"
+                              />
+                              {b.lastMilestone && (
+                                <span className="text-[9.5px] font-mono text-secondary-500">
+                                  {b.lastMilestone}
+                                </span>
+                              )}
+                              {b.financialStatus && (
+                                <span className="text-[9.5px] font-semibold text-secondary-600">
+                                  Wallet: {b.financialStatus}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4 font-mono font-bold text-emerald-700">
-                        {(b.officialBookingReference || b.officialReference) || <span className="text-secondary-400 font-normal font-sans">—</span>}
+                        {(b.officialBookingReference || b.officialReference || b.portalTransactionReference) || <span className="text-secondary-400 font-normal font-sans">—</span>}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">

@@ -49,14 +49,79 @@ function isActionRequired(b: any) {
   return status === 'REQUIRES_HUMAN' || status === 'OTP_REQUIRED' || status === 'CAPTCHA_REQUIRED';
 }
 
-function isCompleted(b: any) {
+function isDevoteeCompleted(p: any): boolean {
+  if (!p) return false;
+  const m = typeof p.metadata === 'string' ? (() => {
+    try { return JSON.parse(p.metadata); } catch { return {}; }
+  })() : (p.metadata || {});
+  return (
+    m.taskStatus === 'CONFIRMED' ||
+    m.taskStatus === 'ADMIN_COMPLETED' ||
+    m.status === 'CONFIRMED' ||
+    m.status === 'ADMIN_COMPLETED' ||
+    !!m.officialBookingReference ||
+    !!m.portalTransactionReference ||
+    !!m.transactionId
+  );
+}
+
+function getCompletedPilgrimsCount(b: any): number {
+  if (!b) return 0;
+  if (Array.isArray(b.pilgrims) && b.pilgrims.length > 0) {
+    return b.pilgrims.filter(isDevoteeCompleted).length;
+  }
+  if (b.status === 'SUCCESS' || b.status === 'COMPLETED' || b.status === 'BOOKING_CONFIRMED') {
+    return b.pilgrimCount || 1;
+  }
+  if (b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED') {
+    return 1;
+  }
+  return 0;
+}
+
+function getTotalPilgrimsCount(b: any): number {
+  if (!b) return 1;
+  return Math.max(1, b.pilgrimCount || (Array.isArray(b.pilgrims) && b.pilgrims.length > 0 ? b.pilgrims.length : 1));
+}
+
+function isCompleted(b: any): boolean {
   if (!b) return false;
   const status = typeof b === 'string' ? b : b.status;
-  const ref = typeof b === 'object' ? (b.officialBookingReference || b.officialReference) : null;
-  const isCartId = b && b.cartId && ref === b.cartId;
-  if (ref && String(ref).trim().length > 0 && !isCartId && !String(ref).startsWith('SAB-2026-')) {
-    return status === 'SUCCESS' || status === 'COMPLETED' || status === 'BOOKING_CONFIRMED';
+  if (status === 'SUCCESS' || status === 'COMPLETED' || status === 'BOOKING_CONFIRMED') {
+    return true;
   }
+  if (typeof b === 'object') {
+    const total = getTotalPilgrimsCount(b);
+    const completed = getCompletedPilgrimsCount(b);
+    if (total > 0 && completed >= total) {
+      return true;
+    }
+    // Multi-pilgrim booking with remaining pending devotees is never completed
+    if (total > 1 && completed < total) {
+      return false;
+    }
+    if (b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED') {
+      return false;
+    }
+    const ref = b.officialBookingReference || b.officialReference || b.portalTransactionReference;
+    const isCartId = b.cartId && ref === b.cartId;
+    if (total <= 1 && ref && String(ref).trim().length > 0 && !isCartId && !String(ref).startsWith('SAB-2026-')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isPartiallyConfirmed(b: any): boolean {
+  if (!b || isCancelled(b) || isFailed(b) || isActionRequired(b)) return false;
+  if (isCompleted(b)) return false;
+  if (typeof b === 'object') {
+    const total = getTotalPilgrimsCount(b);
+    const completed = getCompletedPilgrimsCount(b);
+    if (total > 0 && completed >= total) return false;
+    if (completed > 0 && completed < total) return true;
+  }
+  if (b.reconciliationStatus === 'PARTIALLY_CONFIRMED' || b.reconciliationStatus === 'PARTIALLY_COMPLETED') return true;
   return false;
 }
 
@@ -384,23 +449,61 @@ export default function BookingsPage() {
 
   useEffect(() => {
     fetchBookings();
+
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchBookings();
+      }
+    };
+    const handleFocus = () => {
+      fetchBookings();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
+
     // Live polling every 3 seconds for rapid confirmation detection
     const interval = setInterval(fetchBookings, 3000);
-    return () => clearInterval(interval);
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibility);
+      }
+      clearInterval(interval);
+    };
   }, [search]);
 
   // Statistics
   const urgentBookings = bookings.filter((b) => isActionRequired(b));
   const totalCount = bookings.length;
   const actionRequiredCount = urgentBookings.length;
-  const pendingCount = bookings.filter((b) => isPending(b)).length;
   const completedCount = bookings.filter((b) => isCompleted(b)).length;
+  const partiallyConfirmedCount = bookings.filter((b) => isPartiallyConfirmed(b)).length;
+  // Monitoring Queue: bookings actively in queue (pure pending + partially confirmed waiting for remaining devotees)
+  const pendingCount = bookings.filter((b) => isPending(b)).length;
   const failedCount = bookings.filter((b) => isFailed(b)).length;
+
+  const currentTabs = [
+    { key: 'ALL', label: 'All Requests' },
+    { key: 'ACTION_REQUIRED', label: 'Action Needed' },
+    { key: 'PENDING', label: 'Watching & Queued' },
+    ...(partiallyConfirmedCount > 0 ? [{ key: 'PARTIAL', label: 'Partially Confirmed' }] : []),
+    { key: 'COMPLETED', label: 'Confirmed Passes' },
+    { key: 'FAILED', label: 'Failed' },
+  ];
 
   // Filter bookings according to activeTab
   const filteredBookings = bookings.filter((b) => {
     if (activeTab === 'ACTION_REQUIRED') return isActionRequired(b);
     if (activeTab === 'PENDING') return isPending(b);
+    if (activeTab === 'PARTIAL') return isPartiallyConfirmed(b);
     if (activeTab === 'COMPLETED') return isCompleted(b);
     if (activeTab === 'FAILED') return isFailed(b);
     return true;
@@ -607,7 +710,7 @@ export default function BookingsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
         {/* Filter Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-          {FILTER_TABS.map((tab) => {
+          {currentTabs.map((tab) => {
             const count =
               tab.key === 'ALL'
                 ? totalCount
@@ -615,6 +718,8 @@ export default function BookingsPage() {
                 ? actionRequiredCount
                 : tab.key === 'PENDING'
                 ? pendingCount
+                : tab.key === 'PARTIAL'
+                ? partiallyConfirmedCount
                 : tab.key === 'COMPLETED'
                 ? completedCount
                 : failedCount;
@@ -682,10 +787,13 @@ export default function BookingsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredBookings.map((b) => {
-            const pending = isPending(b);
             const completed = isCompleted(b);
+            const partiallyConfirmed = isPartiallyConfirmed(b);
+            const pending = isPending(b) && !partiallyConfirmed;
             const failed = isFailed(b);
             const accountDisplay = formatAccountName(b.account?.username);
+            const totalDevoteesCount = getTotalPilgrimsCount(b);
+            const completedDevoteesCount = getCompletedPilgrimsCount(b);
 
             return (
               <div
@@ -693,6 +801,8 @@ export default function BookingsPage() {
                 className={`rounded-[10px] border bg-white p-4 shadow-subtle transition-all flex flex-col justify-between hover:shadow-card ${
                   completed
                     ? 'border-[#C3E6CB] hover:border-[#198754]'
+                    : partiallyConfirmed
+                    ? 'border-[#B2DDFF] hover:border-[#175CD3]'
                     : pending
                     ? 'border-[#F9DE9B] hover:border-[#C98219]'
                     : 'border-[#E6EAF0] hover:border-[#D0D5DD]'
@@ -705,11 +815,25 @@ export default function BookingsPage() {
                       #{b.bookingCode}
                     </span>
 
-                    {/* Live Clock Timer ONLY when pending/watching */}
+                    {/* Live Clock Timer ONLY when pending/watching without any confirmations */}
                     {pending && (
                       <div className="flex items-center gap-1.5 rounded-full bg-[#FEF7E6] border border-[#F9DE9B] px-2.5 py-0.5 text-[11px] font-bold text-[#8F5A0D]">
                         <Clock className="h-3 w-3 text-[#C98219]" />
                         <span><LiveTimer createdAt={b.createdAt} /></span>
+                      </div>
+                    )}
+
+                    {/* Partially Confirmed Status with Devotee Ratio + Live Clock */}
+                    {partiallyConfirmed && (
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#175CD3] animate-pulse" />
+                          <span>Partially Confirmed ({completedDevoteesCount}/{totalDevoteesCount})</span>
+                        </span>
+                        <div className="flex items-center gap-1 rounded-full bg-[#FEF7E6] border border-[#F9DE9B] px-2 py-0.5 text-[10.5px] font-bold text-[#8F5A0D]" title="Time elapsed monitoring remaining devotees">
+                          <Clock className="h-3 w-3 text-[#C98219]" />
+                          <span><LiveTimer createdAt={b.createdAt} /></span>
+                        </div>
                       </div>
                     )}
 
@@ -767,7 +891,7 @@ export default function BookingsPage() {
                       <div className="flex items-center gap-1.5">
                         <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#475467] bg-white border border-[#E6EAF0] px-1.5 py-0.5 rounded">
                           <Users className="h-3 w-3 text-[#98A2B3]" />
-                          <span>{b.pilgrims?.length || b.pilgrimCount || 1}</span>
+                          <span>{totalDevoteesCount}</span>
                         </span>
                         <span className="text-[10.5px] font-mono text-[#667085] truncate max-w-[90px]">
                           {accountDisplay}
@@ -777,6 +901,24 @@ export default function BookingsPage() {
                     <p className="font-bold text-[13.5px] text-[#172033] mt-0.5 truncate">
                       {b.account?.label || accountDisplay}
                     </p>
+
+                    {/* Devotee Progress Summary */}
+                    <div className="mt-2 pt-2 border-t border-[#E6EAF0] flex items-center justify-between text-[11px]">
+                      <span className="text-[#667085] font-medium">Devotees:</span>
+                      <span className={`font-bold ${
+                        completed
+                          ? 'text-[#15803D]'
+                          : partiallyConfirmed
+                          ? 'text-[#175CD3]'
+                          : 'text-[#475467]'
+                      }`}>
+                        {completed
+                          ? `All ${totalDevoteesCount} Confirmed`
+                          : partiallyConfirmed
+                          ? `${completedDevoteesCount} of ${totalDevoteesCount} Confirmed (${totalDevoteesCount - completedDevoteesCount} Pending)`
+                          : `${totalDevoteesCount} Pending Monitoring`}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Darshan Date & Route */}
@@ -801,13 +943,36 @@ export default function BookingsPage() {
                     </div>
                   </div>
 
-                  {/* Official Reference Number if Confirmed */}
-                  {completed && (b.officialBookingReference || b.officialReference) && (
-                    <div className="mt-2.5 flex items-center justify-between bg-[#EAF7EE] border border-[#C3E6CB] rounded-[6px] px-2.5 py-1 text-[11.5px]">
-                      <span className="text-[#155724] font-medium text-[11px]">Pass Ref:</span>
-                      <span className="font-mono font-bold text-[#155724]">{b.officialBookingReference || b.officialReference}</span>
+                  {/* Official Reference Number or Admin Completion Status if Confirmed */}
+                  {completed && (
+                    (b.officialBookingReference || b.officialReference || b.portalTransactionReference) ? (
+                      <div className="mt-2.5 flex items-center justify-between bg-[#EAF7EE] border border-[#C3E6CB] rounded-[6px] px-2.5 py-1 text-[11.5px]">
+                        <span className="text-[#155724] font-medium text-[11px]">Pass Ref:</span>
+                        <span className="font-mono font-bold text-[#155724]">{b.officialBookingReference || b.officialReference || b.portalTransactionReference}</span>
+                      </div>
+                    ) : (
+                      <div className="mt-2.5 flex items-center justify-between bg-[#F0FDF4] border border-[#BBF7D0] rounded-[6px] px-2.5 py-1 text-[11.5px]">
+                        <span className="text-[#15803D] font-medium text-[11px]">Pass Status:</span>
+                        <span className="font-semibold text-[#15803D]">
+                          {b.pilgrims?.some((p: any) => {
+                            const m = typeof p.metadata === 'string' ? (() => { try { return JSON.parse(p.metadata); } catch { return {}; } })() : (p.metadata || {});
+                            return m.taskStatus === 'ADMIN_COMPLETED';
+                          }) ? 'Completed (Admin Manual Entry)' : 'Booking Confirmed'}
+                        </span>
+                      </div>
+                    )
+                  )}
+
+                  {/* Partially Confirmed Reference if available */}
+                  {partiallyConfirmed && (b.officialBookingReference || b.officialReference || b.portalTransactionReference) && (
+                    <div className="mt-2.5 flex items-center justify-between bg-[#EFF8FF] border border-[#B2DDFF] rounded-[6px] px-2.5 py-1 text-[11.5px]">
+                      <span className="text-[#175CD3] font-medium text-[11px]">Devotee Ref:</span>
+                      <span className="font-mono font-bold text-[#175CD3] truncate max-w-[170px]">
+                        {b.officialBookingReference || b.officialReference || b.portalTransactionReference}
+                      </span>
                     </div>
                   )}
+
                   {b.cartId && (
                     <div className="mt-1 flex items-center justify-between text-[10.5px] text-[#667085] px-1">
                       <span>Cart ID:</span>
@@ -837,8 +1002,8 @@ export default function BookingsPage() {
                         <span>Restart</span>
                       </button>
                     )}
-                    {/* Direct Cancel Button for Active/Pending Requests */}
-                    {(pending || b.status === 'REQUIRES_HUMAN' || b.status === 'RETRYABLE_FAILURE' || b.status === 'WAITING_FOR_ACCOUNT') && (
+                    {/* Direct Cancel Button ONLY for Active unconfirmed requests */}
+                    {!completed && (pending || partiallyConfirmed || b.status === 'REQUIRES_HUMAN' || b.status === 'RETRYABLE_FAILURE' || b.status === 'WAITING_FOR_ACCOUNT') && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -852,16 +1017,27 @@ export default function BookingsPage() {
                       </button>
                     )}
                     {completed && (
-                      <a
-                        href="https://sabarimalaonline.org/#/login"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-[6px] border border-[#C3E6CB] bg-[#EAF7EE] px-2.5 py-1 text-[11.5px] font-bold text-[#155724] hover:bg-[#D4EDDA] hover:border-[#198754] transition-colors flex items-center gap-1"
-                        title="Download your pass on Official Portal"
-                      >
-                        <ExternalLink className="h-3 w-3 text-[#198754]" />
-                        <span>Download Pass</span>
-                      </a>
+                      (b.officialBookingReference || b.officialReference) ? (
+                        <a
+                          href="https://sabarimalaonline.org/#/login"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-[6px] border border-[#C3E6CB] bg-[#EAF7EE] px-2.5 py-1 text-[11.5px] font-bold text-[#155724] hover:bg-[#D4EDDA] hover:border-[#198754] transition-colors flex items-center gap-1"
+                          title="Download your pass on Official Portal"
+                        >
+                          <ExternalLink className="h-3 w-3 text-[#198754]" />
+                          <span>Download Pass</span>
+                        </a>
+                      ) : (
+                        <Link
+                          href={`/dashboard/bookings/${b.id}`}
+                          className="rounded-[6px] border border-[#C3E6CB] bg-[#EAF7EE] px-2.5 py-1 text-[11.5px] font-bold text-[#155724] hover:bg-[#D4EDDA] hover:border-[#198754] transition-colors flex items-center gap-1"
+                          title="View completed devotee passes"
+                        >
+                          <CheckCircle2 className="h-3 w-3 text-[#198754]" />
+                          <span>View Pass</span>
+                        </Link>
+                      )
                     )}
                     <Link
                       href={`/dashboard/bookings/${b.id}`}

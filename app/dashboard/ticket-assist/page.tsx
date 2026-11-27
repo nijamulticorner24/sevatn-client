@@ -51,11 +51,10 @@ export default function TicketAssistDashboardPage() {
   }, []);
 
   const isCompletedBooking = (b: any) =>
-    (b.officialReference && String(b.officialReference).trim().length > 0) ||
+    (b.officialReference && String(b.officialReference).trim().length > 0 && !String(b.officialReference).startsWith('SAB-2026-')) ||
     b.status === 'SUCCESS' ||
     b.status === 'COMPLETED' ||
-    b.status === 'BOOKING_CONFIRMED' ||
-    b.status === 'WISHLIST_ADDED';
+    b.status === 'BOOKING_CONFIRMED';
 
   const stats = {
     total: bookings.length,

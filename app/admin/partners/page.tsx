@@ -30,6 +30,18 @@ import {
   Save,
   Trash2,
   KeyRound,
+  Wallet,
+  Phone,
+  Mail,
+  LayoutGrid,
+  List,
+  Plus,
+  Minus,
+  TrendingUp,
+  CreditCard,
+  ArrowUpRight,
+  ArrowDownLeft,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function AdminPartnersPage() {
@@ -41,6 +53,16 @@ export default function AdminPartnersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PENDING_APPROVAL' | 'PENDING_PAYMENT' | 'SUSPENDED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
+  // Wallet Adjustment Modal State
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [walletTargetPartner, setWalletTargetPartner] = useState<any>(null);
+  const [walletAdjustAction, setWalletAdjustAction] = useState<'CREDIT' | 'DEBIT'>('CREDIT');
+  const [walletAdjustAmount, setWalletAdjustAmount] = useState<string>('500');
+  const [walletAdjustReason, setWalletAdjustReason] = useState<string>('');
+  const [walletSubmitting, setWalletSubmitting] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
 
   // Receipt Modal State
   const [viewingReceipt, setViewingReceipt] = useState<{
@@ -128,6 +150,78 @@ export default function AdminPartnersPage() {
   const showToast = (msg: string) => {
     setSuccessToast(msg);
     setTimeout(() => setSuccessToast(null), 3500);
+  };
+
+  const formatINR = (val: number | string | undefined | null) => {
+    const num = Number(val || 0);
+    return `₹ ${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatDate = (dateVal: string | Date | undefined) => {
+    if (!dateVal) return 'N/A';
+    try {
+      const d = new Date(dateVal);
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return String(dateVal).split('T')[0];
+    }
+  };
+
+  // Wallet Adjustment Actions
+  const openWalletAdjustModal = (partner: any) => {
+    setWalletTargetPartner(partner);
+    setWalletAdjustAction('CREDIT');
+    setWalletAdjustAmount('500');
+    setWalletAdjustReason('');
+    setWalletError(null);
+    setIsWalletModalOpen(true);
+  };
+
+  const handleWalletAdjustSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletTargetPartner) return;
+    setWalletError(null);
+
+    const amt = parseFloat(walletAdjustAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setWalletError('Please enter a valid amount greater than 0.');
+      return;
+    }
+
+    const currentBalance = Number(
+      walletTargetPartner.availableBalance ??
+      walletTargetPartner.walletBalance ??
+      walletTargetPartner.balance ??
+      0
+    );
+
+    if (walletAdjustAction === 'DEBIT' && amt > currentBalance) {
+      setWalletError(
+        `Cannot deduct ₹ ${amt.toFixed(2)}: Exceeds available balance (Current: ₹ ${currentBalance.toFixed(2)}).`
+      );
+      return;
+    }
+
+    setWalletSubmitting(true);
+    try {
+      const res: any = await api.adjustPartnerWallet(walletTargetPartner.id, {
+        amount: amt,
+        action: walletAdjustAction,
+        reason: walletAdjustReason.trim() || undefined,
+      });
+
+      showToast(res.message || `Wallet successfully ${walletAdjustAction === 'CREDIT' ? 'credited' : 'debited'}.`);
+      setIsWalletModalOpen(false);
+      loadPartners();
+    } catch (err: any) {
+      setWalletError(err.message || 'Failed to adjust partner wallet balance.');
+    } finally {
+      setWalletSubmitting(false);
+    }
   };
 
   const handleDeletePartner = async () => {
@@ -313,6 +407,10 @@ export default function AdminPartnersPage() {
   const pendingApprovalCount = partners.filter((p) => p.status === 'PENDING_APPROVAL').length;
   const pendingPaymentCount = partners.filter((p) => p.status === 'PENDING_PAYMENT').length;
   const activeCount = partners.filter((p) => p.status === 'ACTIVE').length;
+  const totalNetworkBalance = partners.reduce(
+    (sum, p) => sum + Number(p.availableBalance ?? p.walletBalance ?? p.balance ?? 0),
+    0
+  );
 
   if (isAuthorized === false) {
     return (
@@ -320,9 +418,9 @@ export default function AdminPartnersPage() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FEF2F2] border border-[#FCA5A5] text-[#DC2626]">
           <Ban className="h-7 w-7" />
         </div>
-        <h1 className="text-2xl font-bold text-[#0F172A]">Admin Role Required</h1>
+        <h1 className="text-2xl font-bold text-[#0F172A]">Super Admin Role Required</h1>
         <p className="text-sm text-[#64748B] max-w-md mx-auto leading-relaxed">
-          Access to Partner Franchise Management is restricted to authorized Administrators.
+          Access to Partner Franchise & Wallet Management is restricted to authorized Super Administrators.
         </p>
         <div className="pt-2">
           <Link
@@ -338,7 +436,7 @@ export default function AdminPartnersPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-5 pb-12">
+    <div className="w-full max-w-7xl mx-auto space-y-5 pb-16">
       {/* Toast Notification */}
       {successToast && (
         <div className="fixed top-5 right-5 z-50 rounded-[8px] border border-[#A6F4C5] bg-[#ECFDF3] px-4 py-3 text-xs font-bold text-[#027A48] shadow-modal flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
@@ -347,31 +445,127 @@ export default function AdminPartnersPage() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[#C98219] text-xs font-bold uppercase tracking-wider mb-1">
             <Users className="h-4 w-4" />
-            <span>SevaTN — Partner Network</span>
+            <span>SevaTN — Partner Franchises</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[#172033]">
-            Partners & Network Management
+            Partner Network & Wallets
           </h1>
           <p className="text-xs text-[#667085] mt-1">
-            Create regional partner franchises, monitor franchise fee payments, and approve & activate partners.
+            Monitor regional partner franchises, manage live wallet balances (Credit / Debit), and oversee network settlements.
           </p>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="rounded-[7px] bg-[#C98219] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#B57414] shadow-subtle transition-colors flex items-center gap-2 self-start sm:self-auto"
-        >
-          <PlusCircle className="h-4 w-4" />
-          <span>Add New Partner</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={() => loadPartners()}
+            className="rounded-[7px] border border-[#E6EAF0] bg-white px-3 py-2 text-xs font-semibold text-[#475467] hover:bg-[#F8FAFC] shadow-2xs transition-colors flex items-center gap-1.5"
+            title="Refresh Partners List"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-[#C98219]' : ''}`} />
+            <span>Refresh</span>
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="rounded-[7px] bg-[#C98219] px-4 py-2 text-xs font-bold text-white hover:bg-[#B57414] shadow-subtle transition-colors flex items-center gap-2"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span>Add New Partner</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter Tabs & Search */}
+      {/* Summary Stats Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        {/* Total Partners */}
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#667085]">
+              Total Partners
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
+              <Users className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-[#172033]">{partners.length}</span>
+            <span className="text-[11px] text-[#667085]">franchises</span>
+          </div>
+          <div className="mt-1 text-[11px] text-[#027A48] font-medium flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            <span>{activeCount} Active</span>
+          </div>
+        </div>
+
+        {/* Total Network Wallet Balance */}
+        <div className="rounded-[10px] border border-[#B2DDFF] bg-[#F5FAFF] p-4 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#175CD3]">
+              Partner Wallets Total
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+              <Wallet className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-black font-mono text-[#175CD3]">
+              {formatINR(totalNetworkBalance)}
+            </span>
+          </div>
+          <div className="mt-1 text-[11px] text-[#1E40AF] font-medium">
+            Available across all partner wallets
+          </div>
+        </div>
+
+        {/* Awaiting Payment / Verification */}
+        <div className="rounded-[10px] border border-[#F9DE9B] bg-[#FFFDF5] p-4 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#8F5A0D]">
+              Awaiting Action
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
+              <Clock className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-[#8F5A0D]">
+              {pendingApprovalCount + pendingPaymentCount}
+            </span>
+            <span className="text-[11px] text-[#8F5A0D]">franchises</span>
+          </div>
+          <div className="mt-1 text-[11px] text-[#667085] flex items-center gap-1.5">
+            <span className="font-bold text-[#175CD3]">{pendingApprovalCount} to approve</span>
+            <span>•</span>
+            <span className="font-bold text-[#C98219]">{pendingPaymentCount} fee pending</span>
+          </div>
+        </div>
+
+        {/* Global Default Rates */}
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white p-4 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#667085]">
+              Platform Rates
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#F8FAFC] text-[#475467] border border-[#E6EAF0]">
+              <Coins className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-xs text-[#667085]">Base Ticket Price:</span>
+            <span className="text-sm font-black font-mono text-[#172033]">₹ {systemBaseTicketPrice.toFixed(2)}</span>
+          </div>
+          <div className="mt-1 flex items-baseline justify-between text-[11px]">
+            <span className="text-[#667085]">Standard Service Fee:</span>
+            <span className="font-bold font-mono text-[#C98219]">₹ {systemServiceFee.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Control Bar: Filter Tabs, Search & View Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3 rounded-[10px] border border-[#E6EAF0]">
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <button
@@ -382,7 +576,17 @@ export default function AdminPartnersPage() {
                 : 'bg-[#F8FAFC] text-[#667085] hover:bg-[#E6EAF0]'
             }`}
           >
-            All Partners ({partners.length})
+            All ({partners.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('ACTIVE')}
+            className={`rounded-[6px] px-3 py-1.5 font-bold transition-colors ${
+              statusFilter === 'ACTIVE'
+                ? 'bg-[#027A48] text-white'
+                : 'bg-[#ECFDF3] text-[#027A48] hover:bg-[#D1FADF]'
+            }`}
+          >
+            Active ({activeCount})
           </button>
           <button
             onClick={() => setStatusFilter('PENDING_APPROVAL')}
@@ -392,7 +596,7 @@ export default function AdminPartnersPage() {
                 : 'bg-[#EFF8FF] text-[#175CD3] hover:bg-[#D1E9FF]'
             }`}
           >
-            <span>Awaiting Approval</span>
+            <span>Review Proof</span>
             {pendingApprovalCount > 0 && (
               <span className="rounded-full bg-[#2E90FA] text-white px-1.5 py-0.2 text-[10px] font-extrabold">
                 {pendingApprovalCount}
@@ -407,52 +611,327 @@ export default function AdminPartnersPage() {
                 : 'bg-[#FEF7E6] text-[#8F5A0D] hover:bg-[#FDE8BD]'
             }`}
           >
-            Pending Payment ({pendingPaymentCount})
-          </button>
-          <button
-            onClick={() => setStatusFilter('ACTIVE')}
-            className={`rounded-[6px] px-3 py-1.5 font-bold transition-colors ${
-              statusFilter === 'ACTIVE'
-                ? 'bg-[#027A48] text-white'
-                : 'bg-[#ECFDF3] text-[#027A48] hover:bg-[#D1FADF]'
-            }`}
-          >
-            Active ({activeCount})
+            Pending Fee ({pendingPaymentCount})
           </button>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#98A2B3]" />
-          <input
-            type="text"
-            placeholder="Search by name, code, city..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-[6px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-1.5 text-xs text-[#172033] focus:border-[#C98219] focus:outline-none"
-          />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#98A2B3]" />
+            <input
+              type="text"
+              placeholder="Search by name, code, city..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-[6px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-1.5 text-xs text-[#172033] focus:border-[#C98219] focus:outline-none"
+            />
+          </div>
+
+          {/* View Mode Toggle: Table vs Cards */}
+          <div className="flex items-center rounded-[7px] border border-[#E6EAF0] bg-[#F8FAFC] p-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-[5px] transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-white text-[#172033] shadow-2xs font-bold'
+                  : 'text-[#667085] hover:text-[#172033]'
+              }`}
+              title="Table View"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 rounded-[5px] transition-colors ${
+                viewMode === 'cards'
+                  ? 'bg-white text-[#172033] shadow-2xs font-bold'
+                  : 'text-[#667085] hover:text-[#172033]'
+              }`}
+              title="Cards Grid View"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Partners List */}
+      {/* Partners Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-16 bg-white rounded-[10px] border border-[#E6EAF0]">
-          <Loader2 className="h-6 w-6 animate-spin text-[#C98219]" />
+        <div className="flex items-center justify-center py-20 bg-white rounded-[10px] border border-[#E6EAF0]">
+          <Loader2 className="h-7 w-7 animate-spin text-[#C98219]" />
         </div>
       ) : filteredPartners.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-[10px] border border-[#E6EAF0] p-6">
-          <Users className="h-8 w-8 text-[#98A2B3] mx-auto mb-2" />
+        <div className="text-center py-14 bg-white rounded-[10px] border border-[#E6EAF0] p-6 space-y-2">
+          <Users className="h-10 w-10 text-[#98A2B3] mx-auto mb-1" />
           <h3 className="text-sm font-bold text-[#172033]">No partners found</h3>
-          <p className="text-xs text-[#667085] mt-1">
-            {searchQuery ? 'Try adjusting your search query' : 'No partners match the selected filter.'}
+          <p className="text-xs text-[#667085]">
+            {searchQuery ? 'Try adjusting your search query.' : 'No partner franchises match the selected filter.'}
           </p>
         </div>
+      ) : viewMode === 'table' ? (
+        /* TABLE VIEW — Clean, compact, fits without horizontal break */
+        <div className="rounded-[10px] border border-[#E6EAF0] bg-white shadow-subtle overflow-hidden">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#F8FAFC] text-[#667085] uppercase tracking-wider font-semibold border-b border-[#E6EAF0] text-[11px]">
+                <tr>
+                  <th className="py-3 px-3.5">Partner Franchise</th>
+                  <th className="py-3 px-3">Contact</th>
+                  <th className="py-3 px-3">Jurisdiction</th>
+                  <th className="py-3 px-2.5 text-center">Commission</th>
+                  <th className="py-3 px-2.5 text-center">Base Price</th>
+                  <th className="py-3 px-3.5 bg-[#F5FAFF]/60 text-[#175CD3] font-bold">
+                    <div className="flex items-center gap-1.5">
+                      <Wallet className="h-3.5 w-3.5" />
+                      <span>Wallet Balance</span>
+                    </div>
+                  </th>
+                  <th className="py-3 px-2 text-center">Centres</th>
+                  <th className="py-3 px-2 text-center">Status</th>
+                  <th className="py-3 px-2 text-center">Created</th>
+                  <th className="py-3 px-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E6EAF0]">
+                {filteredPartners.map((p) => {
+                  const isPendingPayment = p.status === 'PENDING_PAYMENT';
+                  const isPendingApproval = p.status === 'PENDING_APPROVAL';
+                  const isActive = p.status === 'ACTIVE';
+                  const walletAmt = Number(p.availableBalance ?? p.walletBalance ?? p.balance ?? 0);
+
+                  return (
+                    <tr key={p.id} className="hover:bg-[#F8FAFC] transition-colors">
+                      {/* Partner Name & Code */}
+                      <td className="py-3 px-3.5">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-[11px] font-mono font-bold text-[#8F5A0D] border border-[#F9DE9B] shrink-0">
+                            {p.partnerCode}
+                          </span>
+                          <div>
+                            <div className="font-bold text-[12.5px] text-[#172033] truncate max-w-[170px]" title={p.name}>
+                              {p.name}
+                            </div>
+                            <div className="text-[10.5px] text-[#667085] truncate max-w-[170px]">
+                              {p.district ? `${p.district}${p.taluk ? ` (${p.taluk})` : ''}` : 'Regional Partner'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Contact Details */}
+                      <td className="py-3 px-3">
+                        <div className="space-y-0.5 text-[11.5px]">
+                          {p.mobile && (
+                            <div className="flex items-center gap-1.5">
+                              <Phone className="h-3 w-3 text-[#175CD3] shrink-0" />
+                              <a
+                                href={`tel:${p.mobile}`}
+                                className="font-mono font-bold text-[#172033] hover:text-[#175CD3] hover:underline"
+                              >
+                                {p.mobile}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => copyUrl(p.mobile, `mobile-${p.id}`)}
+                                className="text-[#98A2B3] hover:text-[#172033] p-0.5"
+                                title="Copy Mobile"
+                              >
+                                {copiedToken === `mobile-${p.id}` ? (
+                                  <Check className="h-2.5 w-2.5 text-[#12B76A]" />
+                                ) : (
+                                  <Copy className="h-2.5 w-2.5" />
+                                )}
+                              </button>
+                            </div>
+                          )}
+                          {p.email && (
+                            <div className="flex items-center gap-1.5 text-[10.5px]">
+                              <Mail className="h-2.5 w-2.5 text-[#C98219] shrink-0" />
+                              <span className="font-mono text-[#667085] truncate max-w-[140px]" title={p.email}>
+                                {p.email}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Jurisdiction */}
+                      <td className="py-3 px-3 text-[#667085] text-[11.5px]">
+                        <div className="truncate max-w-[120px]" title={`${p.district || 'Tamil Nadu'} / ${p.taluk || 'HQ'}`}>
+                          <span className="font-semibold text-[#172033]">{p.district || 'Tamil Nadu'}</span>
+                          {p.taluk && <span className="block text-[10.5px] text-[#667085]">{p.taluk}</span>}
+                        </div>
+                      </td>
+
+                      {/* Commission */}
+                      <td className="py-3 px-2.5 text-center whitespace-nowrap">
+                        <span className="rounded bg-[#F8FAFC] px-2 py-0.5 text-[11px] font-bold text-[#475467] border border-[#E6EAF0]">
+                          {p.commissionPercentage}%
+                        </span>
+                        <span className="block text-[10px] text-[#667085] mt-0.5">
+                          ₹ {Number(p.commissionRate || 20).toFixed(2)}/pass
+                        </span>
+                      </td>
+
+                      {/* Base Ticket Price */}
+                      <td className="py-3 px-2.5 text-center whitespace-nowrap">
+                        <span className="font-mono font-bold text-[12px] text-[#175CD3]">
+                          ₹ {Number(p.baseTicketPrice ?? systemBaseTicketPrice).toFixed(2)}
+                        </span>
+                        <span className="block text-[9.5px] text-[#667085]">
+                          {p.baseTicketPrice ? 'Custom Rate' : 'Global Default'}
+                        </span>
+                      </td>
+
+                      {/* WALLET BALANCE & DIRECT ADJUST BUTTON */}
+                      <td className="py-3 px-3.5 bg-[#F5FAFF]/60 whitespace-nowrap">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-mono font-black text-sm text-[#0B4FBA]">
+                              {formatINR(walletAmt)}
+                            </div>
+                            <div className="text-[10px] text-[#667085] font-medium flex items-center gap-1">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#12B76A]" />
+                              <span>Live Wallet</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => openWalletAdjustModal(p)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] bg-[#175CD3] text-white hover:bg-[#154EBA] text-[11px] font-bold shadow-2xs transition-colors shrink-0 cursor-pointer"
+                            title="Add or Debit Wallet Amount"
+                          >
+                            <Wallet className="h-3 w-3" />
+                            <span>Adjust</span>
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Centres Count */}
+                      <td className="py-3 px-2 text-center whitespace-nowrap font-bold text-xs text-[#172033]">
+                        {p.totalRegisteredUsers || 0}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
+                        {isActive ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#ECFDF3] px-2 py-0.5 text-[10.5px] font-bold text-[#027A48] border border-[#A6F4C5]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#12B76A]" />
+                            ACTIVE
+                          </span>
+                        ) : isPendingApproval ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#EFF8FF] px-2 py-0.5 text-[10.5px] font-bold text-[#175CD3] border border-[#B2DDFF]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#2E90FA] animate-ping" />
+                            AWAITING PROOF
+                          </span>
+                        ) : isPendingPayment ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#FEF7E6] px-2 py-0.5 text-[10.5px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
+                            <Clock className="h-2.5 w-2.5 text-[#C98219]" />
+                            FEE PENDING
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#FDECEC] px-2 py-0.5 text-[10.5px] font-bold text-[#C2413B] border border-[#F5C6CB]">
+                            {p.status}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Created Date */}
+                      <td className="py-3 px-2 text-center whitespace-nowrap text-[11px] text-[#667085]">
+                        {formatDate(p.createdAt)}
+                      </td>
+
+                      {/* Row Actions */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          {/* Approve Payment (if pending approval) */}
+                          {isPendingApproval && (
+                            <button
+                              type="button"
+                              onClick={() => handleApprovePartner(p.id, p.name)}
+                              disabled={actionLoadingId === p.id}
+                              className="p-1.5 rounded-[6px] bg-[#027A48] text-white hover:bg-[#05603A] shadow-2xs transition-colors"
+                              title="Approve Franchise Offline Payment"
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+
+                          {/* View Receipt Proof */}
+                          {p.paymentProofUrl && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewingReceipt({
+                                  partnerName: p.name,
+                                  partnerCode: p.partnerCode,
+                                  paymentReference: p.paymentReference || 'Submitted',
+                                  imageUrl: p.paymentProofUrl,
+                                })
+                              }
+                              className="p-1.5 rounded-[6px] border border-[#B2DDFF] bg-[#EFF8FF] text-[#175CD3] hover:bg-[#D1E9FF] shadow-2xs transition-colors"
+                              title="View Payment Proof Receipt"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+
+                          {/* Edit Details */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(p)}
+                            className="p-1.5 rounded-[6px] border border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F8FAFC] hover:text-[#172033] shadow-2xs transition-colors"
+                            title="Edit Partner Details"
+                          >
+                            <Edit3 className="h-3.5 w-3.5 text-[#C98219]" />
+                          </button>
+
+                          {/* Reset Password */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPartnerForPasswordReset(p);
+                              setNewPasswordInput('');
+                              setResetPasswordError(null);
+                              setResetPasswordSuccess(null);
+                            }}
+                            className="p-1.5 rounded-[6px] border border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#FEF7E6] hover:text-[#8F5A0D] shadow-2xs transition-colors"
+                            title="Set / Reset Partner Password"
+                          >
+                            <KeyRound className="h-3.5 w-3.5 text-[#C98219]" />
+                          </button>
+
+                          {/* Delete Partner */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteError(null);
+                              setPartnerToDelete(p);
+                            }}
+                            className="p-1.5 rounded-[6px] border border-[#FDA29B] bg-white text-[#D92D20] hover:bg-[#FEF3F2] shadow-2xs transition-colors"
+                            title="Delete Partner Franchise"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        /* CARDS GRID VIEW — Enhanced cards with prominent Wallet Balance panel */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredPartners.map((p) => {
             const isPendingPayment = p.status === 'PENDING_PAYMENT';
             const isPendingApproval = p.status === 'PENDING_APPROVAL';
             const isActive = p.status === 'ACTIVE';
-            const isSuspended = p.status === 'SUSPENDED';
+            const walletAmt = Number(p.availableBalance ?? p.walletBalance ?? p.balance ?? 0);
 
             const onboardFullUrl = p.activeInvitationToken
               ? `${getOrigin()}/partner/onboard/${p.activeInvitationToken}`
@@ -461,9 +940,10 @@ export default function AdminPartnersPage() {
             return (
               <div
                 key={p.id}
-                className="rounded-[10px] border border-[#E6EAF0] bg-white p-6 shadow-subtle flex flex-col justify-between space-y-4"
+                className="rounded-[12px] border border-[#E6EAF0] bg-white p-5 shadow-subtle flex flex-col justify-between space-y-4 hover:border-[#CBD5E1] transition-all"
               >
                 <div>
+                  {/* Top Bar: Code & Status */}
                   <div className="flex items-center justify-between">
                     <span className="rounded bg-[#FEF7E6] px-2.5 py-0.5 text-xs font-bold text-[#8F5A0D] border border-[#F9DE9B] font-mono">
                       {p.partnerCode}
@@ -477,224 +957,114 @@ export default function AdminPartnersPage() {
                     ) : isPendingApproval ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EFF8FF] px-2.5 py-0.5 text-[11px] font-bold text-[#175CD3] border border-[#B2DDFF]">
                         <span className="h-1.5 w-1.5 rounded-full bg-[#2E90FA] animate-ping" />
-                        PAYMENT AWAITING APPROVAL
+                        AWAITING APPROVAL
                       </span>
                     ) : isPendingPayment ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF7E6] px-2.5 py-0.5 text-[11px] font-bold text-[#8F5A0D] border border-[#F9DE9B]">
                         <Clock className="h-3 w-3 text-[#C98219]" />
-                        PENDING PAYMENT
+                        FEE PENDING
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FDECEC] px-2.5 py-0.5 text-[11px] font-bold text-[#C2413B] border border-[#F5C6CB]">
-                        <Ban className="h-3 w-3 text-[#C2413B]" />
                         {p.status}
                       </span>
                     )}
                   </div>
 
-                  <h3 className="text-lg font-bold text-[#172033] mt-3">{p.name}</h3>
+                  {/* Partner Name */}
+                  <h3 className="text-base font-bold text-[#172033] mt-2.5">{p.name}</h3>
 
-                  <div className="mt-3 space-y-2 text-xs text-[#667085]">
-                    <div className="rounded-[7px] border border-[#E6EAF0] bg-[#F8FAFC] p-2.5 space-y-1.5 font-sans">
-                      <div className="flex items-center justify-between text-[11.5px]">
-                        <span className="text-[#667085] font-semibold">Login Email:</span>
-                        <span className="text-[#172033] font-mono font-bold select-all">{p.email}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11.5px]">
-                        <span className="text-[#667085] font-semibold">Mobile / Login:</span>
-                        <span className="text-[#172033] font-mono font-bold select-all">{p.mobile}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11.5px]">
-                        <span className="text-[#667085] font-semibold">Partner Code:</span>
-                        <span className="text-[#C98219] font-mono font-extrabold select-all">{p.partnerCode}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] pt-0.5 border-t border-[#E6EAF0]">
-                        <span className="text-[#8F5A0D] font-medium">Default Password:</span>
-                        <span className="text-[#8F5A0D] font-mono bg-[#FEF7E6] px-1.5 py-0.5 rounded border border-[#F9DE9B] font-bold">
-                          Partner@{p.mobile ? p.mobile.slice(-4) : 'XXXX'}
-                        </span>
-                      </div>
+                  {/* PROMINENT WALLET BALANCE PANEL */}
+                  <div className="mt-3 rounded-[9px] border border-[#B2DDFF] bg-[#F5FAFF] p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#175CD3] flex items-center gap-1">
+                        <Wallet className="h-3.5 w-3.5" />
+                        <span>Partner Wallet</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openWalletAdjustModal(p)}
+                        className="rounded-[6px] bg-[#175CD3] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#154EBA] shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Adjust Balance</span>
+                      </button>
                     </div>
-
-                    <p>Region: <span className="text-[#172033] font-medium">{p.district || 'Tamil Nadu'} / {p.taluk || 'HQ'}</span></p>
-                    <p>Total Registered Centres: <strong className="text-[#8F5A0D] text-sm font-bold ml-1">{p.totalRegisteredUsers || 0}</strong></p>
+                    <div className="flex items-baseline justify-between">
+                      <div className="font-mono text-xl font-black text-[#0B4FBA]">
+                        {formatINR(walletAmt)}
+                      </div>
+                      <span className="text-[10px] text-[#1E40AF] font-medium">
+                        Live Balance
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Payment & Approval Info Box */}
-                  <div className="mt-3.5 rounded-[7px] border p-2.5 text-xs">
-                    {isActive ? (
-                      <div className="flex items-center justify-between text-[#027A48] bg-[#ECFDF3]/60 -m-2.5 p-2.5 rounded-[7px]">
-                        <span className="font-semibold flex items-center gap-1">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Franchise Fee (₹ 599.00):
-                        </span>
-                        <span className="font-bold">Paid & Verified</span>
-                      </div>
-                    ) : isPendingApproval ? (
-                      <div className="space-y-1.5 bg-[#EFF8FF]/70 -m-2.5 p-2.5 rounded-[7px] text-[#175CD3]">
-                        <div className="flex items-center justify-between font-bold">
-                          <span>Franchise Fee: ₹ 599.00</span>
-                          <span>Payment Submitted</span>
-                        </div>
-                        <div className="flex items-center justify-between text-[11px] text-[#1E40AF]">
-                          <span>Ref (UTR): <strong className="font-mono">{p.paymentReference || 'Submitted'}</strong></span>
-                          {p.paymentProofUrl && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setViewingReceipt({
-                                  partnerName: p.name,
-                                  partnerCode: p.partnerCode,
-                                  paymentReference: p.paymentReference || 'Submitted',
-                                  imageUrl: p.paymentProofUrl,
-                                })
-                              }
-                              className="text-[#175CD3] hover:text-[#154EBA] font-bold flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[6px] border border-[#B2DDFF] cursor-pointer shadow-2xs hover:bg-[#EFF8FF] transition-all"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              <span>View Receipt</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between text-[#8F5A0D] bg-[#FEF7E6]/70 -m-2.5 p-2.5 rounded-[7px]">
-                        <span className="font-semibold flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          Franchise Fee (₹ 599.00):
-                        </span>
-                        <span className="font-bold text-[#C98219]">Unpaid (Pending)</span>
-                      </div>
-                    )}
+                  {/* Contact & Credentials Card */}
+                  <div className="mt-3 rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-2.5 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between text-[11.5px]">
+                      <span className="text-[#667085] font-semibold">Mobile / Login:</span>
+                      <span className="text-[#172033] font-mono font-bold select-all">{p.mobile}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11.5px]">
+                      <span className="text-[#667085] font-semibold">Email:</span>
+                      <span className="text-[#172033] font-mono truncate max-w-[150px]" title={p.email}>
+                        {p.email}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#E6EAF0]">
+                      <span className="text-[#8F5A0D] font-medium">Region:</span>
+                      <span className="text-[#172033] font-medium">{p.district || 'Tamil Nadu'} / {p.taluk || 'HQ'}</span>
+                    </div>
                   </div>
 
-                  {/* Dynamic Base Ticket Price Box */}
-                  <div className="mt-3 rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3 text-xs flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
-                        <Coins className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#667085] block">
-                          Base Ticket Price
-                        </span>
-                        <span className="font-mono text-xs font-bold text-[#172033]">
-                          {p.baseTicketPrice ? 'Custom Partner Rate' : 'Global Default Rate'}
-                        </span>
-                      </div>
+                  {/* Rates Info */}
+                  <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="rounded-[7px] border border-[#E6EAF0] bg-white p-2">
+                      <span className="text-[#667085] block text-[10px] uppercase font-bold">Commission</span>
+                      <span className="font-bold text-[#172033] text-xs">{p.commissionPercentage}%</span>
+                      <span className="text-[#667085] block text-[9.5px]">₹ {Number(p.commissionRate || 20).toFixed(2)}/pass</span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm font-extrabold text-[#175CD3]">
+                    <div className="rounded-[7px] border border-[#E6EAF0] bg-white p-2">
+                      <span className="text-[#667085] block text-[10px] uppercase font-bold">Base Ticket</span>
+                      <span className="font-mono font-bold text-[#175CD3] text-xs">
                         ₹ {Number(p.baseTicketPrice ?? systemBaseTicketPrice).toFixed(2)}
                       </span>
-                      <span className="text-[10px] text-[#667085] block">
-                        {p.baseTicketPrice ? 'Dynamic Override' : `Default (₹ ${systemBaseTicketPrice.toFixed(2)})`}
+                      <span className="text-[#667085] block text-[9.5px] truncate">
+                        {p.baseTicketPrice ? 'Custom Rate' : 'Global Default'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Bottom Actions & URLs */}
-                <div className="border-t border-[#E6EAF0] pt-4 space-y-3">
-                  {/* Approval Action: ONLY visible when offline payment is submitted (PENDING_APPROVAL) */}
+                {/* Bottom Card Actions */}
+                <div className="border-t border-[#E6EAF0] pt-3 space-y-2.5">
+                  {/* Approval action if pending */}
                   {isPendingApproval && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        disabled={actionLoadingId === p.id}
-                        onClick={() => handleApprovePartner(p.id, p.name)}
-                        className="flex-1 rounded-[7px] bg-[#027A48] py-2.5 px-3 text-xs font-bold text-white hover:bg-[#05603A] shadow-subtle flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                      >
-                        {actionLoadingId === p.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <ShieldCheck className="h-4 w-4" />
-                        )}
-                        <span>Verify & Approve Offline Payment (₹ 599)</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {isPendingPayment && (
-                    <div className="rounded-[7px] bg-[#FEF7E6] border border-[#F9DE9B] px-3 py-2 text-xs text-[#8F5A0D] flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 font-semibold">
-                        <Clock className="h-3.5 w-3.5 text-[#C98219]" />
-                        Awaiting Franchise Fee Payment
-                      </span>
-                      <span className="text-[11px] text-[#A66E14] font-medium">Online (Auto-Active) / Offline (Admin Review)</span>
-                    </div>
-                  )}
-
-                  {/* Conditional Onboarding URL Section: Hidden when Active */}
-                  {isActive ? (
-                    <div className="rounded-[8px] bg-[#ECFDF3] border border-[#A6F4C5] p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#027A48]">
-                        <CheckCircle2 className="h-4 w-4 text-[#12B76A]" />
-                        <span>Partner Active — Onboarding Completed</span>
-                      </div>
-                      <span className="text-[11px] font-mono text-[#027A48] bg-[#D1FADF] px-2.5 py-0.5 rounded font-bold border border-[#A6F4C5]">
-                        Verified & Live
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="rounded-[8px] bg-[#FEF7E6]/70 border border-[#F9DE9B] p-3 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-[#8F5A0D]">
-                        <span className="flex items-center gap-1.5">
-                          <Users className="h-3.5 w-3.5" />
-                          Partner Onboarding URL
-                        </span>
-                        <span className="text-[10px] bg-[#C98219] text-white px-2 py-0.5 rounded font-extrabold">
-                          Share with Partner
-                        </span>
-                      </div>
-
-                      {p.activeInvitationToken ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            readOnly
-                            value={onboardFullUrl}
-                            className="flex-1 rounded-[6px] border border-[#E8D5B7] bg-white px-3 py-1.5 text-xs text-[#172033] font-mono focus:outline-none truncate"
-                          />
-                          <button
-                            onClick={() => copyUrl(onboardFullUrl, `onboard-${p.id}`)}
-                            className="rounded-[6px] bg-[#C98219] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#B57414] transition-colors flex items-center gap-1.5 shrink-0 shadow-subtle"
-                          >
-                            {copiedToken === `onboard-${p.id}` ? (
-                              <>
-                                <Check className="h-3.5 w-3.5" />
-                                <span>Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3.5 w-3.5" />
-                                <span>Copy URL</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
+                    <button
+                      type="button"
+                      disabled={actionLoadingId === p.id}
+                      onClick={() => handleApprovePartner(p.id, p.name)}
+                      className="w-full rounded-[7px] bg-[#027A48] py-2 px-3 text-xs font-bold text-white hover:bg-[#05603A] shadow-subtle flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                    >
+                      {actionLoadingId === p.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-[#98A2B3]">No active onboarding token.</span>
-                          <button
-                            onClick={() => handleGenerateFreshInvitation(p.id)}
-                            className="rounded-[6px] bg-[#FEF7E6] border border-[#F9DE9B] px-2.5 py-1 text-xs font-bold text-[#8F5A0D] hover:bg-[#FAF3E7]"
-                          >
-                            Generate Token
-                          </button>
-                        </div>
+                        <ShieldCheck className="h-3.5 w-3.5" />
                       )}
-                    </div>
+                      <span>Verify & Approve Payment (₹ 599)</span>
+                    </button>
                   )}
 
-                  {/* Edit, Reset Password & Delete Partner Action Buttons */}
-                  <div className="flex items-center gap-2 pt-1">
+                  {/* Buttons toolbar */}
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(p)}
-                      className="flex-1 rounded-[7px] border border-[#D0D5DD] bg-white py-2 px-2.5 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC] hover:border-[#98A2B3] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer truncate"
+                      className="flex-1 rounded-[7px] border border-[#D0D5DD] bg-white py-1.5 px-2 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC] shadow-2xs flex items-center justify-center gap-1 transition-all"
                     >
-                      <Edit3 className="h-3.5 w-3.5 text-[#C98219] shrink-0" />
-                      <span className="truncate">Edit Details</span>
+                      <Edit3 className="h-3 w-3 text-[#C98219]" />
+                      <span>Edit</span>
                     </button>
                     <button
                       type="button"
@@ -704,29 +1074,278 @@ export default function AdminPartnersPage() {
                         setResetPasswordError(null);
                         setResetPasswordSuccess(null);
                       }}
-                      className="rounded-[7px] border border-[#D0D5DD] bg-white py-2 px-2.5 text-xs font-bold text-[#344054] hover:bg-[#FEF7E6] hover:border-[#C98219] hover:text-[#8F5A0D] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
-                      title="Set / Reset Partner Password"
+                      className="rounded-[7px] border border-[#D0D5DD] bg-white py-1.5 px-2 text-xs font-bold text-[#344054] hover:bg-[#FEF7E6] shadow-2xs flex items-center justify-center gap-1 transition-all"
+                      title="Reset Password"
                     >
-                      <KeyRound className="h-3.5 w-3.5 text-[#C98219]" />
+                      <KeyRound className="h-3 w-3 text-[#C98219]" />
                       <span>Password</span>
                     </button>
+                    {p.paymentProofUrl && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setViewingReceipt({
+                            partnerName: p.name,
+                            partnerCode: p.partnerCode,
+                            paymentReference: p.paymentReference || 'Submitted',
+                            imageUrl: p.paymentProofUrl,
+                          })
+                        }
+                        className="rounded-[7px] border border-[#B2DDFF] bg-[#EFF8FF] py-1.5 px-2 text-xs font-bold text-[#175CD3] hover:bg-[#D1E9FF] shadow-2xs flex items-center justify-center gap-1 transition-all"
+                        title="View Receipt"
+                      >
+                        <Eye className="h-3 w-3" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
                         setDeleteError(null);
                         setPartnerToDelete(p);
                       }}
-                      className="rounded-[7px] border border-[#FDA29B] bg-white py-2 px-2.5 text-xs font-bold text-[#D92D20] hover:bg-[#FEF3F2] hover:border-[#D92D20] shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
-                      title="Delete Partner Franchise"
+                      className="rounded-[7px] border border-[#FDA29B] bg-white py-1.5 px-2 text-xs font-bold text-[#D92D20] hover:bg-[#FEF3F2] shadow-2xs flex items-center justify-center transition-all"
+                      title="Delete Partner"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-[#D92D20]" />
-                      <span>Delete</span>
+                      <Trash2 className="h-3 w-3 text-[#D92D20]" />
                     </button>
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* WALLET ADJUSTMENT MODAL (CREDIT / DEBIT) */}
+      {isWalletModalOpen && walletTargetPartner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/50 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="w-full max-w-lg rounded-[14px] border border-[#E6EAF0] bg-white p-6 sm:p-7 shadow-modal flex flex-col my-auto animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3.5 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-[#172033]">
+                    Adjust Partner Wallet Balance
+                  </h3>
+                  <p className="text-xs text-[#667085] mt-0.5">
+                    Manually credit (add funds) or debit (deduct funds) for Super Admin operations.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWalletModalOpen(false)}
+                className="rounded-[6px] p-1.5 text-[#667085] hover:bg-[#F0F3F8] hover:text-[#172033] transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {walletError && (
+              <div className="rounded-[7px] border border-[#FDA29B] bg-[#FEF3F2] p-3 text-xs text-[#D92D20] flex items-center gap-2 mb-3">
+                <AlertCircle className="h-4 w-4 shrink-0 text-[#D92D20]" />
+                <span>{walletError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleWalletAdjustSubmit} className="space-y-4">
+              {/* Partner Info Summary Banner */}
+              <div className="rounded-[9px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-[#FEF7E6] px-2 py-0.5 text-xs font-mono font-bold text-[#8F5A0D] border border-[#F9DE9B]">
+                      {walletTargetPartner.partnerCode}
+                    </span>
+                    <span className="font-bold text-sm text-[#172033]">{walletTargetPartner.name}</span>
+                  </div>
+                  <div className="text-[11px] text-[#667085] mt-1">
+                    {walletTargetPartner.district || 'Tamil Nadu'} • {walletTargetPartner.mobile}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-[#667085] block">Current Balance</span>
+                  <span className="font-mono text-base font-black text-[#175CD3]">
+                    {formatINR(
+                      walletTargetPartner.availableBalance ??
+                      walletTargetPartner.walletBalance ??
+                      walletTargetPartner.balance ??
+                      0
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Switcher: CREDIT vs DEBIT */}
+              <div>
+                <label className="block text-xs font-bold text-[#172033] mb-1.5">
+                  Select Action *
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setWalletAdjustAction('CREDIT')}
+                    className={`py-2.5 px-3 rounded-[8px] border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      walletAdjustAction === 'CREDIT'
+                        ? 'border-[#A6F4C5] bg-[#ECFDF3] text-[#027A48] shadow-2xs ring-2 ring-[#A6F4C5]'
+                        : 'border-[#E6EAF0] bg-white text-[#475467] hover:bg-[#F8FAFC]'
+                    }`}
+                  >
+                    <ArrowDownLeft className="h-4 w-4 text-[#12B76A]" />
+                    <span>Credit (Add Funds)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWalletAdjustAction('DEBIT')}
+                    className={`py-2.5 px-3 rounded-[8px] border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      walletAdjustAction === 'DEBIT'
+                        ? 'border-[#FECDCA] bg-[#FEF3F2] text-[#D92D20] shadow-2xs ring-2 ring-[#FECDCA]'
+                        : 'border-[#E6EAF0] bg-white text-[#475467] hover:bg-[#F8FAFC]'
+                    }`}
+                  >
+                    <ArrowUpRight className="h-4 w-4 text-[#D92D20]" />
+                    <span>Debit (Deduct Funds)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Preset Amount Pills */}
+              <div>
+                <label className="block text-xs font-bold text-[#172033] mb-1.5">
+                  Preset Amounts
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {['100', '500', '1000', '2000', '5000'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setWalletAdjustAmount(preset)}
+                      className={`px-3 py-1.5 rounded-[6px] text-xs font-mono font-bold transition-all ${
+                        walletAdjustAmount === preset
+                          ? 'bg-[#172033] text-white'
+                          : 'bg-[#F8FAFC] border border-[#E6EAF0] text-[#475467] hover:bg-[#E6EAF0]'
+                      }`}
+                    >
+                      +₹{preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Exact Amount Input */}
+              <div>
+                <label className="block text-xs font-bold text-[#172033] mb-1">
+                  Amount (₹) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-sm text-[#667085]">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    value={walletAdjustAmount}
+                    onChange={(e) => setWalletAdjustAmount(e.target.value)}
+                    placeholder="Enter amount in ₹"
+                    className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-sm font-mono font-bold text-[#172033] focus:border-[#175CD3] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Reason / Reference */}
+              <div>
+                <label className="block text-xs font-bold text-[#172033] mb-1">
+                  Reason / Reference Note <span className="text-[#667085] font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={walletAdjustReason}
+                  onChange={(e) => setWalletAdjustReason(e.target.value)}
+                  placeholder="e.g. Offline cash topup, incentive credit, refund adjustment..."
+                  className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-xs text-[#172033] focus:border-[#175CD3] focus:outline-none"
+                />
+              </div>
+
+              {/* Projected Balance Preview Box */}
+              {(() => {
+                const cur = Number(
+                  walletTargetPartner.availableBalance ??
+                  walletTargetPartner.walletBalance ??
+                  walletTargetPartner.balance ??
+                  0
+                );
+                const amt = parseFloat(walletAdjustAmount) || 0;
+                const projected = walletAdjustAction === 'CREDIT' ? cur + amt : cur - amt;
+
+                return (
+                  <div
+                    className={`rounded-[9px] border p-3.5 text-xs space-y-1.5 ${
+                      projected < 0
+                        ? 'border-[#FDA29B] bg-[#FEF3F2] text-[#D92D20]'
+                        : 'border-[#B2DDFF] bg-[#F5FAFF] text-[#175CD3]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">Current Available:</span>
+                      <span className="font-mono font-bold">{formatINR(cur)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">
+                        {walletAdjustAction === 'CREDIT' ? 'Credit Adjustment:' : 'Debit Adjustment:'}
+                      </span>
+                      <span className="font-mono font-bold">
+                        {walletAdjustAction === 'CREDIT' ? `+ ${formatINR(amt)}` : `- ${formatINR(amt)}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1.5 border-t border-current/20 font-bold text-sm">
+                      <span>Projected New Balance:</span>
+                      <span className="font-mono font-black">{formatINR(Math.max(0, projected))}</span>
+                    </div>
+                    {projected < 0 && (
+                      <p className="text-[11px] font-bold text-[#D92D20] pt-1">
+                        ⚠️ Cannot debit more than the current available balance.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E6EAF0]">
+                <button
+                  type="button"
+                  onClick={() => setIsWalletModalOpen(false)}
+                  className="rounded-[7px] border border-[#E6EAF0] bg-[#F8FAFC] px-4 py-2 text-xs font-semibold text-[#475467] hover:bg-[#F0F3F8] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={walletSubmitting || (walletAdjustAction === 'DEBIT' && (parseFloat(walletAdjustAmount) || 0) > Number(walletTargetPartner.availableBalance ?? walletTargetPartner.walletBalance ?? walletTargetPartner.balance ?? 0))}
+                  className={`rounded-[7px] px-5 py-2 text-xs font-bold text-white shadow-subtle flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors ${
+                    walletAdjustAction === 'CREDIT'
+                      ? 'bg-[#027A48] hover:bg-[#05603A]'
+                      : 'bg-[#D92D20] hover:bg-[#B42318]'
+                  }`}
+                >
+                  {walletSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Updating Wallet...</span>
+                    </>
+                  ) : (
+                    <span>
+                      {walletAdjustAction === 'CREDIT' ? `Confirm Credit (+₹${walletAdjustAmount || 0})` : `Confirm Debit (-₹${walletAdjustAmount || 0})`}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -1016,11 +1635,10 @@ export default function AdminPartnersPage() {
               </div>
             )}
 
-            {/* Scrollable Form Body with 2-Column Responsive Grid */}
+            {/* Form */}
             <form onSubmit={handleUpdatePartner} className="flex-1 flex flex-col min-h-0">
               <div className="flex-1 overflow-y-auto pr-1.5 -mr-1.5 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-                  {/* Left Column: Basic Details & Status */}
                   <div className="space-y-3.5">
                     <div className="flex items-center justify-between border-b border-[#F0F3F8] pb-1.5">
                       <span className="text-xs font-bold text-[#475467] uppercase tracking-wider">
@@ -1085,160 +1703,85 @@ export default function AdminPartnersPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-[#172033] mb-1">Franchise Account Status</label>
+                      <label className="block text-xs font-bold text-[#172033] mb-1">Account Status</label>
                       <select
                         value={editStatus}
                         onChange={(e) => setEditStatus(e.target.value)}
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none font-semibold"
+                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
                       >
-                        <option value="ACTIVE">ACTIVE (Fully Live & Operating)</option>
-                        <option value="PENDING_APPROVAL">PENDING_APPROVAL (Payment Awaiting Approval)</option>
-                        <option value="PENDING_PAYMENT">PENDING_PAYMENT (Awaiting Franchise Fee)</option>
-                        <option value="SUSPENDED">SUSPENDED (Temporarily On Hold)</option>
-                        <option value="DISABLED">DISABLED (Deactivated)</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="PENDING_APPROVAL">PENDING_APPROVAL</option>
+                        <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
+                        <option value="SUSPENDED">SUSPENDED</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-[#F0F3F8] pb-1.5">
+                      <span className="text-xs font-bold text-[#475467] uppercase tracking-wider">
+                        Pricing & Credentials
+                      </span>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-[#172033] mb-1">
-                        Change Dashboard Login Password (Optional)
+                        Dynamic Base Ticket Price (₹)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-xs text-[#667085] font-bold">₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={editBaseTicketPrice}
+                          onChange={(e) => setEditBaseTicketPrice(e.target.value)}
+                          placeholder={`Leave blank to use default (₹ ${systemBaseTicketPrice.toFixed(2)})`}
+                          className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-[10.5px] text-[#667085] mt-1">
+                        Global default rate is ₹ {systemBaseTicketPrice.toFixed(2)}.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[#172033] mb-1">
+                        Reset Password <span className="text-[#667085] font-normal">(Optional)</span>
                       </label>
                       <input
                         type="text"
                         value={editPassword}
                         onChange={(e) => setEditPassword(e.target.value)}
-                        placeholder="Leave blank to keep unchanged (e.g. pass@2025)"
-                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none font-mono"
+                        placeholder="Leave blank to keep existing password"
+                        className="w-full rounded-[7px] border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#172033] focus:border-[#C98219] focus:outline-none"
                       />
-                      <p className="text-[10.5px] text-[#667085] mt-1">
-                        Min 6 characters. If entered, updates partner login password immediately.
-                      </p>
-                    </div>
-
-                    {editStatus === 'ACTIVE' && (
-                      <div className="rounded-[7px] border border-[#A6F4C5] bg-[#ECFDF3] p-2.5 text-[11.5px] text-[#027A48] flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-[#027A48]" />
-                        <span>Status ACTIVE will automatically activate the partner login account and mark franchise fee verified.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right Column: Dynamic Base Ticket Price & Pricing Architecture */}
-                  <div className="space-y-3.5">
-                    <div className="flex items-center justify-between border-b border-[#F0F3F8] pb-1.5">
-                      <span className="text-xs font-bold text-[#475467] uppercase tracking-wider">
-                        Dynamic Base Pricing
-                      </span>
-                      <span className="text-[11px] font-mono text-[#175CD3] bg-[#EFF8FF] border border-[#B2DDFF] px-2 py-0.5 rounded font-bold">
-                        ₹ {editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)} Base Rate
-                      </span>
-                    </div>
-
-                    <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3.5 space-y-3">
-                      {/* Global Default Reference */}
-                      <div className="rounded-[6px] bg-white border border-[#E6EAF0] p-2.5 flex items-center justify-between text-xs">
-                        <span className="text-[#667085] flex items-center gap-1.5 font-medium">
-                          <Coins className="h-3.5 w-3.5 text-[#C98219]" />
-                          Global Default Base Rate:
-                        </span>
-                        <span className="font-mono font-bold text-xs text-[#172033]">₹ {systemBaseTicketPrice.toFixed(2)}</span>
-                      </div>
-
-                      {/* Dynamic Base Ticket Price Input */}
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-[#172033]">
-                          Partner Dynamic Base Ticket Price (Chips)
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-xs text-[#667085] font-bold">₹</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            value={editBaseTicketPrice}
-                            onChange={(e) => setEditBaseTicketPrice(e.target.value)}
-                            placeholder={`Leave blank to inherit default (₹ ${systemBaseTicketPrice.toFixed(2)})`}
-                            className="w-full rounded-[7px] border border-[#D0D5DD] bg-white pl-8 pr-3 py-2 text-sm font-mono font-bold text-[#172033] focus:border-[#C98219] focus:outline-none"
-                          />
-                        </div>
-                        <p className="text-[11px] text-[#667085]">
-                          Set a dynamic base price specifically for this franchise. Centres and distributors under this partner calculate booking fees starting from this rate.
-                        </p>
-                      </div>
-
-                      {/* Quick Presets */}
-                      <div className="space-y-1.5 pt-1">
-                        <span className="text-[11px] font-semibold text-[#475467]">Quick Presets</span>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[10, 12, 15, 20].map((price) => (
-                            <button
-                              key={price}
-                              type="button"
-                              onClick={() => setEditBaseTicketPrice(price.toString())}
-                              className={`py-1.5 px-2 rounded-[6px] border text-xs font-bold transition-all cursor-pointer ${
-                                editBaseTicketPrice === price.toString()
-                                  ? 'border-[#175CD3] bg-[#EFF8FF] text-[#175CD3] ring-1 ring-[#175CD3]'
-                                  : 'border-[#D0D5DD] bg-white text-[#475467] hover:bg-[#F8FAFC]'
-                              }`}
-                            >
-                              ₹ {price}
-                            </button>
-                          ))}
-                        </div>
-                        {editBaseTicketPrice.trim() !== '' && (
-                          <button
-                            type="button"
-                            onClick={() => setEditBaseTicketPrice('')}
-                            className="text-[11px] text-[#C98219] hover:underline font-semibold block pt-1 cursor-pointer"
-                          >
-                            Reset to Default (₹ {systemBaseTicketPrice.toFixed(2)})
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Rate Preview Indicator */}
-                      <div className="rounded-[6px] bg-[#EFF8FF] border border-[#B2DDFF] p-2.5 text-[11.5px] text-[#175CD3] flex items-center justify-between font-semibold">
-                        <span>Active Partner Base Rate:</span>
-                        <span className="font-mono font-bold text-sm">
-                          ₹ {editBaseTicketPrice.trim() !== '' ? Number(editBaseTicketPrice).toFixed(2) : systemBaseTicketPrice.toFixed(2)}
-                          <span className="text-[10px] font-normal text-[#175CD3] ml-1">
-                            ({editBaseTicketPrice.trim() !== '' ? 'Custom Override' : 'System Default'})
-                          </span>
-                        </span>
-                      </div>
-
-                      <p className="text-[10.5px] text-[#667085] leading-relaxed">
-                        💡 All bookings submitted by centres affiliated with {editName || 'this partner'} start at this base price before any partner and distributor ticket markups are applied.
-                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Modal Fixed Footer */}
+              {/* Modal Footer */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E6EAF0] mt-4 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditingPartner(null)}
-                  className="rounded-[7px] border border-[#E6EAF0] bg-[#F8FAFC] px-4 py-2 text-xs font-semibold text-[#475467] hover:bg-[#F0F3F8] cursor-pointer transition-colors"
+                  className="rounded-[7px] border border-[#E6EAF0] bg-[#F8FAFC] px-4 py-2 text-xs font-semibold text-[#475467] hover:bg-[#F0F3F8] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit}
-                  className="rounded-[7px] bg-[#C98219] px-5 py-2 text-xs font-bold text-white hover:bg-[#B57414] shadow-subtle flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                  className="rounded-[7px] bg-[#C98219] px-5 py-2 text-xs font-bold text-white hover:bg-[#B57414] shadow-subtle flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {savingEdit ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Saving Changes...</span>
+                      <span>Saving...</span>
                     </>
                   ) : (
-                    <>
-                      <Save className="h-3.5 w-3.5" />
-                      <span>Save Partner Details</span>
-                    </>
+                    <span>Save Changes</span>
                   )}
                 </button>
               </div>
@@ -1247,21 +1790,23 @@ export default function AdminPartnersPage() {
         </div>
       )}
 
-      {/* Receipt Proof Lightbox Modal */}
+      {/* View Receipt Proof Modal */}
       {viewingReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/70 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-2xl rounded-[12px] border border-[#E6EAF0] bg-white p-6 shadow-modal space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-xl rounded-[14px] border border-[#E6EAF0] bg-white p-6 shadow-modal space-y-4 animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs bg-[#FEF7E6] text-[#8F5A0D] border border-[#F9DE9B] px-2 py-0.5 rounded font-bold">
-                    {viewingReceipt.partnerCode}
-                  </span>
-                  <h3 className="text-base font-bold text-[#172033]">{viewingReceipt.partnerName}</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[7px] bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF]">
+                  <Eye className="h-4 w-4" />
                 </div>
-                <p className="text-xs text-[#667085] mt-0.5">
-                  Payment Reference (UTR): <strong className="font-mono text-[#172033]">{viewingReceipt.paymentReference}</strong>
-                </p>
+                <div>
+                  <h3 className="text-base font-bold text-[#172033]">
+                    Payment Proof Receipt
+                  </h3>
+                  <p className="text-xs text-[#667085]">
+                    {viewingReceipt.partnerName} ({viewingReceipt.partnerCode})
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -1272,107 +1817,92 @@ export default function AdminPartnersPage() {
               </button>
             </div>
 
-            {/* Image Preview Box */}
-            <div className="rounded-[8px] bg-[#F8FAFC] border border-[#E6EAF0] p-4 max-h-[65vh] overflow-auto flex items-center justify-center">
+            <div className="rounded-[8px] border border-[#E6EAF0] bg-[#F8FAFC] p-3 text-xs flex items-center justify-between font-mono">
+              <span className="text-[#667085]">UTR / Payment Reference:</span>
+              <strong className="text-[#172033] select-all">{viewingReceipt.paymentReference}</strong>
+            </div>
+
+            <div className="rounded-[10px] border border-[#E6EAF0] bg-[#0F172A] p-2 flex items-center justify-center max-h-[55vh] overflow-hidden">
               <img
                 src={viewingReceipt.imageUrl}
-                alt={`Receipt proof for ${viewingReceipt.partnerName}`}
-                className="max-h-[60vh] max-w-full object-contain rounded-[6px] shadow-xs"
+                alt="Franchise Fee Receipt Proof"
+                className="max-h-[50vh] max-w-full object-contain rounded-[6px]"
               />
             </div>
 
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center justify-between pt-2 border-t border-[#E6EAF0]">
               <a
                 href={viewingReceipt.imageUrl}
-                download={`receipt_${viewingReceipt.partnerCode}.jpg`}
-                className="rounded-[7px] border border-[#D0D5DD] bg-white px-3.5 py-2 text-xs font-bold text-[#172033] hover:bg-[#F8FAFC] flex items-center gap-1.5 transition-colors cursor-pointer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#175CD3] hover:underline"
               >
-                <Download className="h-3.5 w-3.5" />
-                <span>Download Screenshot</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span>Open Original Image</span>
               </a>
-
               <button
                 type="button"
                 onClick={() => setViewingReceipt(null)}
-                className="rounded-[7px] bg-[#172033] px-5 py-2 text-xs font-bold text-white hover:bg-[#222E46] transition-colors cursor-pointer"
+                className="rounded-[7px] bg-[#172033] px-4 py-2 text-xs font-bold text-white hover:bg-[#222E46]"
               >
-                Close Preview
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Partner Confirmation Modal */}
+      {/* Delete Partner Modal */}
       {partnerToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/60 p-4 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/50 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md rounded-[12px] border border-[#FDA29B] bg-white p-6 shadow-modal space-y-4 animate-in zoom-in-95">
-            <div className="flex items-start gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FEF3F2] text-[#D92D20] border border-[#FDA29B]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FEF3F2] text-[#D92D20] border border-[#FECDCA]">
                 <Trash2 className="h-5 w-5" />
               </div>
-              <div className="space-y-1">
+              <div>
                 <h3 className="text-base font-bold text-[#172033]">
                   Delete Partner Franchise?
                 </h3>
                 <p className="text-xs text-[#667085]">
-                  Are you sure you want to delete <strong className="text-[#172033]">{partnerToDelete.name}</strong> (<span className="font-mono text-[#8F5A0D] font-bold">{partnerToDelete.partnerCode}</span>)?
+                  {partnerToDelete.name} ({partnerToDelete.partnerCode})
                 </p>
               </div>
             </div>
 
-            <div className="rounded-[8px] bg-[#FEF3F2] border border-[#FDA29B] p-3 text-xs text-[#B42318] space-y-1.5">
-              <p className="font-semibold flex items-center gap-1.5">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                This action cannot be undone.
-              </p>
-              <ul className="list-disc pl-5 space-y-1 text-[11px] text-[#912018]">
-                <li>Partner account & franchise profile will be permanently removed.</li>
-                <li>All active onboarding invitation links for this partner will be revoked.</li>
-                {partnerToDelete.totalRegisteredUsers > 0 && (
-                  <li>
-                    <strong>{partnerToDelete.totalRegisteredUsers} registered centre(s)</strong> will be safely preserved but unlinked from this partner.
-                  </li>
-                )}
-              </ul>
-            </div>
-
             {deleteError && (
-              <div className="rounded-[7px] border border-[#FDA29B] bg-[#FEF3F2] p-2.5 text-xs text-[#D92D20] font-medium flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
+              <div className="rounded-[7px] border border-[#FDA29B] bg-[#FEF3F2] p-2.5 text-xs text-[#D92D20] flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-[#D92D20]" />
                 <span>{deleteError}</span>
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#E6EAF0]">
+            <p className="text-xs text-[#475467] leading-relaxed">
+              Are you sure you want to permanently delete partner <strong>{partnerToDelete.name}</strong> ({partnerToDelete.partnerCode})? This will remove all invitation tokens and unbind linked centres. This action cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E6EAF0]">
               <button
                 type="button"
+                onClick={() => setPartnerToDelete(null)}
                 disabled={isDeleting}
-                onClick={() => {
-                  setPartnerToDelete(null);
-                  setDeleteError(null);
-                }}
-                className="rounded-[7px] border border-[#D0D5DD] bg-white px-4 py-2 text-xs font-bold text-[#344054] hover:bg-[#F8FAFC] transition-colors cursor-pointer disabled:opacity-50"
+                className="rounded-[7px] border border-[#D0D5DD] bg-white px-4 py-2 text-xs font-bold text-[#344054] hover:bg-[#F8FAFC]"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={isDeleting}
                 onClick={handleDeletePartner}
-                className="rounded-[7px] bg-[#D92D20] px-4 py-2 text-xs font-bold text-white hover:bg-[#B42318] shadow-subtle flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                disabled={isDeleting}
+                className="rounded-[7px] bg-[#D92D20] px-4 py-2 text-xs font-bold text-white hover:bg-[#B42318] shadow-subtle flex items-center gap-1.5 disabled:opacity-50"
               >
                 {isDeleting ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Deleting Partner...</span>
+                    <span>Deleting...</span>
                   </>
                 ) : (
-                  <>
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete Partner</span>
-                  </>
+                  <span>Delete Franchise</span>
                 )}
               </button>
             </div>
@@ -1380,18 +1910,18 @@ export default function AdminPartnersPage() {
         </div>
       )}
 
-      {/* Reset Partner Password Modal */}
+      {/* Reset Password Modal */}
       {partnerForPasswordReset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/50 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md rounded-[14px] border border-[#E6EAF0] bg-white p-6 shadow-modal space-y-4 animate-in zoom-in-95">
+          <div className="w-full max-w-md rounded-[12px] border border-[#E6EAF0] bg-white p-6 shadow-modal space-y-4 animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-[#E6EAF0] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
-                  <KeyRound className="h-5 w-5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-[7px] bg-[#FEF7E6] text-[#C98219] border border-[#F9DE9B]">
+                  <KeyRound className="h-4 w-4" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-[#172033]">
-                    Set / Reset Partner Password
+                    Reset Partner Password
                   </h3>
                   <p className="text-xs text-[#667085]">
                     {partnerForPasswordReset.name} ({partnerForPasswordReset.partnerCode})

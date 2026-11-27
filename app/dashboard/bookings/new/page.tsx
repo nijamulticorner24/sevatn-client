@@ -150,7 +150,7 @@ export default function NewBookingPage() {
   };
 
   const adjustNominees = (targetCount: number) => {
-    const clamped = Math.max(0, Math.min(5, targetCount));
+    const clamped = Math.max(0, Math.min(10, targetCount));
     setNominees((prev) => {
       if (clamped === 0) return [];
       if (prev.length === clamped) return prev;
@@ -184,11 +184,11 @@ export default function NewBookingPage() {
     }
     const num = parseInt(val, 10);
     if (isNaN(num)) {
-      setPilgrimError('Please enter a valid number of pilgrims (1-5).');
+      setPilgrimError('Please enter a valid number of pilgrims (1-10).');
       return;
     }
-    if (num > 5) {
-      setPilgrimError('Sabarimala portal allows a maximum of 5 pilgrims per booking.');
+    if (num > 10) {
+      setPilgrimError('Sabarimala portal allows a maximum of 10 pilgrims per booking.');
       return;
     }
     if (num < 1) {
@@ -205,8 +205,8 @@ export default function NewBookingPage() {
   };
 
   const setExplicitPilgrimCount = (num: number, openModal = true) => {
-    if (num > 5) {
-      setPilgrimError('Sabarimala portal allows a maximum of 5 pilgrims per booking.');
+    if (num > 10) {
+      setPilgrimError('Sabarimala portal allows a maximum of 10 pilgrims per booking.');
       return;
     }
     setPilgrimError(null);
@@ -604,14 +604,14 @@ export default function NewBookingPage() {
       return;
     }
 
-    // 0a. Validate pilgrim count limit (1 to 5)
+    // 0a. Validate pilgrim count limit (1 to 10)
     const parsedPilgrims = parseInt(pilgrimCountInput, 10);
     if (isNaN(parsedPilgrims) || parsedPilgrims < 1 || pilgrimCount < 1) {
-      setError('Please select at least 1 pilgrim (1 to 5).');
+      setError('Please select at least 1 pilgrim (1 to 10).');
       return;
     }
-    if (parsedPilgrims > 5 || pilgrimCount > 5) {
-      setError('Sabarimala portal allows a maximum of 5 pilgrims per booking.');
+    if (parsedPilgrims > 10 || pilgrimCount > 10) {
+      setError('Sabarimala portal allows a maximum of 10 pilgrims per booking.');
       return;
     }
 
@@ -1595,7 +1595,7 @@ export default function NewBookingPage() {
                 </div>
               </div>
 
-              {/* Pilgrim Quantity Selector (1 to 5 Saved Pilgrims) & Dynamic Booking Unit Display */}
+              {/* Pilgrim Quantity Selector (1 to 10 Saved Pilgrims) & Dynamic Booking Unit Display */}
               <div className="pt-3 border-t border-[#F0F3F8] space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
@@ -1603,13 +1603,13 @@ export default function NewBookingPage() {
                       Number of Saved Pilgrims <span className="text-[#C2413B]">*</span>
                     </label>
                     <p className="text-[10.5px] text-[#667085]">
-                      Select 1 to 5 saved devotees from the official Sabarimala account
+                      Select 1 to 10 saved devotees from the official Sabarimala account
                     </p>
                   </div>
 
-                  {/* Quantity 1..5 Selector Buttons — Clicking opens the Nominee Popup Modal */}
-                  <div className="grid grid-cols-5 gap-1.5 sm:flex sm:items-center">
-                    {[1, 2, 3, 4, 5].map((qty) => {
+                  {/* Quantity 1..10 Selector Buttons — Clicking opens the Nominee Popup Modal */}
+                  <div className="grid grid-cols-5 sm:flex sm:flex-wrap sm:items-center gap-1.5">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((qty) => {
                       const isActive = pilgrimCount === qty;
                       return (
                         <button
@@ -1617,7 +1617,7 @@ export default function NewBookingPage() {
                           type="button"
                           onClick={() => setExplicitPilgrimCount(qty, true)}
                           aria-pressed={isActive}
-                          className={`h-9 sm:w-11 rounded-[7px] border text-[12.5px] font-bold transition-all cursor-pointer flex items-center justify-center ${
+                          className={`h-9 w-full sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-[7px] border text-[12px] font-bold transition-all cursor-pointer flex items-center justify-center ${
                             isActive
                               ? 'border-[#C98219] bg-[#C98219] text-white shadow-2xs ring-2 ring-[#C98219]/20'
                               : 'border-[#D0D5DD] bg-white text-[#344054] hover:border-[#C98219] hover:bg-[#FEF7E6] hover:text-[#8F5A0D]'
@@ -1712,7 +1712,7 @@ export default function NewBookingPage() {
               <div className="flex items-center justify-between py-1 border-b border-[#F0F3F8]">
                 <span className="text-[#667085]">Pilgrims / Devotees</span>
                 <span className="font-semibold text-[#172033] text-right">
-                  {pilgrimCount === 0 ? '0 Devotees (Select 1-5)' : `${pilgrimCount} Devotee${pilgrimCount > 1 ? 's' : ''} (Max 5)`}
+                  {pilgrimCount === 0 ? '0 Devotees (Select 1-10)' : `${pilgrimCount} Devotee${pilgrimCount > 1 ? 's' : ''} (Max 10)`}
                 </span>
               </div>
 
@@ -1974,11 +1974,11 @@ export default function NewBookingPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (pilgrimCount < 5) {
+                      if (pilgrimCount < 10) {
                         setExplicitPilgrimCount(pilgrimCount + 1, true);
                       }
                     }}
-                    disabled={pilgrimCount >= 5}
+                    disabled={pilgrimCount >= 10}
                     className="h-7 w-7 rounded-[5px] text-[#344054] hover:bg-[#EEF2F6] flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                     title="Increase Pilgrims (Arrow Up)"
                   >
@@ -2107,14 +2107,14 @@ export default function NewBookingPage() {
                 ))}
               </div>
 
-              {nominees.length < 5 && (
+              {nominees.length < 10 && (
                 <button
                   type="button"
-                  onClick={() => setExplicitPilgrimCount(Math.min(5, pilgrimCount + 1), false)}
+                  onClick={() => setExplicitPilgrimCount(Math.min(10, pilgrimCount + 1), false)}
                   className="w-full flex items-center justify-center gap-2 rounded-[8px] border-2 border-dashed border-[#D0D5DD] bg-[#FAFBFD] py-3 text-[12px] font-bold text-[#C98219] hover:border-[#C98219] hover:bg-[#FEF7E6] transition-all cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>+ Add Another Pilgrim ({nominees.length}/5)</span>
+                  <span>+ Add Another Pilgrim ({nominees.length}/10)</span>
                 </button>
               )}
             </div>
